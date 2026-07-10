@@ -1,0 +1,123 @@
+:root {
+    --navy: #0B1E3D;
+    --accent: #00D4AA;
+    --surface: #F4F6FA;
+    --border: #E3E9F0;
+    --white: #ffffff;
+}
+
+/* 🔍 ช่องค้นหายืด-หด (Elastic UI) */
+.search-input-wrap {
+    display: flex !important;
+    background: var(--surface);
+    border-radius: 50px;
+    padding: 8px 20px;
+    width: 250px;
+    align-items: center;
+    border: 1px solid var(--border);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    margin: 0 15px;
+}
+.search-input-wrap:focus-within {
+    width: 420px;
+    background: var(--white);
+    border-color: var(--accent);
+    box-shadow: 0 4px 20px rgba(0, 212, 170, 0.15);
+}
+.search-input-wrap input {
+    border: none; background: transparent; outline: none;
+    width: 100%; font-family: 'Sarabun', sans-serif; margin-left: 10px;
+}
+
+/* ✋ ปุ่มรับทราบ (Wow Effect) */
+.btn-wow {
+    background: linear-gradient(135deg, var(--accent) 0%, #00B896 100%);
+    color: var(--navy) !important;
+    border: none; border-radius: 12px; padding: 10px 22px;
+    font-weight: 700; display: flex; align-items: center; gap: 10px;
+    cursor: pointer; box-shadow: 0 4px 15px rgba(0, 212, 170, 0.3);
+    transition: all 0.3s;
+}
+.btn-wow:hover { transform: scale(1.08) translateY(-2px); }
+.btn-wow i { animation: shake-call 1.5s infinite; }
+
+@keyframes shake-call {
+    0%, 100% { transform: rotate(0); }
+    15% { transform: rotate(20deg); }
+    30% { transform: rotate(-15deg); }
+    45% { transform: rotate(10deg); }
+}
+
+/* จูนตำแหน่ง Topbar ให้รองรับช่องค้นหา */
+/* --- [Modern Flex Architecture] เบาตัวและรื่นไหล --- */
+.topbar {
+display: flex; justify-content: space-between; align-items: center;    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    min-height: 60px; padding: 0 25px;
+    background: #0B1E3D !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.tb-brand {
+    font-size: 1.2rem;
+    font-weight: 700; letter-spacing: 0.02em;
+    color: #00D1FF; /* สีฟ้าสว่างล้ำสมัย */
+}
+
+.tb-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+/* --- End Clean Architecture --- */
+
+/* --- [TaskFlow Modern Grid Architecture] --- */
+.task-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 25px;
+}
+
+.task-card {
+    display: grid;
+    grid-template-columns: 60px minmax(200px, 1fr) 140px 110px auto;
+    align-items: center;
+    background: var(--white);
+    padding: 16px 20px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.task-card:hover {
+    transform: translateX(8px); /* ขยับเล็กน้อยเพื่อความรื่นไหล */
+    border-color: var(--accent);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+}
+
+/* Badge ระดับความสำคัญที่พ่นสีตาม Logic */
+.prio-badge {
+white-space: nowrap; display: inline-block;    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 700; letter-spacing: 0.02em;
+    text-align: center;
+}
+.prio-urgent { background: #FFE5E5; color: #FF4D4D; }
+.prio-high { background: #FFF4E5; color: #FF9F43; }
+.prio-normal { background: #E5F6FF; color: #2196F3; }
+/* --- End Modern Architecture --- */
+
+/* ��͹�����Ѻ��Һ�ҹ */
+div[style*='background: #2DD4BF'] { display: none !important; }
+
+/* Disable Bell Click & Hide Acknowledge */
+.bell-btn { pointer-events: none !important; cursor: default !important; }
+div[style*='background: #2DD4BF'] { display: none !important; }
+
+/* Hide Notification Header & Adjust Spacing */
+.notif-hd { display: none !important; }
+.notif-drop { padding-top: 5px !important; }

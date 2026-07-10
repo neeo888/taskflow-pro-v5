@@ -1,0 +1,19 @@
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Local environment / secrets
+.env
+php/db.local.php
+
+# Runtime uploads: keep folders, ignore user uploaded files
+uploads/tasks/*
+!uploads/tasks/.gitkeep
+
+# Backups / temporary files
+*.bak
+*.bak*
+*_backup_*.php
+*_test.php
+*.zip
