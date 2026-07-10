@@ -1,4 +1,8 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/php/api.php", "destination": "/api/taskflow" },
+    { "source": "/save_tag.php", "destination": "/api/taskflow?action=tag_save" }
+  ]
 }

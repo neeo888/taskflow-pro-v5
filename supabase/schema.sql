@@ -152,5 +152,32 @@ values
 on conflict (wwcode) do update set pass_hash = excluded.pass_hash;
 
 -- Storage bucket names ที่แนะนำให้สร้างใน Supabase Storage:
--- 1) task-attachments
+-- 1) task-attachments (แนะนำ public สำหรับเวอร์ชันนี้ เพื่อ download ผ่าน file_url)
 -- 2) avatars
+
+-- Verify local login for Vercel/Supabase API
+create or replace function public.tf_verify_login(p_username text, p_password text)
+returns table (
+  id bigint,
+  wwcode varchar,
+  name varchar,
+  role varchar,
+  dept varchar,
+  dept_key varchar,
+  branch varchar,
+  branch_name varchar,
+  email varchar,
+  urole varchar,
+  color smallint,
+  avatar_url varchar
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select u.id,u.wwcode,u.name,u.role,u.dept,u.dept_key,u.branch,u.branch_name,u.email,u.urole,u.color,u.avatar_url
+  from public.tf_users u
+  where (u.wwcode = p_username or u.email = p_username)
+    and u.pass_hash = crypt(p_password, u.pass_hash)
+  limit 1;
+$$;

@@ -1,43 +1,94 @@
-# Deploy TaskFlow Pro v5 on Vercel
+# Deploy TaskFlow Pro v5 on Vercel + Supabase
 
-## สำคัญก่อน deploy
-Vercel ไม่รัน PHP + MySQL ของโปรเจกต์เดิมโดยตรง ดังนั้นการ deploy บน Vercel ตอนนี้ใช้สำหรับหน้า static preview/frontend เท่านั้น
+## สรุปสถานะ
+ชุด Vercel อยู่ในโฟลเดอร์ `vercel-static` และมี Vercel Edge API ที่ route เดิมของหน้าเว็บเรียกได้:
 
-ถ้าต้องการระบบใช้งานจริงแบบหลายเครื่อง/ข้อมูลไม่หาย ต้องใช้ Supabase เป็น backend แล้ว refactor API/Frontend ให้เรียก Supabase หรือใช้ PHP hosting แยกสำหรับ backend
+- `/php/api.php?action=...` → `/api/taskflow`
+- `/save_tag.php` → `/api/taskflow?action=tag_save`
 
-## วิธี deploy preview บน Vercel
+ดังนั้น UI เดิมยังเรียก endpoint ชื่อเดิมได้ โดย Vercel จะ rewrite ไปที่ API ที่ต่อ Supabase
 
-1. Push repo ขึ้น GitHub ก่อน
-2. เปิด https://vercel.com/new
-3. เลือก repo `taskflow-pro-v5`
-4. กด Import
-5. ในหน้า Configure Project ให้ตั้งค่า:
+## 1) ตั้ง Supabase ก่อน
 
-- Framework Preset: `Other`
-- Root Directory: `vercel-static`
-- Build Command: เว้นว่าง
-- Output Directory: เว้นว่าง
-- Install Command: เว้นว่าง
-
-6. กด Deploy
-
-## ถ้าต้องการ deploy ระบบจริง
-เลือกหนึ่งทาง:
-
-### ทาง A: PHP hosting + Supabase/PostgreSQL หรือ MySQL
-เหมาะกับโค้ดปัจจุบันที่สุด เพราะมี `php/api.php` อยู่แล้ว
-
-### ทาง B: Vercel + Supabase เต็มรูปแบบ
-ต้อง refactor:
-- ย้าย PHP API เป็น Vercel Serverless Functions หรือ Supabase Edge Functions
-- เปลี่ยน frontend ให้เรียก Supabase/Auth/Storage
-- ตั้ง RLS policy ใน Supabase
-
-## Root Directory ที่ต้องเลือกบน Vercel
-เลือก:
+1. เปิด Supabase Project
+2. ไปที่ SQL Editor
+3. วาง SQL จากไฟล์:
 
 ```text
-vercel-static
+supabase/schema.sql
 ```
 
-ห้ามเลือก root หลักถ้าต้องการ preview เพราะ root หลักเป็น PHP project
+4. กด Run
+5. ไปที่ Storage แล้วสร้าง bucket:
+
+```text
+avatars
+task-attachments
+```
+
+สำหรับเวอร์ชันนี้ให้ตั้ง `task-attachments` เป็น public เพื่อให้ download จาก `file_url` ได้ง่ายก่อน
+
+## 2) ตั้ง Environment Variables ใน Vercel
+
+ใน Vercel > Project > Settings > Environment Variables เพิ่ม:
+
+```text
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+SESSION_HOURS=720
+```
+
+ห้ามใส่ `SUPABASE_SERVICE_ROLE_KEY` ใน frontend หรือ GitHub แบบ public text
+
+## 3) Import GitHub Repository
+
+1. เปิด https://vercel.com/new
+2. เลือก repo `taskflow-pro-v5`
+3. กด Import
+4. ตั้งค่า:
+
+```text
+Framework Preset: Other
+Root Directory: vercel-static
+Build Command: เว้นว่าง
+Output Directory: เว้นว่าง
+Install Command: เว้นว่าง
+```
+
+5. กด Deploy
+
+## 4) Login ทดสอบ
+
+หลัง deploy ใช้ local account:
+
+```text
+admin / Pwa@12345
+manager / Pwa@12345
+assist / Pwa@12345
+user1 / Pwa@12345
+user2 / Pwa@12345
+user3 / Pwa@12345
+```
+
+## 5) สิ่งที่ทำงานผ่าน Supabase API แล้ว
+
+- local login
+- โหลด users
+- โหลด tasks
+- สร้าง/แก้ไข/ลบ task
+- เปลี่ยน column/status
+- progress log
+- checklist
+- submit work
+- verify/return task
+- obstacles
+- comments
+- notifications
+- tags
+- file upload ไป Supabase Storage bucket `task-attachments`
+
+## 6) ข้อควรระวัง
+
+ระบบนี้ใช้ Service Role Key ใน Vercel Edge Function เท่านั้น อย่านำ key ไปใส่ใน `index.html` หรือไฟล์ JS ฝั่ง browser
+
+ถ้าแก้ Supabase schema แล้วต้อง Redeploy Vercel ใหม่เฉพาะกรณีเปลี่ยน API code ไม่ใช่ทุกครั้งที่เปลี่ยน data

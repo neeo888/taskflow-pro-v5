@@ -2586,8 +2586,8 @@
       else processTaskFiles(files);
     }
 
-    let taskPendingFiles = [];
-    let swPendingFiles = [];
+    var taskPendingFiles = [];
+    var swPendingFiles = [];
 
     function processTaskFiles(files) {
       Array.from(files).forEach(f => {
@@ -2731,7 +2731,7 @@
     const FICON = { pdf: { bg: '#FFEDEE', fg: '#A32D2D', t: 'PDF' }, jpg: { bg: '#EEF3FF', fg: '#3C3489', t: 'JPG' }, jpeg: { bg: '#EEF3FF', fg: '#3C3489', t: 'JPG' }, png: { bg: '#E6FBF7', fg: '#064E3B', t: 'PNG' }, docx: { bg: '#E6F1FB', fg: '#0C447C', t: 'DOC' }, xlsx: { bg: '#EAF3DE', fg: '#27500A', t: 'XLS' }, txt: { bg: '#F1EFE8', fg: '#444441', t: 'TXT' } };
     const WEEK = { labels: ['สป.1', 'สป.2', 'สป.3', 'สป.4', 'สป.5', 'สป.6', 'สป.7', 'สป.8'], done: [1, 2, 2, 3, 2, 4, 3, 5], added: [2, 2, 3, 2, 4, 3, 3, 3] };
 
-    let users = [
+    var users = [
       // ── Local Accounts สำหรับ login โดยไม่ผ่าน กปภ. ─────────
       // username = wwcode หรือ email  |  pass = รหัสผ่าน
       { id: 1,  wwcode: 'admin',   name: 'กนกวรรณ พลชัย',  role: 'ผู้ดูแลระบบ',       dept: 'ฝ่ายเทคโนโลยี', dept_key: 'บริการ',    branch: '5512027', branch_name: "หน่วยงาน", email: 'admin@pwa.local',   pass: 'Pwa@12345', urole: 'admin',     color: 3, avatar: '' },
@@ -2745,7 +2745,7 @@
 
     // steps: [{id,label}]  stepChecks: {taskId: {userId: {stepId: {done,at}}}}
     // comments: [{id,authorId,text,at,role}]  obstacles: [{id,title,desc,level,authorId,resolved,comments,at}]
-    let tasks = [
+    var tasks = [
       {
         id: 1, title: 'ออกแบบ UI หน้าหลัก', desc: 'ออกแบบ Wireframe และ Mockup', col: 'doing', tags: ['ออกแบบ'], asgn: [4, 2], date: '2026-04-05', prog: 65, priority: 'high', branch: '5512027', dept_key: 'บริการ',
         steps: [{ id: 11, label: 'ศึกษา Requirement' }, { id: 12, label: 'ร่าง Wireframe' }, { id: 13, label: 'ทำ Mockup' }, { id: 14, label: 'รอ Feedback' }],
@@ -2820,8 +2820,8 @@
     ];
 
 
-    let nid = 400, currentUser = null;
-    let selTags = [], selAsgn = [], pendingFiles = [], pendingSteps = [];
+    var nid = 400, currentUser = null;
+    var selTags = [], selAsgn = [], pendingFiles = [], pendingSteps = [];
     let trendChart = null, workloadChart = null, statusChart = null, myDashChart = null;
     let myTaskTab = 'wip';
 
@@ -3842,7 +3842,7 @@
     function closeModal(id) { gi(id).classList.remove('open'); }
     document.querySelectorAll('.modal-bg').forEach(bg => bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); }));
 
-    let pendingStepsList = [];
+    var pendingStepsList = [];
     function buildTagPicker() {
       gi('tag-picker').innerHTML = allTags.map((t, i) => `
     <div class="tpick${selTags.includes(t) ? ' on' : ''}" onclick="togTag(this,'${t}')">

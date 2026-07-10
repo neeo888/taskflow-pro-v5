@@ -1,0 +1,290 @@
+export const config = { runtime: 'edge' };
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SESSION_HOURS = Number(process.env.SESSION_HOURS || 720);
+
+const json = (data, status = 200) => new Response(JSON.stringify(data), {
+  status,
+  headers: {
+    'content-type': 'application/json; charset=utf-8',
+    'access-control-allow-origin': '*',
+    'access-control-allow-methods': 'GET,POST,OPTIONS',
+    'access-control-allow-headers': 'content-type,x-token,authorization',
+  },
+});
+const ok = (data = {}, status = 200) => json({ ok: true, ...data }, status);
+const err = (message, status = 400) => json({ ok: false, error: message }, status);
+
+function needEnv() {
+  if (!SUPABASE_URL || !SERVICE_KEY) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+}
+async function sb(path, opts = {}) {
+  needEnv();
+  const res = await fetch(`${SUPABASE_URL}${path}`, {
+    ...opts,
+    headers: {
+      apikey: SERVICE_KEY,
+      authorization: `Bearer ${SERVICE_KEY}`,
+      'content-type': 'application/json',
+      prefer: 'return=representation',
+      ...(opts.headers || {}),
+    },
+  });
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!res.ok) throw new Error(typeof data === 'string' ? data : (data?.message || JSON.stringify(data)));
+  return data;
+}
+async function bodyJson(req) { try { return await req.json(); } catch { return {}; } }
+function token64() {
+  const a = new Uint8Array(32);
+  crypto.getRandomValues(a);
+  return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
+}
+function getToken(req) {
+  const xt = req.headers.get('x-token');
+  if (xt) return xt;
+  const ah = req.headers.get('authorization') || '';
+  const m = ah.match(/Bearer\s+(.+)/i);
+  if (m) return m[1].trim();
+  const ck = req.headers.get('cookie') || '';
+  const cm = ck.match(/(?:^|;\s*)tf_tok=([^;]+)/);
+  return cm ? decodeURIComponent(cm[1]) : '';
+}
+async function auth(req) {
+  const token = getToken(req);
+  if (!token) throw Object.assign(new Error('Unauthorized — กรุณาเข้าสู่ระบบ'), { status: 401 });
+  const rows = await sb(`/rest/v1/tf_sessions?token=eq.${encodeURIComponent(token)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=token,user:tf_users(id,name,urole,branch,dept_key)`, { method: 'GET' });
+  const row = rows?.[0];
+  if (!row?.user) throw Object.assign(new Error('Session หมดอายุ — กรุณา login ใหม่'), { status: 401 });
+  return { token, id: Number(row.user.id), name: row.user.name, urole: row.user.urole, branch: row.user.branch, dept_key: row.user.dept_key };
+}
+async function localLogin(req) {
+  const b = await bodyJson(req);
+  const username = String(b.username || '').trim();
+  const password = String(b.password || '');
+  if (!username || !password) return err('กรุณากรอก username และรหัสผ่าน');
+  const rows = await sb('/rest/v1/rpc/tf_verify_login', { method: 'POST', body: JSON.stringify({ p_username: username, p_password: password }) });
+  const u = rows?.[0];
+  if (!u) return err('รหัสผ่านไม่ถูกต้อง หรือไม่พบผู้ใช้', 401);
+  const token = token64();
+  const expires = new Date(Date.now() + SESSION_HOURS * 3600 * 1000).toISOString();
+  await sb('/rest/v1/tf_sessions', { method: 'POST', body: JSON.stringify({ token, user_id: u.id, expires_at: expires }) });
+  await sb(`/rest/v1/tf_users?id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ last_login: new Date().toISOString() }) });
+  return ok({ token, user: { id: Number(u.id), wwcode: u.wwcode, name: u.name, role: u.role, dept: u.dept, dept_key: u.dept_key, branch: u.branch, branch_name: u.branch_name, email: u.email, urole: u.urole, color: Number(u.color || 0), avatar_url: u.avatar_url || '' } });
+}
+async function getUsers(req) {
+  const s = await auth(req);
+  const q = s.urole === 'admin' ? '' : `&branch=eq.${encodeURIComponent(s.branch || '')}`;
+  const rows = await sb(`/rest/v1/tf_users?select=id,wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,avatar_url${q}&order=id.asc`, { method: 'GET' });
+  return ok({ users: rows });
+}
+async function getTags(req) {
+  await auth(req);
+  const rows = await sb('/rest/v1/tf_tags?select=name&order=id.asc', { method: 'GET' });
+  return ok({ tags: rows.map(r => r.name) });
+}
+async function getTasks(req) {
+  const s = await auth(req);
+  const branchFilter = s.urole === 'admin' ? '' : `&branch=eq.${encodeURIComponent(s.branch || '')}`;
+  const tasks = await sb(`/rest/v1/tf_tasks?select=*&order=created_at.desc${branchFilter}`, { method: 'GET' });
+  const ids = tasks.map(t => t.id);
+  if (!ids.length) return ok({ tasks: [] });
+  const inIds = `in.(${ids.join(',')})`;
+  const [assignees, steps, checks, attachments, obstacles, comments] = await Promise.all([
+    sb(`/rest/v1/tf_task_assignees?task_id=${inIds}&select=task_id,user_id`, { method: 'GET' }),
+    sb(`/rest/v1/tf_task_steps?task_id=${inIds}&select=id,task_id,label,sort_order&order=sort_order.asc`, { method: 'GET' }),
+    sb(`/rest/v1/tf_step_checks?task_id=${inIds}&select=step_id,user_id,task_id,is_done,checked_at`, { method: 'GET' }),
+    sb(`/rest/v1/tf_attachments?task_id=${inIds}&select=id,task_id,is_submitted,file_name,file_size,file_type,file_url`, { method: 'GET' }),
+    sb(`/rest/v1/tf_obstacles?task_id=${inIds}&select=*&order=created_at.asc`, { method: 'GET' }),
+    sb(`/rest/v1/tf_comments?task_id=${inIds}&select=*&order=created_at.asc`, { method: 'GET' }),
+  ]);
+  const out = tasks.map(t => {
+    const tid = t.id;
+    const stepChecks = {};
+    checks.filter(c => c.task_id === tid).forEach(c => {
+      if (!stepChecks[c.user_id]) stepChecks[c.user_id] = {};
+      stepChecks[c.user_id][c.step_id] = { done: !!c.is_done, at: c.checked_at };
+    });
+    return {
+      ...t,
+      asgn: assignees.filter(a => a.task_id === tid).map(a => Number(a.user_id)),
+      steps: steps.filter(st => st.task_id === tid),
+      stepChecks,
+      attachments: attachments.filter(f => f.task_id === tid && !f.is_submitted),
+      submittedFiles: attachments.filter(f => f.task_id === tid && f.is_submitted),
+      obstacles: obstacles.filter(o => o.task_id === tid).map(o => ({ ...o, comments: comments.filter(c => c.obstacle_id === o.id).map(c => ({ id: c.id, authorId: c.author_id, text: c.body, at: c.created_at })) })),
+      comments: comments.filter(c => c.task_id === tid && !c.obstacle_id).map(c => ({ id: c.id, authorId: c.author_id, text: c.body, at: c.created_at })),
+      ackBy: t.ack_by || [],
+    };
+  });
+  return ok({ tasks: out });
+}
+async function taskSave(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  if (!b.title) return err('Missing title');
+  let id = Number(b.id || 0);
+  const payload = { title: b.title, description: b.desc || '', col: b.col || 'todo', priority: b.priority || 'normal', due_date: b.date || null, branch: b.branch || s.branch || '', dept_key: b.dept_key || '', tags: b.tags || [], ack_by: b.ackBy || [] };
+  if (id) {
+    await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    await sb(`/rest/v1/tf_task_assignees?task_id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+    await sb(`/rest/v1/tf_task_steps?task_id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+  } else {
+    const rows = await sb('/rest/v1/tf_tasks', { method: 'POST', body: JSON.stringify({ ...payload, created_by: s.id }) });
+    id = Number(rows[0].id);
+  }
+  if (Array.isArray(b.asgn) && b.asgn.length) {
+    await sb('/rest/v1/tf_task_assignees', { method: 'POST', body: JSON.stringify(b.asgn.map(uid => ({ task_id: id, user_id: Number(uid) }))) });
+    if (!b.id) {
+      const notifs = b.asgn.filter(uid => Number(uid) !== s.id).map(uid => ({ type: 'new_task', title: '🔔 งานใหม่ถูกมอบหมาย', body: `"${b.title}" โดย ${s.name}`, task_id: id, for_user_id: Number(uid) }));
+      if (notifs.length) await sb('/rest/v1/tf_notifications', { method: 'POST', body: JSON.stringify(notifs) });
+    }
+  }
+  if (Array.isArray(b.steps) && b.steps.length) await sb('/rest/v1/tf_task_steps', { method: 'POST', body: JSON.stringify(b.steps.map((st, i) => ({ task_id: id, label: st.label || st, sort_order: i }))) });
+  return ok({ task_id: id });
+}
+async function simplePatch(req, table, idField, payloadFn) {
+  await auth(req);
+  const b = await bodyJson(req);
+  const id = Number(b.id || b.task_id || 0);
+  if (!id) return err('Missing id');
+  await sb(`/rest/v1/${table}?${idField}=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payloadFn(b)) });
+  return ok();
+}
+async function taskDelete(req) {
+  await auth(req);
+  const b = await bodyJson(req);
+  await sb(`/rest/v1/tf_tasks?id=eq.${Number(b.id || 0)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+  return ok();
+}
+async function taskProgress(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  const id = Number(b.task_id || 0);
+  const prog = Math.max(0, Math.min(100, Number(b.prog || 0)));
+  await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ prog }) });
+  await sb('/rest/v1/tf_progress_log', { method: 'POST', body: JSON.stringify({ task_id: id, user_id: s.id, prog, note: b.note || '' }) });
+  return ok();
+}
+async function taskSubmit(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  const id = Number(b.task_id || 0);
+  await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ col: 'review', prog: 100, submit_note: b.note || '' }) });
+  const task = (await sb(`/rest/v1/tf_tasks?id=eq.${id}&select=title`, { method: 'GET' }))[0];
+  const mgrs = await sb('/rest/v1/tf_users?urole=in.(admin,manager)&select=id', { method: 'GET' });
+  if (mgrs.length) await sb('/rest/v1/tf_notifications', { method: 'POST', body: JSON.stringify(mgrs.map(m => ({ type: 'work_submitted', title: '📤 มีการส่งงาน', body: `"${task?.title || ''}" ส่งโดย ${s.name}`, task_id: id, for_user_id: m.id }))) });
+  return ok();
+}
+async function taskVerify(req) {
+  const s = await auth(req);
+  if (!['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
+  const b = await bodyJson(req);
+  const id = Number(b.task_id || 0);
+  const approve = (b.action || 'approve') === 'approve';
+  await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ col: approve ? 'verified' : 'doing', verified_by: approve ? s.id : null }) });
+  const task = (await sb(`/rest/v1/tf_tasks?id=eq.${id}&select=title`, { method: 'GET' }))[0];
+  const asgn = await sb(`/rest/v1/tf_task_assignees?task_id=eq.${id}&select=user_id`, { method: 'GET' });
+  if (asgn.length) await sb('/rest/v1/tf_notifications', { method: 'POST', body: JSON.stringify(asgn.map(a => ({ type: approve ? 'verified' : 'return_task', title: approve ? '✅ ผ่านตรวจสอบ' : '↩️ ส่งกลับแก้ไข', body: `"${task?.title || ''}"`, task_id: id, for_user_id: a.user_id }))) });
+  return ok();
+}
+async function stepToggle(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  const row = { step_id: Number(b.step_id), user_id: s.id, task_id: Number(b.task_id), is_done: !!b.done, checked_at: new Date().toISOString() };
+  await sb('/rest/v1/tf_step_checks?on_conflict=step_id,user_id', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(row) });
+  return ok();
+}
+async function obstacleAdd(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  const rows = await sb('/rest/v1/tf_obstacles', { method: 'POST', body: JSON.stringify({ task_id: Number(b.task_id), title: b.title, description: b.desc || '', level: b.level || 'med', author_id: s.id }) });
+  return ok({ id: Number(rows[0].id) }, 201);
+}
+async function commentAdd(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  const rows = await sb('/rest/v1/tf_comments', { method: 'POST', body: JSON.stringify({ task_id: Number(b.task_id), obstacle_id: b.obstacle_id || null, author_id: s.id, body: String(b.text || '').trim() }) });
+  return ok({ id: Number(rows[0].id) }, 201);
+}
+async function notifications(req) {
+  const s = await auth(req);
+  const rows = await sb(`/rest/v1/tf_notifications?for_user_id=eq.${s.id}&select=*&order=created_at.desc&limit=50`, { method: 'GET' });
+  return ok({ notifications: rows });
+}
+async function tagSave(req) {
+  await auth(req);
+  let name = '';
+  const ct = req.headers.get('content-type') || '';
+  if (ct.includes('form')) {
+    const fd = await req.formData();
+    name = String(fd.get('tag_name') || fd.get('name') || '').trim();
+  } else {
+    const b = await bodyJson(req);
+    name = String(b.name || '').trim();
+  }
+  if (!name) return err('Missing name');
+  await sb('/rest/v1/tf_tags?on_conflict=name', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ name }) });
+  return ok({ name });
+}
+async function tagDelete(req) {
+  const s = await auth(req);
+  if (!['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
+  const b = await bodyJson(req);
+  await sb(`/rest/v1/tf_tags?name=eq.${encodeURIComponent(b.name || '')}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+  return ok();
+}
+async function fileUpload(req) {
+  const s = await auth(req);
+  const fd = await req.formData();
+  const file = fd.get('file');
+  const taskId = Number(fd.get('task_id') || 0);
+  const isSubmitted = String(fd.get('is_submitted') || '0') === '1';
+  if (!file || !taskId) return err('No file or task_id');
+  const ext = (file.name || 'file').split('.').pop() || 'bin';
+  const path = `tasks/t${taskId}_${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+  const upload = await fetch(`${SUPABASE_URL}/storage/v1/object/task-attachments/${path}`, {
+    method: 'POST',
+    headers: { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}`, 'content-type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
+    body: file,
+  });
+  if (!upload.ok) throw new Error(await upload.text());
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/task-attachments/${path}`;
+  const rows = await sb('/rest/v1/tf_attachments', { method: 'POST', body: JSON.stringify({ task_id: taskId, is_submitted: isSubmitted, file_name: file.name || 'file', file_size: `${Math.round((file.size || 0) / 1024)}KB`, file_type: ext, file_path: path, file_url: publicUrl, uploaded_by: s.id }) });
+  return ok({ file_id: Number(rows[0].id), file_name: file.name || 'file', file_url: publicUrl }, 201);
+}
+export default async function handler(req) {
+  if (req.method === 'OPTIONS') return json({}, 204);
+  const url = new URL(req.url);
+  const action = url.searchParams.get('action') || '';
+  try {
+    if (action === 'local_login' && req.method === 'POST') return localLogin(req);
+    if (action === 'logout' && req.method === 'POST') return ok();
+    if (action === 'users' && req.method === 'GET') return getUsers(req);
+    if (action === 'tasks' && req.method === 'GET') return getTasks(req);
+    if (action === 'tags' && req.method === 'GET') return getTags(req);
+    if (action === 'task_save' && req.method === 'POST') return taskSave(req);
+    if (action === 'task_delete' && req.method === 'POST') return taskDelete(req);
+    if (action === 'task_col' && req.method === 'POST') return simplePatch(req, 'tf_tasks', 'id', b => ({ col: b.col || 'todo', prog: (b.col === 'done' || b.col === 'verified') ? 100 : undefined }));
+    if (action === 'task_progress' && req.method === 'POST') return taskProgress(req);
+    if (action === 'task_submit' && req.method === 'POST') return taskSubmit(req);
+    if (action === 'task_verify' && req.method === 'POST') return taskVerify(req);
+    if (action === 'step_toggle' && req.method === 'POST') return stepToggle(req);
+    if (action === 'file_upload' && req.method === 'POST') return fileUpload(req);
+    if (action === 'notifications' && req.method === 'GET') return notifications(req);
+    if (action === 'notif_ack' && req.method === 'POST') return simplePatch(req, 'tf_notifications', 'id', () => ({ is_acked: true, is_read: true }));
+    if (action === 'notif_read' && req.method === 'POST') return ok();
+    if (action === 'notif_clear' && req.method === 'POST') { const s = await auth(req); await sb(`/rest/v1/tf_notifications?for_user_id=eq.${s.id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }); return ok(); }
+    if (action === 'obstacle_add' && req.method === 'POST') return obstacleAdd(req);
+    if (action === 'obstacle_resolve' && req.method === 'POST') return simplePatch(req, 'tf_obstacles', 'id', () => ({ resolved: true, resolved_at: new Date().toISOString() }));
+    if (action === 'comment_add' && req.method === 'POST') return commentAdd(req);
+    if (action === 'tag_save' && req.method === 'POST') return tagSave(req);
+    if (action === 'tag_delete' && req.method === 'POST') return tagDelete(req);
+    return err(`Unknown: ${action}`, 404);
+  } catch (e) {
+    return err(e.message || 'Server error', e.status || 500);
+  }
+}
