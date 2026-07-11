@@ -55,6 +55,41 @@
       border-radius: 3px;
     }
 
+
+
+    /* Vercel/mobile fix: keep task modal usable on small screens */
+    @media (max-width: 640px) {
+      .modal-bg {
+        align-items: flex-start;
+        justify-content: center;
+        padding: 10px 8px calc(18px + env(safe-area-inset-bottom));
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+      .modal {
+        width: min(500px, calc(100vw - 16px));
+        max-width: calc(100vw - 16px);
+        max-height: calc(100dvh - 24px);
+        display: flex;
+        flex-direction: column;
+        margin: 0 auto;
+      }
+      .modal .mbody {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        flex: 1 1 auto;
+      }
+      .modal .mft {
+        position: sticky;
+        bottom: 0;
+        background: var(--white);
+        z-index: 2;
+      }
+      .mfl-2 { grid-template-columns: 1fr; }
+      .ctag-row { align-items: stretch; }
+      .ctag-row button { min-width: 74px; }
+    }
+
     /* LOGIN */
     #login-screen {
       position: fixed;
@@ -2099,7 +2134,7 @@
         </div>
         <div class="mfl"><label>ขั้นตอนงาน (checklist) — ใส่แต่ละขั้นตอนแล้ว Enter</label>
           <div class="ctag-row"><input id="nstep" placeholder="เช่น ศึกษาข้อมูล, ออกแบบ, พัฒนา..." /><button
-              onclick="addStep()">+ เพิ่ม</button></div>
+              type="button" onclick="addStep()">+ เพิ่ม</button></div>
           <div id="step-list" style="display:flex;flex-direction:column;gap:5px;"></div>
         </div>
         <div class="mfl-2">
@@ -2155,7 +2190,7 @@
         </div>
         <div class="mfl"><label>ประเภทงาน (เพิ่มได้เอง)</label>
           <div class="ctag-row"><input id="ntag" placeholder="พิมพ์ประเภทงาน แล้ว Enter" /><button
-              onclick="addGlobalTag()">+ เพิ่ม</button></div>
+              type="button" onclick="addGlobalTag()">+ เพิ่ม</button></div>
           <div class="tag-wrap" id="tag-picker"></div>
         </div>
         <div class="mfl"><label>มอบหมายให้</label></div>
@@ -2178,8 +2213,8 @@
           onchange="processTaskFiles(this.files);this.value=''" />
         <div id="task-attach-list"></div>
       </div>
-      <div class="mft"><button class="btn-sec" onclick="closeModal('modal-task')">ยกเลิก</button><button class="btn-pri"
-          onclick="submitTask()">บันทึก</button></div>
+      <div class="mft"><button class="btn-sec" type="button" onclick="closeModal('modal-task')">ยกเลิก</button><button class="btn-pri"
+          type="button" onclick="submitTask()">บันทึก</button></div>
     </div>
   </div>
 
