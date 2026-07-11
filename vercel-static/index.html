@@ -1872,7 +1872,7 @@
     </div>
     <div class="body-wrap">
       <div class="sidenav" id="sidenav"></div>
-      <div class="content" id="content"><?php include "personal_search.php"; ?>
+      <div class="content" id="content">
 
         <!-- HOME -->
         <div class="page active" id="page-home">
@@ -3347,7 +3347,7 @@
       const review = myT.filter(t => t.col === 'review');
       const pct = Math.round(myT.length ? done.length / myT.length * 100 : 0);
       const kc = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)';
-      const totalSteps = <?php echo isset($targetSteps) ? $targetSteps : "myT.reduce((s, t) => s + (t.steps?.length || 0), 0)"; ?>;
+      const totalSteps = myT.reduce((s, t) => s + (t.steps?.length || 0), 0);
       const doneSteps = myT.reduce((s, t) => { if (!t.steps || !t.stepChecks[uid]) return s; return s + Object.values(t.stepChecks[uid]).filter(v => v.done).length; }, 0);
       // อุปสรรคและคอมเมนต์ — กรองจากงานที่เห็นได้เท่านั้น
       const myObs = myT.flatMap(t => t.obstacles.filter(o => o.authorId === uid));
