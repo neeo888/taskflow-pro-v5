@@ -178,6 +178,6 @@ as $$
   select u.id,u.wwcode,u.name,u.role,u.dept,u.dept_key,u.branch,u.branch_name,u.email,u.urole,u.color,u.avatar_url
   from public.tf_users u
   where (u.wwcode = p_username or u.email = p_username)
-    and u.pass_hash = crypt(p_password, u.pass_hash)
+    and u.pass_hash::text = crypt(p_password::text, u.pass_hash::text)
   limit 1;
 $$;
