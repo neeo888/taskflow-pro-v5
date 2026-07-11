@@ -1,7 +1,8 @@
 -- TaskFlow Pro v5 — Supabase/PostgreSQL schema
 -- ใช้ใน Supabase Dashboard > SQL Editor > New query > Run
 
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.tf_users (
   id bigserial primary key,
@@ -143,12 +144,12 @@ on conflict (name) do nothing;
 -- Local demo accounts. Password: Pwa@12345
 insert into public.tf_users (wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,pass_hash)
 values
-  ('admin',  'ผู้ดูแลระบบ',      'System Admin',    'ฝ่ายเทคโนโลยี','บริการ',   '5512027','หน่วยงาน','admin@pwa.local',  'admin',     0, crypt('Pwa@12345', gen_salt('bf'))),
-  ('manager','ผู้จัดการสาขา',    'ผู้จัดการ',        'สำนักงาน',     'อำนวยการ', '5512027','หน่วยงาน','manager@pwa.local','manager',   1, crypt('Pwa@12345', gen_salt('bf'))),
-  ('assist', 'ผู้ช่วยผู้จัดการ',  'ผู้ช่วยผู้จัดการ', 'สำนักงาน',     'อำนวยการ', '5512027','หน่วยงาน','assist@pwa.local', 'assistant', 2, crypt('Pwa@12345', gen_salt('bf'))),
-  ('user1',  'ช่างเทคนิค 1',     'ช่างเทคนิค',       'งานบริการ',    'บริการ',   '5512027','หน่วยงาน','user1@pwa.local',  'user',      3, crypt('Pwa@12345', gen_salt('bf'))),
-  ('user2',  'ช่างเทคนิค 2',     'ช่างเทคนิค',       'งานบริการ',    'บริการ',   '5512027','หน่วยงาน','user2@pwa.local',  'user',      4, crypt('Pwa@12345', gen_salt('bf'))),
-  ('user3',  'นักบัญชี',          'นักบัญชี',         'งานการเงิน',   'จัดเก็บ',  '5512027','หน่วยงาน','user3@pwa.local',  'user',      5, crypt('Pwa@12345', gen_salt('bf')))
+  ('admin',  'ผู้ดูแลระบบ',      'System Admin',    'ฝ่ายเทคโนโลยี','บริการ',   '5512027','หน่วยงาน','admin@pwa.local',  'admin',     0, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
+  ('manager','ผู้จัดการสาขา',    'ผู้จัดการ',        'สำนักงาน',     'อำนวยการ', '5512027','หน่วยงาน','manager@pwa.local','manager',   1, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
+  ('assist', 'ผู้ช่วยผู้จัดการ',  'ผู้ช่วยผู้จัดการ', 'สำนักงาน',     'อำนวยการ', '5512027','หน่วยงาน','assist@pwa.local', 'assistant', 2, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
+  ('user1',  'ช่างเทคนิค 1',     'ช่างเทคนิค',       'งานบริการ',    'บริการ',   '5512027','หน่วยงาน','user1@pwa.local',  'user',      3, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
+  ('user2',  'ช่างเทคนิค 2',     'ช่างเทคนิค',       'งานบริการ',    'บริการ',   '5512027','หน่วยงาน','user2@pwa.local',  'user',      4, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
+  ('user3',  'นักบัญชี',          'นักบัญชี',         'งานการเงิน',   'จัดเก็บ',  '5512027','หน่วยงาน','user3@pwa.local',  'user',      5, extensions.crypt('Pwa@12345', extensions.gen_salt('bf')))
 on conflict (wwcode) do update set pass_hash = excluded.pass_hash;
 
 -- Storage bucket names ที่แนะนำให้สร้างใน Supabase Storage:
@@ -178,6 +179,6 @@ as $$
   select u.id,u.wwcode,u.name,u.role,u.dept,u.dept_key,u.branch,u.branch_name,u.email,u.urole,u.color,u.avatar_url
   from public.tf_users u
   where (u.wwcode = p_username or u.email = p_username)
-    and u.pass_hash::text = crypt(p_password::text, u.pass_hash::text)
+    and u.pass_hash::text = extensions.crypt(p_password::text, u.pass_hash::text)
   limit 1;
 $$;
