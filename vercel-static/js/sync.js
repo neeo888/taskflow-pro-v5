@@ -488,6 +488,56 @@ window.addObsComment = function (tid, oid) {
 };
 
 // ══════════════════════════════════════════════════════════════
+// 17.5 PATCH profile/avatar — บันทึกโปรไฟล์และรูป avatar ลง Supabase จริง
+// ══════════════════════════════════════════════════════════════
+const _orig_saveProfile = window.saveProfile;
+window.saveProfile = async function () {
+  const name = gi('p-name') ? gi('p-name').value.trim() : (window.currentUser?.name || '');
+  const email = gi('p-email') ? gi('p-email').value.trim() : (window.currentUser?.email || '');
+  const avatarBeforeSave = window.currentUser?.avatar || '';
+
+  _orig_saveProfile.call(this);
+  if (!_isPhpSrv() || !window.currentUser) return;
+
+  const saved = await _api('profile_save', { name, email });
+  if (!saved.ok) {
+    if (typeof toast === 'function') toast('บันทึกชื่อ/อีเมลขึ้น Supabase ไม่สำเร็จ');
+    return;
+  }
+
+  // ถ้าเลือก/ถ่ายรูปใหม่ ระบบเดิมเก็บเป็น data URL; แปลงเป็น Blob แล้วส่งเข้า bucket avatars
+  if (avatarBeforeSave && String(avatarBeforeSave).startsWith('data:')) {
+    try {
+      const blob = await fetch(avatarBeforeSave).then(r => r.blob());
+      const fd = new FormData();
+      fd.append('file', blob, `avatar_${window.currentUser.id}.jpg`);
+      const up = await _api('avatar_upload', fd);
+      if (up.ok && up.avatar_url) {
+        window.currentUser.avatar = up.avatar_url;
+        const u = window.users.find(x => x.id === window.currentUser.id);
+        if (u) u.avatar = up.avatar_url;
+        if (typeof updateTopbar === 'function') updateTopbar();
+        if (typeof refreshProfilePreview === 'function') refreshProfilePreview();
+        if (typeof toast === 'function') toast('✅ บันทึกรูปโปรไฟล์ลง Supabase แล้ว');
+      } else if (typeof toast === 'function') {
+        toast('อัปโหลดรูปโปรไฟล์ขึ้น Supabase ไม่สำเร็จ');
+      }
+    } catch (e) {
+      console.warn('[sync.js] avatar upload failed', e);
+      if (typeof toast === 'function') toast('อัปโหลดรูปโปรไฟล์ขึ้น Supabase ไม่สำเร็จ');
+    }
+  } else {
+    await _loadFromServer(true).catch(() => {});
+  }
+};
+
+const _orig_removeAvatar = window.removeAvatar;
+window.removeAvatar = function () {
+  _orig_removeAvatar.call(this);
+  if (_isPhpSrv()) _api('avatar_remove', {}).catch(() => {});
+};
+
+// ══════════════════════════════════════════════════════════════
 // 18. PATCH submitMember — บันทึกสมาชิกผ่าน API
 // ══════════════════════════════════════════════════════════════
 const _orig_submitMember = window.submitMember;

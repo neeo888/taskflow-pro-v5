@@ -82,6 +82,50 @@ async function getUsers(req) {
   return ok({ users: rows });
 }
 
+async function profileSave(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  const name = String(b.name || '').trim();
+  const email = String(b.email || '').trim();
+  if (!name) return err('Missing name');
+  const payload = { name, email, updated_at: new Date().toISOString() };
+  const rows = await sb(`/rest/v1/tf_users?id=eq.${s.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  return ok({ user: rows?.[0] || null });
+}
+
+async function avatarUpload(req) {
+  const s = await auth(req);
+  const fd = await req.formData();
+  const file = fd.get('file');
+  if (!file) return err('No avatar file');
+  const mime = String(file.type || 'application/octet-stream');
+  if (!mime.startsWith('image/')) return err('Avatar must be an image');
+  const rawExt = (file.name || '').split('.').pop() || mime.split('/').pop() || 'jpg';
+  const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'jpg';
+  const path = `u${s.id}/avatar_${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+  const upload = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
+    method: 'POST',
+    headers: { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}`, 'content-type': mime, 'x-upsert': 'true' },
+    body: file,
+  });
+  if (!upload.ok) throw new Error(await upload.text());
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+  const rows = await sb(`/rest/v1/tf_users?id=eq.${s.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ avatar_path: path, avatar_url: publicUrl, updated_at: new Date().toISOString() }),
+  });
+  return ok({ avatar_path: path, avatar_url: publicUrl, user: rows?.[0] || null }, 201);
+}
+
+async function avatarRemove(req) {
+  const s = await auth(req);
+  const rows = await sb(`/rest/v1/tf_users?id=eq.${s.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ avatar_path: '', avatar_url: '', updated_at: new Date().toISOString() }),
+  });
+  return ok({ user: rows?.[0] || null });
+}
+
 function makeWwcode(email = '', name = '') {
   const base = String(email || name || 'user')
     .split('@')[0]
@@ -349,6 +393,9 @@ export default async function handler(req) {
     if (action === 'local_login' && req.method === 'POST') return localLogin(req);
     if (action === 'logout' && req.method === 'POST') return ok();
     if (action === 'users' && req.method === 'GET') return getUsers(req);
+    if (action === 'profile_save' && req.method === 'POST') return profileSave(req);
+    if (action === 'avatar_upload' && req.method === 'POST') return avatarUpload(req);
+    if (action === 'avatar_remove' && req.method === 'POST') return avatarRemove(req);
     if ((action === 'member_save' || action === 'user_save') && req.method === 'POST') return memberSave(req);
     if ((action === 'member_delete' || action === 'user_delete') && req.method === 'POST') return memberDelete(req);
     if (action === 'tasks' && req.method === 'GET') return getTasks(req);
