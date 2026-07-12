@@ -111,13 +111,18 @@ white-space: nowrap; display: inline-block;    padding: 4px 12px;
 .prio-normal { background: #E5F6FF; color: #2196F3; }
 /* --- End Modern Architecture --- */
 
-/* ซ่อนปุ่มรับทราบงาน */
-div[style*='background: #2DD4BF'] { display: none !important; }
-
-/* Disable Bell Click & Hide Acknowledge */
-.bell-btn { pointer-events: none !important; cursor: default !important; }
-div[style*='background: #2DD4BF'] { display: none !important; }
-
-/* Hide Notification Header & Adjust Spacing */
-.notif-hd { display: none !important; }
-.notif-drop { padding-top: 5px !important; }
+/* Notification dropdown: allow bell click and show task list */
+.bell-btn { pointer-events: auto !important; cursor: pointer !important; }
+.notif-drop { padding-top: 5px !important; max-height: 72vh; overflow-y: auto; }
+.notif-hd { display: flex !important; align-items: center; justify-content: space-between; }
+.tf-task-summary { padding: 10px 12px; border-bottom: .5px solid var(--border); }
+.tf-task-summary-title { font-size: 12px; font-weight: 800; color: var(--text); }
+.tf-task-summary-sub { font-size: 10px; color: var(--text3); margin-top: 2px; }
+.tf-task-row { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: .5px solid var(--border); cursor: pointer; transition: background .15s; }
+.tf-task-row:hover { background: var(--surface); }
+.tf-task-dot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; }
+.tf-task-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tf-task-meta { font-size: 10px; color: var(--text3); margin-top: 1px; }
+.tf-task-count-badge { background: #EEF3FF; color: #3C3489; border-radius: 999px; padding: 2px 8px; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.notif-ack-btn { margin-top: 8px; padding: 5px 12px; background: #2DD4BF; color: #0B1E3D; border: 0; border-radius: 12px; font-family: 'Sarabun', sans-serif; font-size: 11px; font-weight: 800; cursor: pointer; }
+.notif-ack-btn:hover { filter: brightness(.96); }

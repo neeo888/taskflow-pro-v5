@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260712-full-detail">
+  <link rel="stylesheet" href="css/style.css?v=20260712-task-list">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -2672,37 +2672,49 @@
     function renderBell() { const cnt = myUnread().filter(n => !n.ackBy.includes(currentUser.id)).length; gi('bell-cnt').textContent = cnt; gi('bell-cnt').classList.toggle('show', cnt > 0); }
     function renderNotifDrop() {
       const all = myNotifs().slice(0, 20);
-      gi('notif-list').innerHTML = all.length ? all.map(n => {
-        const isAck = n.ackBy.includes(currentUser.id);
-        const needAck = n.type === 'new_task' && !isAck;
-        return `<div class="notif-item${isAck || n.read ? '' : ' unread'}" onclick="notifClick(${n.id})">
-      <div class="notif-dot${isAck ? ' read' : ''}"></div>
-      <div style="flex:1;"><div class="notif-title">${n.title}</div><div class="notif-sub">${n.body}</div>
-		<div class="notif-ack-btn" onclick="
-        event.stopPropagation(); 
-        if(typeof ackNotif === 'function'){ ackNotif(${n.id}); } 
-        if(typeof renderBell === 'function'){ renderBell(); }
-        
-        /* 🚨 คำสั่งเด็ดขาด: กดปุ๊บ สั่งลบแถบกล่องแจ้งเตือนนี้หายวับออกจากหน้าจอทันที 100% ไม่ค้างเติ่ง */
-        var targetRow = this.closest('.notif-item') || this.closest('[onclick*="notifClick"]');
-        if(targetRow){ 
-            targetRow.style.transition = 'all 0.25s ease';
-            targetRow.style.opacity = '0';
-            targetRow.style.transform = 'translateX(30px)';
-            setTimeout(function(){ targetRow.remove(); }, 250);
-        }
-        
-        /* ซ่อนหน้าต่างบาร์ Dropdown แถบแจ้งเตือนด้านบน */
-        var topContainer = document.getElementById('notif-drop') || document.querySelector('.notif-drop');
-        if(topContainer){ topContainer.style.display = 'none'; }
-    " style="display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important; margin-top: 10px !important; padding: 6px 16px !important; background: #2DD4BF !important; border: 1px solid #ffffff !important; border-radius: 14px !important; color: #0B1E3D !important; font-family: sans-serif !important; font-size: 11px !important; font-weight: 800 !important; cursor: pointer !important; transition: all 0.2s ease-in-out !important; box-shadow: 0 0 12px rgba(45, 212, 191, 0.6) !important; z-index: 99999999 !important;">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        รับทราบงาน
-    </div>
-		${needAck ? `` : ''}
-      <div style="font-size:9px;color:var(--text3);margin-top:2px;">${n.at}</div></div>
-    </div>`;
-      }).join('') : `<div style="text-align:center;padding:20px;font-size:12px;color:var(--text3);">ไม่มีการแจ้งเตือน</div>`;
+      const myTasks = tasks.filter(t => currentUser && t.asgn?.includes(currentUser.id));
+      const wipTasks = myTasks.filter(t => COL[t.col] && COL[t.col].g === 'wip');
+      const reviewTasks = myTasks.filter(t => t.col === 'review');
+      const doneTasks = myTasks.filter(t => COL[t.col] && COL[t.col].g === 'done');
+      const taskListHtml = `
+        <div class="tf-task-summary">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div>
+              <div class="tf-task-summary-title">รายการงานของฉัน</div>
+              <div class="tf-task-summary-sub">ทั้งหมด ${myTasks.length} งาน · WIP ${wipTasks.length} · รอตรวจ ${reviewTasks.length} · เสร็จแล้ว ${doneTasks.length}</div>
+            </div>
+            <span class="tf-task-count-badge">${myTasks.length} งาน</span>
+          </div>
+        </div>
+        ${myTasks.length ? myTasks.slice(0, 12).map(t => {
+          const cfg = COL[t.col] || COL.todo;
+          const ov = t.date && new Date(t.date) < new Date() && cfg.g !== 'done';
+          return `<div class="tf-task-row" onclick="openTaskFromNotifList(${t.id})">
+            <div class="tf-task-dot" style="background:${cfg.c};"></div>
+            <div style="flex:1;min-width:0;">
+              <div class="tf-task-name">${t.title}</div>
+              <div class="tf-task-meta" style="color:${ov ? 'var(--danger)' : 'var(--text3)'};">${cfg.n} · ${t.date || 'ไม่มีกำหนด'}</div>
+            </div>
+          </div>`;
+        }).join('') : `<div style="text-align:center;padding:14px;font-size:12px;color:var(--text3);border-bottom:.5px solid var(--border);">ยังไม่มีงานของฉัน</div>`}
+      `;
+
+      const notifHtml = all.length ? `
+        <div class="tf-task-summary" style="padding-top:8px;">
+          <div class="tf-task-summary-title">การแจ้งเตือน (${all.length})</div>
+        </div>
+        ${all.map(n => {
+          const isAck = n.ackBy.includes(currentUser.id);
+          const needAck = n.type === 'new_task' && !isAck;
+          return `<div class="notif-item${isAck || n.read ? '' : ' unread'}" onclick="notifClick(${n.id})">
+        <div class="notif-dot${isAck ? ' read' : ''}"></div>
+        <div style="flex:1;"><div class="notif-title">${n.title}</div><div class="notif-sub">${n.body}</div>
+          ${needAck ? `<button class="notif-ack-btn" onclick="event.stopPropagation(); ackNotif(${n.id});">✋ รับทราบงาน</button>` : ''}
+          <div style="font-size:9px;color:var(--text3);margin-top:2px;">${n.at}</div></div>
+      </div>`;
+        }).join('')}` : `<div style="text-align:center;padding:12px;font-size:12px;color:var(--text3);">ไม่มีการแจ้งเตือนใหม่</div>`;
+
+      gi('notif-list').innerHTML = taskListHtml + notifHtml;
     }
     function toggleNotifDrop() {
       notifDropOpen = !notifDropOpen; gi('notif-drop').classList.toggle('open', notifDropOpen);
@@ -2710,6 +2722,12 @@
     }
     document.addEventListener('click', e => { if (notifDropOpen && !gi('notif-drop').contains(e.target) && !e.target.closest('.bell-btn')) { notifDropOpen = false; gi('notif-drop').classList.remove('open'); } });
     function notifClick(nid2) { const n = notifications.find(x => x.id === nid2); if (n?.taskId) { notifDropOpen = false; gi('notif-drop').classList.remove('open'); showDP(n.taskId); } }
+    function openTaskFromNotifList(taskId) {
+      notifDropOpen = false;
+      const drop = gi('notif-drop');
+      if (drop) drop.classList.remove('open');
+      showDP(taskId, true);
+    }
     function clearAllNotifs() { notifications = notifications.filter(n => !n.forUserIds.includes(currentUser.id)); renderNotifDrop(); renderBell(); }
     function ackNotif(nid2) {
       const n = notifications.find(x => x.id === nid2); if (!n) return;
@@ -4615,7 +4633,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260712-full-detail"></script>
+<script src="js/script.js?v=20260712-task-list"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -4632,6 +4650,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260712-full-detail"></script>
+<script src="js/sync.js?v=20260712-task-list"></script>
 </body>
 </html>
