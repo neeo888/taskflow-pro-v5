@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260712-ack-count">
+  <link rel="stylesheet" href="css/style.css?v=20260712-full-task-modal">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -879,6 +879,61 @@
       max-width: 95vw;
       border: .5px solid var(--border);
       margin-bottom: 40px;
+    }
+
+    /* Modal มอบหมายงานแบบเต็มหน้า */
+    #modal-task {
+      align-items: stretch;
+      justify-content: stretch;
+      padding: 0;
+    }
+
+    #modal-task .modal {
+      width: 100%;
+      max-width: none;
+      min-height: 100vh;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #modal-task .mhd {
+      border-radius: 0;
+      padding: 16px 26px 12px;
+      background: var(--white);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    #modal-task .mhd-t {
+      font-size: 18px;
+    }
+
+    #modal-task .mbody {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      padding: 22px 26px 96px;
+      flex: 1;
+    }
+
+    #modal-task .mft {
+      position: sticky;
+      bottom: 0;
+      background: var(--white);
+      padding: 12px 26px;
+      z-index: 2;
+    }
+
+    @media (max-width: 760px) {
+      #modal-task .mhd { padding: 12px 14px; }
+      #modal-task .mhd-t { font-size: 15px; }
+      #modal-task .mbody { padding: 14px 14px 92px; }
+      #modal-task .mft { padding: 10px 14px; }
+      #modal-task .mft .btn-pri,
+      #modal-task .mft .btn-sec { flex: 1; }
     }
 
     .mhd {
@@ -4650,7 +4705,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260712-ack-count"></script>
+<script src="js/script.js?v=20260712-full-task-modal"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -4667,6 +4722,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260712-ack-count"></script>
+<script src="js/sync.js?v=20260712-full-task-modal"></script>
 </body>
 </html>
