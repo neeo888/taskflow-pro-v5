@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260712-task-list">
+  <link rel="stylesheet" href="css/style.css?v=20260712-ack-count">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -2669,10 +2669,19 @@
     }
     function myNotifs() { return notifications.filter(n => n.forUserIds.includes(currentUser.id)); }
     function myUnread() { return myNotifs().filter(n => !n.read); }
-    function renderBell() { const cnt = myUnread().filter(n => !n.ackBy.includes(currentUser.id)).length; gi('bell-cnt').textContent = cnt; gi('bell-cnt').classList.toggle('show', cnt > 0); }
+    function pendingAckNotifs() {
+      return myNotifs().filter(n => n.taskId && !n.ackBy.includes(currentUser.id));
+    }
+    function renderBell() {
+      const cnt = pendingAckNotifs().length;
+      gi('bell-cnt').textContent = cnt;
+      gi('bell-cnt').classList.toggle('show', cnt > 0);
+    }
     function renderNotifDrop() {
       const all = myNotifs().slice(0, 20);
       const myTasks = tasks.filter(t => currentUser && t.asgn?.includes(currentUser.id));
+      const pendingTaskIds = new Set(pendingAckNotifs().map(n => n.taskId));
+      const pendingAckTasks = myTasks.filter(t => pendingTaskIds.has(t.id) && !t.ackBy?.includes(currentUser.id));
       const wipTasks = myTasks.filter(t => COL[t.col] && COL[t.col].g === 'wip');
       const reviewTasks = myTasks.filter(t => t.col === 'review');
       const doneTasks = myTasks.filter(t => COL[t.col] && COL[t.col].g === 'done');
@@ -2681,9 +2690,9 @@
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
             <div>
               <div class="tf-task-summary-title">รายการงานของฉัน</div>
-              <div class="tf-task-summary-sub">ทั้งหมด ${myTasks.length} งาน · WIP ${wipTasks.length} · รอตรวจ ${reviewTasks.length} · เสร็จแล้ว ${doneTasks.length}</div>
+              <div class="tf-task-summary-sub">รอรับทราบ ${pendingAckTasks.length} งาน · ทั้งหมด ${myTasks.length} งาน · WIP ${wipTasks.length} · รอตรวจ ${reviewTasks.length}</div>
             </div>
-            <span class="tf-task-count-badge">${myTasks.length} งาน</span>
+            <span class="tf-task-count-badge">${pendingAckTasks.length ? pendingAckTasks.length + ' รอรับทราบ' : myTasks.length + ' งาน'}</span>
           </div>
         </div>
         ${myTasks.length ? myTasks.slice(0, 12).map(t => {
@@ -2732,6 +2741,7 @@
     function ackNotif(nid2) {
       const n = notifications.find(x => x.id === nid2); if (!n) return;
       if (!n.ackBy.includes(currentUser.id)) n.ackBy.push(currentUser.id);
+      n.read = true;
       const t = tasks.find(t => t.id === n.taskId);
       if (t && !t.ackBy?.includes(currentUser.id)) { if (!t.ackBy) t.ackBy = []; t.ackBy.push(currentUser.id); }
       renderNotifDrop(); renderBell(); renderAll(); toast('รับทราบแล้ว');
@@ -2761,7 +2771,10 @@
         const t = tasks.find(t => t.id === popupTaskId);
         if (t) { if (!t.ackBy) t.ackBy = []; if (!t.ackBy.includes(currentUser.id)) t.ackBy.push(currentUser.id); }
         const n = notifications.find(n => n.taskId === popupTaskId && n.forUserIds.includes(currentUser.id));
-        if (n && !n.ackBy.includes(currentUser.id)) n.ackBy.push(currentUser.id);
+        if (n) {
+          if (!n.ackBy.includes(currentUser.id)) n.ackBy.push(currentUser.id);
+          n.read = true;
+        }
         renderBell(); renderAll(); toast('รับทราบแล้ว');
         openAckTaskDetail(popupTaskId);
       }
@@ -2915,7 +2928,10 @@
       if (!t.ackBy.includes(currentUser.id)) {
         t.ackBy.push(currentUser.id);
         const n = notifications.find(n => n.taskId === tid && n.forUserIds.includes(currentUser.id));
-        if (n && !n.ackBy.includes(currentUser.id)) n.ackBy.push(currentUser.id);
+        if (n) {
+          if (!n.ackBy.includes(currentUser.id)) n.ackBy.push(currentUser.id);
+          n.read = true;
+        }
         renderAll(); renderBell(); toast('✋ รับทราบงานแล้ว');
       }
       openAckTaskDetail(tid);
@@ -4339,6 +4355,7 @@
       const n = notifications.find(x => x.id === nid2);
       if (n) {
         if (!n.ackBy.includes(currentUser.id)) n.ackBy.push(currentUser.id);
+        n.read = true;
         const t = tasks.find(t => t.id === n.taskId);
         if (t) { if (!t.ackBy) t.ackBy = []; if (!t.ackBy.includes(currentUser.id)) t.ackBy.push(currentUser.id); }
       }
@@ -4633,7 +4650,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260712-task-list"></script>
+<script src="js/script.js?v=20260712-ack-count"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -4650,6 +4667,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260712-task-list"></script>
+<script src="js/sync.js?v=20260712-ack-count"></script>
 </body>
 </html>
