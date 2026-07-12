@@ -554,27 +554,69 @@ window.clearAllNotifs = function () {
 // ══════════════════════════════════════════════════════════════
 // 22. PATCH addGlobalTag — เพิ่ม tag ผ่าน API (แทน save_tag.php เดิม)
 // ══════════════════════════════════════════════════════════════
+function _saveTagToServer(name) {
+  if (!_isPhpSrv()) return Promise.resolve({ ok: true, _offline: true });
+  return _api('tag_save', { name });
+}
+
+function _applyTagToUi(name, inputEl, selectInTask = false) {
+  if (!window.allTags.includes(name)) window.allTags.push(name);
+  if (selectInTask && window.selTags && !window.selTags.includes(name)) window.selTags.push(name);
+  if (inputEl) inputEl.value = '';
+  if (typeof buildTagPicker === 'function') buildTagPicker();
+  if (typeof renderTagsPage === 'function') renderTagsPage();
+}
+
 const _orig_addGlobalTag = window.addGlobalTag;
 window.addGlobalTag = function () {
-  const inp = document.getElementById('new-tag-global');
+  const inp = document.getElementById('new-tag-global') || document.getElementById('ntag');
   const v = inp ? inp.value.trim() : '';
   if (!v) return;
-  if (window.allTags.includes(v)) { toast('มีประเภทงานนี้อยู่แล้ว'); return; }
-
-  if (_isPhpSrv()) {
-    _api('tag_save', { name: v }).then(r => {
-      if (r.ok) {
-        window.allTags.push(v);
-        if (inp) inp.value = '';
-        if (typeof renderTagsPage === 'function') renderTagsPage();
-        toast('✅ เพิ่มประเภทงาน "' + v + '" แล้ว');
-      } else {
-        toast('บันทึกไม่สำเร็จ: ' + (r.error || ''));
-      }
-    });
-  } else {
-    _orig_addGlobalTag.call(this);
+  if (window.allTags.includes(v)) {
+    if (inp && inp.id === 'ntag' && window.selTags && !window.selTags.includes(v)) {
+      window.selTags.push(v);
+      inp.value = '';
+      if (typeof buildTagPicker === 'function') buildTagPicker();
+    } else {
+      toast('มีประเภทงานนี้อยู่แล้ว');
+    }
+    return;
   }
+
+  const isTaskModal = inp && inp.id === 'ntag';
+  _saveTagToServer(v).then(r => {
+    if (r.ok) {
+      _applyTagToUi(v, inp, isTaskModal);
+      toast('✅ เพิ่มประเภทงาน "' + v + '" แล้ว');
+    } else {
+      toast('บันทึกไม่สำเร็จ: ' + (r.error || ''));
+    }
+  });
+};
+
+const _orig_addCustomTag = window.addCustomTag;
+window.addCustomTag = function () {
+  const inp = document.getElementById('ntag');
+  const v = inp ? inp.value.trim() : '';
+  if (!v) return;
+  if (window.allTags.includes(v)) {
+    if (window.selTags && !window.selTags.includes(v)) window.selTags.push(v);
+    if (inp) inp.value = '';
+    if (typeof buildTagPicker === 'function') buildTagPicker();
+    toast('เลือกประเภทงาน "' + v + '" แล้ว');
+    return;
+  }
+
+  _saveTagToServer(v).then(r => {
+    if (r.ok) {
+      _applyTagToUi(v, inp, true);
+      toast('✅ เพิ่มและเลือกประเภทงาน "' + v + '" แล้ว');
+    } else {
+      // fallback เฉพาะ local/offline
+      if (r._offline && typeof _orig_addCustomTag === 'function') _orig_addCustomTag.call(this);
+      else toast('บันทึกประเภทงานไม่สำเร็จ: ' + (r.error || ''));
+    }
+  });
 };
 
 // ══════════════════════════════════════════════════════════════
