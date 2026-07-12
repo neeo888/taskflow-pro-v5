@@ -152,9 +152,23 @@ values
   ('user3',  'นักบัญชี',          'นักบัญชี',         'งานการเงิน',   'จัดเก็บ',  '5512027','หน่วยงาน','user3@pwa.local',  'user',      5, extensions.crypt('Pwa@12345', extensions.gen_salt('bf')))
 on conflict (wwcode) do update set pass_hash = excluded.pass_hash;
 
--- Storage bucket names ที่แนะนำให้สร้างใน Supabase Storage:
--- 1) task-attachments (แนะนำ public สำหรับเวอร์ชันนี้ เพื่อ download ผ่าน file_url)
--- 2) avatars
+-- Storage buckets สำหรับไฟล์แนบ / รูปอัปเดต / รูปโปรไฟล์
+-- Vercel API ใช้ service_role upload เข้า bucket เหล่านี้ และใช้ public URL สำหรับ download/view
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values
+  ('task-attachments', 'task-attachments', true, 15728640, array[
+    'image/jpeg','image/png','image/webp','image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ]),
+  ('avatars', 'avatars', true, 5242880, array['image/jpeg','image/png','image/webp','image/gif'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 -- Verify local login for Vercel/Supabase API
 create or replace function public.tf_verify_login(p_username text, p_password text)

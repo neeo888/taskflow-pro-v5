@@ -359,12 +359,33 @@ window.handleBoardAction = function (id, val) {
 // 11. PATCH submitProg — บันทึก progress ผ่าน API
 // ══════════════════════════════════════════════════════════════
 const _orig_submitProg = window.submitProg;
-window.submitProg = function () {
+window.submitProg = async function () {
   const tid = parseInt(gi('prog-task-id').value);
   const prog = parseInt(gi('prog-slider').value);
   const note = gi('prog-note') ? gi('prog-note').value.trim() : '';
+  const progressFiles = gi('prog-files') ? Array.from(gi('prog-files').files || []) : [];
   _orig_submitProg.call(this);
-  if (_isPhpSrv()) _api('task_progress', { task_id: tid, prog, note });
+  if (!_isPhpSrv()) return;
+  await _api('task_progress', { task_id: tid, prog, note });
+
+  // แนบรูป/ไฟล์ประกอบการอัปเดตความคืบหน้า เก็บใน Supabase Storage + tf_attachments
+  for (const file of progressFiles) {
+    try {
+      const fd = new FormData();
+      fd.append('task_id', tid);
+      fd.append('is_submitted', '0');
+      fd.append('file', file, file.name || 'progress-image');
+      await _api('file_upload', fd);
+    } catch (e) {
+      console.warn('[sync.js] progress file upload failed', e);
+      if (typeof toast === 'function') toast('อัปโหลดไฟล์บางรายการไม่สำเร็จ');
+    }
+  }
+  if (progressFiles.length) {
+    await _loadFromServer(true);
+    if (typeof renderAll === 'function') renderAll();
+    setTimeout(() => { if (typeof showDP === 'function') showDP(tid); }, 120);
+  }
 };
 
 // ══════════════════════════════════════════════════════════════

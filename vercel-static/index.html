@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260712-sidebar-all-pages">
+  <link rel="stylesheet" href="css/style.css?v=20260712-progress-image-upload">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -2546,6 +2546,12 @@
           เมื่อ 100% — จะเปลี่ยนสถานะเป็น <b>รอตรวจสอบ</b> อัตโนมัติ</div>
         <div class="mfl"><label>หมายเหตุ</label><textarea id="prog-note"
             placeholder="บันทึกสิ่งที่ทำไปแล้ว..."></textarea></div>
+        <div class="mfl progress-upload-field">
+          <label>แนบรูปอัปเดต / ไฟล์ประกอบ</label>
+          <input type="file" id="prog-files" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="renderProgFilePreview(this.files)" />
+          <div class="muted" style="font-size:11px;margin-top:6px;">รองรับรูปภาพ JPG/PNG/WebP และเอกสารประกอบ ระบบจะเก็บไว้ใน Supabase Storage bucket: task-attachments</div>
+          <div id="prog-file-preview" class="prog-file-preview"></div>
+        </div>
       </div>
       <div class="mft"><button class="btn-sec" onclick="closeModal('modal-prog')">ยกเลิก</button><button class="btn-pri"
           onclick="submitProg()">บันทึก</button></div>
@@ -4268,7 +4274,17 @@
     function openMemberModal() { gi('m-id').value = ''; gi('m-name').value = ''; gi('m-role-txt').value = ''; gi('m-dept').value = ''; gi('m-email').value = ''; gi('m-pass').value = ''; gi('m-urole').value = 'user'; openModal('modal-member'); }
     function submitMember() { const name = gi('m-name').value.trim(), email = gi('m-email').value.trim(); if (!name || !email) { toast('กรุณากรอกชื่อและอีเมล'); return; } const id = gi('m-id').value; if (id) { const u = findU(parseInt(id)); if (u) { u.name = name; u.role = gi('m-role-txt').value; u.dept = gi('m-dept').value; u.email = email; u.urole = gi('m-urole').value; if (gi('m-pass').value) u.pass = gi('m-pass').value; } toast('แก้ไขสมาชิกแล้ว'); } else { users.push({ id: nid++, name, role: gi('m-role-txt').value, dept: gi('m-dept').value, email, pass: gi('m-pass').value || 'user123', urole: gi('m-urole').value, color: users.length % 8 }); toast('เพิ่มสมาชิกแล้ว'); } closeModal('modal-member'); renderMembers(); }
 
-    function openProgModal(tid) { const t = tasks.find(t => t.id === tid); if (!t) return; gi('prog-task-id').value = tid; gi('prog-slider').value = t.prog; gi('prog-val').textContent = t.prog + '%'; gi('prog-note').value = ''; gi('prog-hint').style.display = t.prog >= 95 ? 'block' : 'none'; gi('prog-slider').oninput = function () { gi('prog-val').textContent = this.value + '%'; gi('prog-hint').style.display = this.value >= 100 ? 'block' : 'none'; }; openModal('modal-prog'); }
+    function renderProgFilePreview(files) {
+      const box = gi('prog-file-preview'); if (!box) return;
+      const arr = Array.from(files || []);
+      if (!arr.length) { box.innerHTML = ''; return; }
+      box.innerHTML = arr.map(f => {
+        const isImg = (f.type || '').startsWith('image/');
+        const url = isImg ? URL.createObjectURL(f) : '';
+        return `<div class="prog-file-chip">${isImg ? `<img src="${url}" alt="${f.name}">` : '<span class="prog-file-icon">📎</span>'}<span>${f.name}</span></div>`;
+      }).join('');
+    }
+    function openProgModal(tid) { const t = tasks.find(t => t.id === tid); if (!t) return; gi('prog-task-id').value = tid; gi('prog-slider').value = t.prog; gi('prog-val').textContent = t.prog + '%'; gi('prog-note').value = ''; if (gi('prog-files')) gi('prog-files').value = ''; if (gi('prog-file-preview')) gi('prog-file-preview').innerHTML = ''; gi('prog-hint').style.display = t.prog >= 95 ? 'block' : 'none'; gi('prog-slider').oninput = function () { gi('prog-val').textContent = this.value + '%'; gi('prog-hint').style.display = this.value >= 100 ? 'block' : 'none'; }; openModal('modal-prog'); }
     function submitProg() {
       const tid = parseInt(gi('prog-task-id').value); const t = tasks.find(t => t.id === tid); if (!t) return;
       const prog = parseInt(gi('prog-slider').value); const note = gi('prog-note').value.trim();
@@ -4774,7 +4790,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260712-sidebar-all-pages"></script>
+<script src="js/script.js?v=20260712-progress-image-upload"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -4791,6 +4807,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260712-sidebar-all-pages"></script>
+<script src="js/sync.js?v=20260712-progress-image-upload"></script>
 </body>
 </html>
