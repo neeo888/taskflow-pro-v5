@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260713-avatar-drag-crop">
+  <link rel="stylesheet" href="css/style.css?v=20260713-avatar-everywhere">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -1964,8 +1964,7 @@
       flex-direction: column;
       gap: 2px;
     }
-  .tb-av { background-image: url("uploads/avatars/myprofile.jpg") !important; background-size: cover !important; background-position: center !important; color: transparent !important; }</style>
-<style>.tb-av { background-image: url("uploads/avatars/myprofile.jpg") !important; background-size: cover !important; background-position: center !important; color: transparent !important; }</style>
+</style>
 </head>
 
 <body>
@@ -2120,7 +2119,7 @@
 
         <div class="tb-user">
           <span class="rb" id="tb-rbadge"></span>
-          <div class="tb-av" id="tb-av" onclick="openProfileModal()" title="แก้ไขโปรไฟล์"><img src="uploads/avatars/myprofile.jpg" alt="โปรไฟล์"></div>
+          <div class="tb-av" id="tb-av" onclick="openProfileModal()" title="แก้ไขโปรไฟล์"></div>
           <div class="tb-user-meta">
             <span class="tb-name" id="tb-name"></span>
             <span class="tb-scope" id="tb-scope">-</span>
@@ -3160,10 +3159,11 @@
     // UTILS
     // ══════════════════════════
     const gi = id => document.getElementById(id);
-    function getInits(n) { const p = n.trim().split(' '); return p.length >= 2 ? p[0][0] + p[1][0] : p[0].substring(0, 2); }
+    function getInits(n) { const p = (n || '').trim().split(' ').filter(Boolean); return p.length >= 2 ? p[0][0] + p[1][0] : (p[0] || '?').substring(0, 2); }
+    function safeAttr(v) { return String(v || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function findU(id) { return users.find(u => u.id === id); }
-    function avEl(u, sz = 28, r = 9) { const c = AVC[u.color % 8]; return `<div style="width:${sz}px;height:${sz}px;border-radius:${r}px;background:${c.bg};color:${c.fg};display:flex;align-items:center;justify-content:center;font-size:${Math.floor(sz * .32)}px;font-weight:700;flex-shrink:0;">${getInits(u.name)}</div>`; }
-    function miniAv(u) { const c = AVC[u.color % 8]; return `<div class="bc-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; }
+    function avEl(u, sz = 28, r = 9) { if (!u) return ''; const c = AVC[(u.color || 0) % 8]; const base = `width:${sz}px;height:${sz}px;border-radius:${r}px;display:flex;align-items:center;justify-content:center;font-size:${Math.floor(sz * .32)}px;font-weight:700;flex-shrink:0;overflow:hidden;`; return u.avatar ? `<div style="${base}background:#e2e8f0;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"/></div>` : `<div style="${base}background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; }
+    function miniAv(u) { if (!u) return ''; const c = AVC[(u.color || 0) % 8]; return u.avatar ? `<div class="bc-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"/></div>` : `<div class="bc-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; }
     function toast(msg, dur = 2400) { const t = gi('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), dur); }
     const isAM = () => currentUser && (currentUser.urole === 'admin' || currentUser.urole === 'manager');
     const isAdmin = () => currentUser?.urole === 'admin';
@@ -4210,7 +4210,7 @@
       toast('เพิ่มประเภทงาน "' + v + '" แล้ว');
     }
     gi('ntag')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag(); } });
-    function buildAsgnPicker() { gi('asgn-picker').innerHTML = users.filter(u => u.urole !== 'admin' || isAdmin()).map(u => { const c = AVC[u.color % 8]; const on = selAsgn.includes(u.id); return `<div class="apick${on ? ' on' : ''}" onclick="togAsgn(this,${u.id})"><div class="apick-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div><span class="apick-nm">${u.name.split(' ')[0]}</span></div>`; }).join(''); }
+    function buildAsgnPicker() { gi('asgn-picker').innerHTML = users.filter(u => u.urole !== 'admin' || isAdmin()).map(u => { const c = AVC[(u.color || 0) % 8]; const on = selAsgn.includes(u.id); const av = u.avatar ? `<div class="apick-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"></div>` : `<div class="apick-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; return `<div class="apick${on ? ' on' : ''}" onclick="togAsgn(this,${u.id})">${av}<span class="apick-nm">${u.name.split(' ')[0]}</span></div>`; }).join(''); }
     function togAsgn(el, id) { selAsgn.includes(id) ? (selAsgn = selAsgn.filter(x => x !== id), el.classList.remove('on')) : (selAsgn.push(id), el.classList.add('on')); }
     function renderStepList() { gi('step-list').innerHTML = pendingStepsList.map((s, i) => `<div style="display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:8px;padding:7px 10px;margin-bottom:4px;"><span style="font-size:11px;color:var(--text);flex:1;">${i + 1}. ${s}</span><button style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;" onclick="pendingStepsList.splice(${i},1);renderStepList()">✕</button></div>`).join(''); }
     function addStep() { const inp = gi('nstep'); const v = inp.value.trim(); if (!v) return; pendingStepsList.push(v); inp.value = ''; renderStepList(); }
@@ -4856,7 +4856,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260713-avatar-drag-crop"></script>
+<script src="js/script.js?v=20260713-avatar-everywhere"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -4873,6 +4873,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260713-avatar-drag-crop"></script>
+<script src="js/sync.js?v=20260713-avatar-everywhere"></script>
 </body>
 </html>
