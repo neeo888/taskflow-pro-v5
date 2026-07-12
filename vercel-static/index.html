@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260712-task-form-db">
+  <link rel="stylesheet" href="css/style.css?v=20260712-modern-topnav">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -2090,55 +2090,44 @@
 
   <!-- APP -->
   <div id="app">
-    <div class="topbar"><div class="tb-brand" style="display: flex !important; align-items: center !important; gap: 10px !important;">
-    <div class="tb-icon" style="display: flex !important; align-items: center !important;">
-        <svg width="26" height="20" viewBox="0 0 32 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 0px 6px rgba(45, 212, 191, 0.6)); margin-top: -2px;">
+    <div class="topbar" id="topbar">
+      <div class="tb-brand" title="TaskFlow Pro v5">
+        <div class="tb-icon" aria-hidden="true">
+          <svg width="26" height="20" viewBox="0 0 32 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M6 2L14 12L6 22H11L19 12L11 2H6Z" fill="#FFFFFF"/>
             <path d="M15 2L23 12L15 22H20L28 12L20 2H15Z" fill="#2DD4BF"/>
-        </svg>
-    </div><span style="margin-left:12px; font-size:16px; font-weight:700; color:#fff; letter-spacing:0.5px;">TaskFlow Pro v5</span></div><div class="tb-spacer"></div>
-      
-      <button class="bell-btn" onclick="toggleNotifDrop()" title="การแจ้งเตือน" style="display: flex !important; justify-content: center !important; align-items: center !important; width: 36px !important; height: 36px !important; background: rgba(255, 255, 255, 0.09) !important; border-radius: 50% !important; border: 1px solid rgba(255, 255, 255, 0.15) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important; position: relative !important; padding: 0 !important; cursor: pointer !important; transition: all 0.2s ease !important;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 0px 6px rgba(45, 212, 191, 0.65));">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C8.68629 2 6 4.68629 6 8V13.5L4.5 15.5V17H19.5V15.5L18 13.5V8C18 4.68629 15.3137 2 12 2ZM9.5 18.5C9.5 19.8807 10.6193 21 12 21C13.3807 21 14.5 19.8807 14.5 18.5H9.5Z" fill="#2DD4BF" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="round"/>
-      </svg>
-      <style>
-          /* บังคับจัดระเบียบให้ป้ายแจ้งเตือนสีแดง (ไม่ว่าข้างในจะเป็น PHP ตัวไหน) ดีดขึ้นไปขี่ขวาบนตรงปกเป๊ะ */
-          .bell-cnt, [id="bell-cnt"], [class*="bell-cnt"] {
-              position: absolute !important;
-              top: -3px !important;
-              right: -3px !important;
-              background: #EF4444 !important;
-              color: #FFFFFF !important;
-              font-family: sans-serif !important;
-              font-size: 10px !important;
-              font-weight: 700 !important;
-              min-width: 16px !important;
-              height: 16px !important;
-              border-radius: 50% !important;
-              display: flex !important;
-              justify-content: center !important;
-              align-items: center !important;
-              box-shadow: 0 0 0 2px #0B1E3D !important;
-              padding: 0 4px !important;
-              z-index: 10 !important;
-              margin: 0 !important;
-          }
-          .bell-btn:hover {
-              background: rgba(45, 212, 191, 0.15) !important;
-              border-color: rgba(45, 212, 191, 0.4) !important;
-          }
-      </style>
-        <span class="bell-cnt" id="bell-cnt">0</span>
-      </button>
-      <div class="notif-drop" id="notif-drop">
-        <div class="notif-hd">การแจ้งเตือน <span class="notif-clear" onclick="clearAllNotifs()">ล้างทั้งหมด</span></div>
-        <div id="notif-list"></div>
+          </svg>
+        </div>
+        <span class="tb-brand-text">TaskFlow Pro v5</span>
       </div>
-      <span class="rb" id="tb-rbadge"></span>
-      <div class="tb-av" id="tb-av" onclick="openProfileModal()" title="แก้ไขโปรไฟล์" style="cursor:pointer; overflow:hidden; display:flex; align-items:center; justify-content:center;"><img src="uploads/avatars/myprofile.jpg" style="width:100%; height:100%; object-fit:cover;"></div>
-      <span class="tb-name" id="tb-name"></span>
-      <button class="tb-logout" onclick="doLogout()">ออกจากระบบ</button>
+
+      <div class="tb-live" id="tb-live" title="สถานะงานของฉัน">
+        <span class="tb-live-dot"></span>
+        <span id="tb-live-text">พร้อมใช้งาน</span>
+      </div>
+
+      <div class="tb-actions">
+        <button class="bell-btn" onclick="toggleNotifDrop()" title="การแจ้งเตือน" aria-label="การแจ้งเตือน">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C8.68629 2 6 4.68629 6 8V13.5L4.5 15.5V17H19.5V15.5L18 13.5V8C18 4.68629 15.3137 2 12 2ZM9.5 18.5C9.5 19.8807 10.6193 21 12 21C13.3807 21 14.5 19.8807 14.5 18.5H9.5Z" fill="#2DD4BF" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="round"/>
+          </svg>
+          <span class="bell-cnt" id="bell-cnt">0</span>
+        </button>
+        <div class="notif-drop" id="notif-drop">
+          <div class="notif-hd">การแจ้งเตือน <span class="notif-clear" onclick="clearAllNotifs()">ล้างทั้งหมด</span></div>
+          <div id="notif-list"></div>
+        </div>
+
+        <div class="tb-user">
+          <span class="rb" id="tb-rbadge"></span>
+          <div class="tb-av" id="tb-av" onclick="openProfileModal()" title="แก้ไขโปรไฟล์"><img src="uploads/avatars/myprofile.jpg" alt="โปรไฟล์"></div>
+          <div class="tb-user-meta">
+            <span class="tb-name" id="tb-name"></span>
+            <span class="tb-scope" id="tb-scope">-</span>
+          </div>
+        </div>
+        <button class="tb-logout" onclick="doLogout()">ออกจากระบบ</button>
+      </div>
     </div>
     <div class="body-wrap">
       <div class="sidenav" id="sidenav"></div>
@@ -2777,8 +2766,25 @@
     }
     function renderBell() {
       const cnt = pendingAckNotifs().length;
-      gi('bell-cnt').textContent = cnt;
-      gi('bell-cnt').classList.toggle('show', cnt > 0);
+      const bellCnt = gi('bell-cnt');
+      if (bellCnt) {
+        bellCnt.textContent = cnt;
+        bellCnt.classList.toggle('show', cnt > 0);
+      }
+      updateTopbarStatus();
+    }
+
+    function updateTopbarStatus() {
+      const liveText = gi('tb-live-text');
+      if (!liveText || !currentUser) return;
+      const myTasks = tasks.filter(t => currentUser && t.asgn?.includes(currentUser.id));
+      const pendingTaskIds = new Set(pendingAckNotifs().map(n => n.taskId));
+      const pendingAckTasks = myTasks.filter(t => pendingTaskIds.has(t.id) && !t.ackBy?.includes(currentUser.id));
+      const wipTasks = myTasks.filter(t => COL[t.col] && COL[t.col].g === 'wip');
+      const reviewTasks = myTasks.filter(t => t.col === 'review');
+      liveText.textContent = pendingAckTasks.length
+        ? `รอรับทราบ ${pendingAckTasks.length} งาน · ทั้งหมด ${myTasks.length} งาน · WIP ${wipTasks.length} · รอตรวจ ${reviewTasks.length}`
+        : (myTasks.length ? `งานของฉัน ${myTasks.length} งาน · WIP ${wipTasks.length} · รอตรวจ ${reviewTasks.length}` : 'ยังไม่มีงานของฉัน');
     }
     function renderNotifDrop() {
       const all = myNotifs().slice(0, 20);
@@ -4431,14 +4437,20 @@
         av.innerHTML = ''; av.textContent = getInits(u.name);
         av.style.background = c.bg; av.style.color = c.fg;
       }
-      gi('tb-name').textContent = u.name.split(' ')[0];
+      const shortName = u.name.split(' ')[0];
+      gi('tb-name').textContent = shortName;
       // แสดงสาขา+งานใน topbar
       const branchDisplay = u.branch_name || BRANCH_MAP[u.branch] || '';
       const deptDisplay = u.dept_key || '';
       const subParts = [branchDisplay, deptDisplay].filter(Boolean);
-      if (subParts.length) {
-        gi('tb-name').title = subParts.join(' · ');
+      const scopeText = subParts.join(' · ') || 'พร้อมทำงาน';
+      gi('tb-name').title = scopeText;
+      const scopeEl = gi('tb-scope');
+      if (scopeEl) {
+        scopeEl.textContent = scopeText;
+        scopeEl.title = scopeText;
       }
+      updateTopbarStatus();
       const rb = gi('tb-rbadge');
       const rl = { admin: 'Admin', manager: 'หัวหน้า', assistant: 'ผู้ช่วย', user: 'ผู้ใช้' };
       const rc = { admin: 'rb-admin', manager: 'rb-mgr', assistant: 'rb-asst', user: 'rb-user' };
@@ -4762,7 +4774,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260712-task-form-db"></script>
+<script src="js/script.js?v=20260712-modern-topnav"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -4779,6 +4791,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260712-task-form-db"></script>
+<script src="js/sync.js?v=20260712-modern-topnav"></script>
 </body>
 </html>
