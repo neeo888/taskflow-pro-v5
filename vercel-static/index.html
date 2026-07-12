@@ -226,12 +226,15 @@
       flex-shrink: 0;
     }
 
+    .tb-brand {
       font-size: 14px;
       font-weight: 700;
       color: #fff;
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-shrink: 0;
+      min-width: 0;
     }
 
     .tb-icon {
@@ -306,6 +309,100 @@
       display: flex;
       flex: 1;
       overflow: hidden;
+    }
+
+
+    /* Responsive app layout: keep original UI, prevent overlap on narrow screens */
+    @media (max-width: 760px) {
+      #app.show {
+        min-height: 100dvh;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      .topbar {
+        height: 54px;
+        padding: 0 10px;
+        gap: 7px;
+        overflow: visible;
+      }
+      .tb-brand {
+        max-width: 138px;
+      }
+      .tb-brand span {
+        font-size: 13px !important;
+        line-height: 1.05;
+        white-space: normal;
+      }
+      .tb-icon {
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+      }
+      .tb-spacer { min-width: 4px; }
+      .rb { display: none; }
+      .tb-name { display: none; }
+      .tb-logout {
+        padding: 5px 8px;
+        font-size: 9px;
+        white-space: nowrap;
+      }
+      .body-wrap {
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .sidenav {
+        width: 100%;
+        height: 58px;
+        min-height: 58px;
+        flex-direction: row;
+        align-items: stretch;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-right: 0;
+        border-bottom: .5px solid var(--border);
+      }
+      .sidenav .nsec { display: none; }
+      .sidenav .ni {
+        flex: 0 0 auto;
+        border-left: 0;
+        border-bottom: 2.5px solid transparent;
+        padding: 8px 12px;
+        white-space: nowrap;
+        min-width: max-content;
+      }
+      .sidenav .ni.active {
+        border-left-color: transparent;
+        border-bottom-color: var(--purple);
+      }
+      .content {
+        width: 100%;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+      .page { padding: 12px; }
+      .ph {
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .board-wrap { padding-bottom: 12px; }
+      .notif-drop {
+        right: 8px;
+        left: 8px;
+        width: auto;
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .topbar { gap: 5px; padding: 0 8px; }
+      .tb-brand { max-width: 126px; }
+      .bell-btn { width: 32px !important; height: 32px !important; }
+      .tb-av { width: 26px; height: 26px; min-width: 26px; }
+      .tb-logout { display: none; }
+      .metrics { grid-template-columns: 1fr; }
     }
 
     /* SIDENAV */
