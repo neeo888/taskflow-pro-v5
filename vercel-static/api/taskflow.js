@@ -81,6 +81,91 @@ async function getUsers(req) {
   const rows = await sb(`/rest/v1/tf_users?select=id,wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,avatar_url${q}&order=id.asc`, { method: 'GET' });
   return ok({ users: rows });
 }
+
+function makeWwcode(email = '', name = '') {
+  const base = String(email || name || 'user')
+    .split('@')[0]
+    .normalize('NFKD')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(0, 14)
+    .toLowerCase();
+  return base || `u${Date.now().toString().slice(-8)}`;
+}
+
+async function memberSave(req) {
+  const s = await auth(req);
+  if (!['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
+  const b = await bodyJson(req);
+  const id = Number(b.id || 0);
+  const name = String(b.name || '').trim();
+  const email = String(b.email || '').trim();
+  if (!name || !email) return err('Missing name or email');
+  const branch = s.urole === 'admin' ? String(b.branch || s.branch || '').trim() : String(s.branch || '').trim();
+  const branchName = String(b.branch_name || '').trim();
+  const deptKey = String(b.dept_key || b.dept || '').trim();
+  const role = String(b.role || '').trim();
+  const dept = String(b.dept || '').trim();
+  const urole = ['admin', 'manager', 'assistant', 'user'].includes(b.urole) ? b.urole : 'user';
+  const color = Number.isFinite(Number(b.color)) ? Number(b.color) : 0;
+  const newPassword = String(b.new_password || b.password || '').trim();
+  const wwcode = String(b.wwcode || makeWwcode(email, name)).trim();
+
+  // Preferred path: use SQL function so password is hashed by pgcrypto in Supabase.
+  try {
+    const rows = await sb('/rest/v1/rpc/tf_member_save', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_id: id || null,
+        p_wwcode: wwcode,
+        p_name: name,
+        p_role: role,
+        p_dept: dept,
+        p_dept_key: deptKey,
+        p_branch: branch,
+        p_branch_name: branchName,
+        p_email: email,
+        p_urole: urole,
+        p_color: color,
+        p_new_password: newPassword || null,
+      }),
+    });
+    return ok({ user: rows?.[0] || null });
+  } catch (e) {
+    // Fallback keeps non-password profile fields working if schema has not been updated yet.
+    const payload = { name, email, role, dept, dept_key: deptKey, branch, branch_name: branchName, urole, color, updated_at: new Date().toISOString() };
+    if (id) {
+      const rows = await sb(`/rest/v1/tf_users?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      return ok({ user: rows?.[0] || null, warning: 'tf_member_save RPC missing; password was not changed' });
+    }
+    const rows = await sb('/rest/v1/tf_users', { method: 'POST', body: JSON.stringify({ ...payload, wwcode, pass_hash: '' }) });
+    return ok({ user: rows?.[0] || null, warning: 'tf_member_save RPC missing; default password was not hashed' }, 201);
+  }
+}
+
+async function memberDelete(req) {
+  const s = await auth(req);
+  if (!['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
+  const b = await bodyJson(req);
+  const id = Number(b.id || b.user_id || 0);
+  if (!id) return err('Missing id');
+  if (id === s.id) return err('Cannot delete current user');
+
+  // Re-home audit rows to the current admin/manager so FK constraints do not break.
+  await Promise.all([
+    sb(`/rest/v1/tf_sessions?user_id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }),
+    sb(`/rest/v1/tf_task_assignees?user_id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }),
+    sb(`/rest/v1/tf_step_checks?user_id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }),
+    sb(`/rest/v1/tf_notifications?for_user_id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }),
+    sb(`/rest/v1/tf_tasks?created_by=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ created_by: s.id }) }),
+    sb(`/rest/v1/tf_tasks?verified_by=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ verified_by: null }) }),
+    sb(`/rest/v1/tf_attachments?uploaded_by=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ uploaded_by: s.id }) }),
+    sb(`/rest/v1/tf_obstacles?author_id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ author_id: s.id }) }),
+    sb(`/rest/v1/tf_comments?author_id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ author_id: s.id }) }),
+    sb(`/rest/v1/tf_progress_log?user_id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ user_id: s.id }) }),
+  ]);
+  await sb(`/rest/v1/tf_users?id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+  return ok();
+}
 async function getTags(req) {
   await auth(req);
   const rows = await sb('/rest/v1/tf_tags?select=name&order=id.asc', { method: 'GET' });
@@ -264,6 +349,8 @@ export default async function handler(req) {
     if (action === 'local_login' && req.method === 'POST') return localLogin(req);
     if (action === 'logout' && req.method === 'POST') return ok();
     if (action === 'users' && req.method === 'GET') return getUsers(req);
+    if ((action === 'member_save' || action === 'user_save') && req.method === 'POST') return memberSave(req);
+    if ((action === 'member_delete' || action === 'user_delete') && req.method === 'POST') return memberDelete(req);
     if (action === 'tasks' && req.method === 'GET') return getTasks(req);
     if (action === 'tags' && req.method === 'GET') return getTags(req);
     if (action === 'task_save' && req.method === 'POST') return taskSave(req);

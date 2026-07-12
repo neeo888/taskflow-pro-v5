@@ -482,7 +482,7 @@ window.submitMember = function () {
   if (_isPhpSrv() && name && email) {
     const payload = { id: id ? +id : 0, name, email, role, dept, urole };
     if (pass) payload.new_password = pass;
-    _api('user_save', payload).then(r => {
+    _api('member_save', payload).then(r => {
       if (r.ok) _loadFromServer(true).then(() => { renderAll(); if (typeof renderMembers === 'function') renderMembers(); });
     });
   }
@@ -517,7 +517,7 @@ window.confirm = function (msg) {
       if (window._preDeleteUsers) {
         for (const uid of window._preDeleteUsers) {
           if (!currentIds.has(uid) && _isPhpSrv()) {
-            _api('user_delete', { id: uid });
+            _api('member_delete', { id: uid });
           }
         }
       }

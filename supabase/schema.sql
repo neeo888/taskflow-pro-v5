@@ -182,3 +182,103 @@ as $$
     and u.pass_hash::text = extensions.crypt(p_password::text, u.pass_hash::text)
   limit 1;
 $$;
+
+-- Save member with password hashing for Vercel/Supabase API
+create or replace function public.tf_member_save(
+  p_id bigint default null,
+  p_wwcode text default null,
+  p_name text default null,
+  p_role text default '',
+  p_dept text default '',
+  p_dept_key text default '',
+  p_branch text default '',
+  p_branch_name text default '',
+  p_email text default '',
+  p_urole text default 'user',
+  p_color smallint default 0,
+  p_new_password text default null
+)
+returns table (
+  id bigint,
+  wwcode varchar,
+  name varchar,
+  role varchar,
+  dept varchar,
+  dept_key varchar,
+  branch varchar,
+  branch_name varchar,
+  email varchar,
+  urole varchar,
+  color smallint,
+  avatar_url varchar
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id bigint;
+  v_wwcode text;
+  v_base text;
+  v_suffix int := 0;
+begin
+  if nullif(trim(coalesce(p_name, '')), '') is null then
+    raise exception 'Missing name';
+  end if;
+
+  v_wwcode := nullif(trim(coalesce(p_wwcode, '')), '');
+  if v_wwcode is null then
+    v_base := lower(regexp_replace(split_part(coalesce(p_email, 'user'), '@', 1), '[^a-zA-Z0-9]', '', 'g'));
+    if v_base is null or v_base = '' then
+      v_base := 'u' || substr(md5(random()::text), 1, 8);
+    end if;
+    v_wwcode := left(v_base, 14);
+  end if;
+
+  if coalesce(p_id, 0) = 0 then
+    while exists (select 1 from public.tf_users u where u.wwcode = v_wwcode) loop
+      v_suffix := v_suffix + 1;
+      v_wwcode := left(v_wwcode, 14) || v_suffix::text;
+    end loop;
+
+    insert into public.tf_users (
+      wwcode, name, role, dept, dept_key, branch, branch_name, email, urole, color, pass_hash
+    ) values (
+      v_wwcode,
+      trim(p_name),
+      coalesce(p_role, ''),
+      coalesce(p_dept, ''),
+      coalesce(p_dept_key, ''),
+      coalesce(p_branch, ''),
+      coalesce(p_branch_name, ''),
+      coalesce(p_email, ''),
+      case when p_urole in ('admin','manager','assistant','user') then p_urole else 'user' end,
+      coalesce(p_color, 0),
+      extensions.crypt(coalesce(nullif(p_new_password, ''), 'user123'), extensions.gen_salt('bf'))
+    ) returning tf_users.id into v_id;
+  else
+    v_id := p_id;
+    update public.tf_users u set
+      name = trim(p_name),
+      role = coalesce(p_role, ''),
+      dept = coalesce(p_dept, ''),
+      dept_key = coalesce(p_dept_key, ''),
+      branch = coalesce(p_branch, u.branch),
+      branch_name = coalesce(p_branch_name, u.branch_name),
+      email = coalesce(p_email, ''),
+      urole = case when p_urole in ('admin','manager','assistant','user') then p_urole else u.urole end,
+      color = coalesce(p_color, u.color),
+      pass_hash = case
+        when nullif(p_new_password, '') is not null then extensions.crypt(p_new_password, extensions.gen_salt('bf'))
+        else u.pass_hash
+      end,
+      updated_at = now()
+    where u.id = p_id;
+  end if;
+
+  return query
+  select u.id,u.wwcode,u.name,u.role,u.dept,u.dept_key,u.branch,u.branch_name,u.email,u.urole,u.color,u.avatar_url
+  from public.tf_users u
+  where u.id = v_id;
+end;
+$$;
