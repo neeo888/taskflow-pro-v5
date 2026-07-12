@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260712-mobile2">
+  <link rel="stylesheet" href="css/style.css?v=20260712-ack-detail">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -1277,6 +1277,40 @@
 
     .dp.open {
       display: flex;
+    }
+
+    /* เปิดรายละเอียดงานแบบเต็มหน้า ใช้เมื่อกดรับทราบงาน */
+    .dp.full {
+      left: 0;
+      right: 0;
+      top: 50px;
+      bottom: 0;
+      width: auto;
+      max-width: none;
+      border-left: none;
+      z-index: 260;
+    }
+
+    .dp.full .dp-hd {
+      padding: 16px 24px;
+      background: var(--white);
+    }
+
+    .dp.full .dp-htitle {
+      font-size: 18px;
+    }
+
+    .dp.full .dp-scroll {
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 22px 24px 32px;
+    }
+
+    @media (max-width: 760px) {
+      .dp.full { top: 50px; }
+      .dp.full .dp-hd { padding: 12px 14px; }
+      .dp.full .dp-scroll { padding: 14px; }
     }
 
     .dp-hd {
@@ -2646,7 +2680,7 @@
       <div style="flex:1;"><div class="notif-title">${n.title}</div><div class="notif-sub">${n.body}</div>
 		<div class="notif-ack-btn" onclick="
         event.stopPropagation(); 
-        if(typeof ackNotif === 'function'){ ackNotif(400); } 
+        if(typeof ackNotif === 'function'){ ackNotif(${n.id}); } 
         if(typeof renderBell === 'function'){ renderBell(); }
         
         /* 🚨 คำสั่งเด็ดขาด: กดปุ๊บ สั่งลบแถบกล่องแจ้งเตือนนี้หายวับออกจากหน้าจอทันที 100% ไม่ค้างเติ่ง */
@@ -2683,6 +2717,19 @@
       const t = tasks.find(t => t.id === n.taskId);
       if (t && !t.ackBy?.includes(currentUser.id)) { if (!t.ackBy) t.ackBy = []; t.ackBy.push(currentUser.id); }
       renderNotifDrop(); renderBell(); renderAll(); toast('รับทราบแล้ว');
+      if (n.taskId) openAckTaskDetail(n.taskId);
+    }
+
+    function openAckTaskDetail(taskId) {
+      const tid = parseInt(taskId);
+      if (!tid || !tasks.find(t => t.id === tid)) return;
+      notifDropOpen = false;
+      const drop = gi('notif-drop');
+      if (drop) {
+        drop.classList.remove('open');
+        drop.style.display = '';
+      }
+      setTimeout(() => showDP(tid, true), 80);
     }
     function showNotifPopup(title, body, taskId, ackable) {
       popupTaskId = taskId; gi('np-title').textContent = title; gi('np-body').textContent = body;
@@ -2698,6 +2745,7 @@
         const n = notifications.find(n => n.taskId === popupTaskId && n.forUserIds.includes(currentUser.id));
         if (n && !n.ackBy.includes(currentUser.id)) n.ackBy.push(currentUser.id);
         renderBell(); renderAll(); toast('รับทราบแล้ว');
+        openAckTaskDetail(popupTaskId);
       }
     }
 
@@ -2852,6 +2900,7 @@
         if (n && !n.ackBy.includes(currentUser.id)) n.ackBy.push(currentUser.id);
         renderAll(); renderBell(); toast('✋ รับทราบงานแล้ว');
       }
+      openAckTaskDetail(tid);
     }
 
     // ══════════════════════════
@@ -3631,7 +3680,7 @@
     // ══════════════════════════
     // DETAIL PANEL (full)
     // ══════════════════════════
-    function showDP(id) {
+    function showDP(id, fullPage = false) {
       const t = tasks.find(t => t.id === id); if (!t) return;
       const cfg = COL[t.col]; const pr = PRIO[t.priority];
       const asgns = users.filter(u => t.asgn.includes(u.id));
@@ -3756,7 +3805,9 @@
       </div>`: ''}}
     </div>`;
 
-      gi('dp').classList.add('open');
+      const dp = gi('dp');
+      dp.classList.toggle('full', !!fullPage);
+      dp.classList.add('open');
     }
 
     function commentHtml(c) {
@@ -3813,7 +3864,7 @@
     function resolveObs(tid, oid) { const t = tasks.find(t => t.id === tid); const o = t?.obstacles.find(o => o.id === oid); if (o) o.resolved = true; updateObsBadge(); showDP(tid); toast('ปิดอุปสรรคแล้ว'); }
     function addObsComment(tid, oid) { const inp = gi('oci-' + oid); if (!inp || !inp.value.trim()) return; const t = tasks.find(t => t.id === tid); const o = t?.obstacles.find(o => o.id === oid); if (!o) return; o.comments.push({ id: nid++, authorId: currentUser.id, text: inp.value.trim(), at: now2() }); showDP(tid); toast('เพิ่มคอมเมนต์แล้ว'); }
 
-    function closeDP() { gi('dp').classList.remove('open'); }
+    function closeDP() { gi('dp').classList.remove('open', 'full'); }
     function delTask(id) { if (confirm('ลบงาน?')) { tasks = tasks.filter(t => t.id !== id); closeDP(); renderAll(); toast('ลบงานแล้ว'); } }
     function updateObsBadge() {
       const b = gi('obs-badge'); if (!b) return;
@@ -4274,6 +4325,7 @@
         if (t) { if (!t.ackBy) t.ackBy = []; if (!t.ackBy.includes(currentUser.id)) t.ackBy.push(currentUser.id); }
       }
       renderHome(); renderBell(); toast('รับทราบแล้ว');
+      if (n?.taskId) openAckTaskDetail(n.taskId);
     }
 
     // ════ myNotifs, myUnread helpers ════
@@ -4563,7 +4615,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260712-mobile2"></script>
+<script src="js/script.js?v=20260712-ack-detail"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -4580,6 +4632,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260712-mobile2"></script>
+<script src="js/sync.js?v=20260712-ack-detail"></script>
 </body>
 </html>

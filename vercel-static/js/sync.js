@@ -616,13 +616,15 @@ async function _uploadPendingFiles(taskId, files, isSubmitted = 0) {
 // ══════════════════════════════════════════════════════════════
 const _orig_ackTask = window.ackTask;
 window.ackTask = function (tid) {
+  // หา notification ที่เกี่ยวข้องก่อนเรียกของเดิม เพราะของเดิมจะ mark ack ใน memory ทันที
+  const pendingNotif = (_isPhpSrv() && window.currentUser)
+    ? window.notifications.find(n => n.taskId === tid &&
+      n.forUserIds.includes(window.currentUser.id) && !n.ackBy.includes(window.currentUser.id))
+    : null;
+
   _orig_ackTask.call(this, tid);
-  // หา notification ที่เกี่ยวข้องแล้ว ack
-  if (_isPhpSrv() && window.currentUser) {
-    const n = window.notifications.find(n => n.taskId === tid &&
-      n.forUserIds.includes(window.currentUser.id) && !n.ackBy.includes(window.currentUser.id));
-    if (n) _api('notif_ack', { id: n.id });
-  }
+
+  if (pendingNotif) _api('notif_ack', { id: pendingNotif.id });
 };
 
 console.log('[sync.js] TaskFlow API connector loaded ✓');
