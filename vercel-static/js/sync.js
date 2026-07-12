@@ -494,9 +494,8 @@ const _orig_saveProfile = window.saveProfile;
 window.saveProfile = async function () {
   const name = gi('p-name') ? gi('p-name').value.trim() : (window.currentUser?.name || '');
   const email = gi('p-email') ? gi('p-email').value.trim() : (window.currentUser?.email || '');
-  const avatarBeforeSave = window.currentUser?.avatar || '';
-
   _orig_saveProfile.call(this);
+  const avatarBeforeSave = window.currentUser?.avatar || '';
   if (!_isPhpSrv() || !window.currentUser) return;
 
   const saved = await _api('profile_save', { name, email });
