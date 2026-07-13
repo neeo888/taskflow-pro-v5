@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260714-multi-file-download">
+  <link rel="stylesheet" href="css/style.css?v=20260714-image-preview">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -1991,6 +1991,106 @@
       50% { opacity: 1; }
     }
 
+
+    /* ── LARGE IMAGE PREVIEW FOR ATTACHMENTS ── */
+    .image-preview-layer {
+      position: fixed;
+      z-index: 99999;
+      left: 0;
+      top: 0;
+      width: min(420px, 82vw);
+      max-width: 82vw;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translate(16px, 16px) scale(.98);
+      transition: opacity .14s ease, transform .14s ease, visibility .14s ease;
+    }
+
+    .image-preview-layer.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(16px, 16px) scale(1);
+    }
+
+    .image-preview-card {
+      background: rgba(255,255,255,.98);
+      border: 1px solid rgba(148,163,184,.35);
+      border-radius: 18px;
+      box-shadow: 0 22px 60px rgba(2, 8, 23, .30);
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+
+    .image-preview-card img {
+      display: block;
+      width: 100%;
+      max-height: 58vh;
+      object-fit: contain;
+      background: #0B1E3D;
+    }
+
+    .image-preview-caption {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .image-preview-caption span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .image-preview-close {
+      display: none;
+      border: 0;
+      background: #EEF3FF;
+      color: var(--text2);
+      border-radius: 999px;
+      width: 30px;
+      height: 30px;
+      font-weight: 900;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .image-preview-layer.locked {
+      inset: 0;
+      width: auto;
+      max-width: none;
+      min-height: 100vh;
+      background: rgba(11, 30, 61, .74);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      pointer-events: auto;
+      transform: none;
+    }
+
+    .image-preview-layer.locked.show { transform: none; }
+
+    .image-preview-layer.locked .image-preview-card {
+      width: min(920px, 94vw);
+      max-height: 92vh;
+    }
+
+    .image-preview-layer.locked .image-preview-card img {
+      max-height: 78vh;
+    }
+
+    .image-preview-layer.locked .image-preview-close { display: inline-flex; align-items: center; justify-content: center; }
+
+    .atch-thumb {
+      cursor: zoom-in;
+    }
+
     /* ── PROFILE PIC OVERLAY ── */
     .profile-pic-overlay {
       position: absolute;
@@ -3042,7 +3142,7 @@
       const nmJs = safeJs(f.name || 'ไฟล์แนบ');
       const srcJs = safeJs(src);
       const thumbEl = isImg && src
-        ? `<img class="atch-thumb" src="${srcAttr}" alt="${nm}" onerror="this.outerHTML='<div class=&quot;atch-icon&quot; style=&quot;background:${ic.bg};color:${ic.fg};&quot;>${ic.t}</div>'"/>`
+        ? `<img class="atch-thumb" src="${srcAttr}" alt="${nm}" tabindex="0" onmouseenter="showImagePreview('${srcJs}','${nmJs}',event,false)" onmousemove="moveImagePreview(event)" onmouseleave="hideImagePreview(false)" onfocus="showImagePreview('${srcJs}','${nmJs}',event,false)" onblur="hideImagePreview(false)" onclick="event.stopPropagation();showImagePreview('${srcJs}','${nmJs}',event,true)" onerror="this.outerHTML='<div class=&quot;atch-icon&quot; style=&quot;background:${ic.bg};color:${ic.fg};&quot;>${ic.t}</div>'"/>`
         : (f.loading || (isImg && !src))
           ? `<div class="atch-icon atch-loading">⏳</div>`
           : `<div class="atch-icon" style="background:${ic.bg};color:${ic.fg};">${ic.t}</div>`;
@@ -4542,6 +4642,59 @@
       compressImage(file, 900, 900, 0.72, callback);
     }
 
+
+    // ════ IMAGE PREVIEW ════
+    let imagePreviewLocked = false;
+    function ensureImagePreview() {
+      let el = gi('image-preview-layer');
+      if (el) return el;
+      el = document.createElement('div');
+      el.id = 'image-preview-layer';
+      el.className = 'image-preview-layer';
+      el.innerHTML = `<div class="image-preview-card" onclick="event.stopPropagation()">
+        <img id="image-preview-img" alt="preview" />
+        <div class="image-preview-caption"><span id="image-preview-name"></span><button class="image-preview-close" onclick="hideImagePreview(true)">×</button></div>
+      </div>`;
+      el.addEventListener('click', () => hideImagePreview(true));
+      document.body.appendChild(el);
+      return el;
+    }
+    function showImagePreview(src, name, ev, lock) {
+      if (!src) return;
+      const el = ensureImagePreview();
+      const img = gi('image-preview-img');
+      const cap = gi('image-preview-name');
+      if (img && img.src !== src) img.src = src;
+      if (cap) cap.textContent = name || 'รูปภาพ';
+      imagePreviewLocked = !!lock;
+      el.classList.toggle('locked', imagePreviewLocked);
+      if (imagePreviewLocked) { el.style.left = '0px'; el.style.top = '0px'; }
+      el.classList.add('show');
+      if (!imagePreviewLocked && ev) moveImagePreview(ev);
+    }
+    function moveImagePreview(ev) {
+      if (imagePreviewLocked) return;
+      const el = gi('image-preview-layer');
+      if (!el || !el.classList.contains('show')) return;
+      const pad = 18;
+      const rect = el.getBoundingClientRect();
+      let x = (ev?.clientX || 0) + 18;
+      let y = (ev?.clientY || 0) + 18;
+      if (x + rect.width + pad > window.innerWidth) x = (ev?.clientX || 0) - rect.width - 18;
+      if (y + rect.height + pad > window.innerHeight) y = window.innerHeight - rect.height - pad;
+      el.style.left = Math.max(pad, x) + 'px';
+      el.style.top = Math.max(pad, y) + 'px';
+    }
+    function hideImagePreview(force) {
+      if (imagePreviewLocked && !force) return;
+      const el = gi('image-preview-layer');
+      if (!el) return;
+      imagePreviewLocked = false;
+      el.classList.remove('show', 'locked');
+      el.style.left = '0px';
+      el.style.top = '0px';
+    }
+
     // ════ DOWNLOAD FILE ════
     // ดาวน์โหลดไฟล์จาก base64 data URL
     function downloadFile(name, dataUrl) {
@@ -4918,7 +5071,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260714-multi-file-download"></script>
+<script src="js/script.js?v=20260714-image-preview"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -4935,6 +5088,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260714-multi-file-download"></script>
+<script src="js/sync.js?v=20260714-image-preview"></script>
 </body>
 </html>
