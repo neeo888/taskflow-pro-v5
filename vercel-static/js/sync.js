@@ -294,6 +294,7 @@ window.submitTask = function () {
   if (!title) { toast('กรุณาระบุชื่องาน'); return; }
   const idVal = gi('t-id').value;
   const isEdit = !!idVal;
+  const pendingFiles = (window.taskPendingFiles || []).filter(f => f && f.data && !f.url);
 
   // เรียก original ก่อน (อัปเดต local state + UI)
   _orig_submitTask.call(this);
@@ -316,14 +317,17 @@ window.submitTask = function () {
   };
   if (!payload.title) return;
 
-  _api('task_save', payload).then(r => {
-    if (r.ok && r.task_id && !isEdit) {
+  _api('task_save', payload).then(async r => {
+    const savedId = Number(r.task_id || payload.id || idVal || 0);
+    if (r.ok && savedId && !isEdit) {
       // อัปเดต ID ท้องถิ่นให้ตรงกับ server
-      const newId = r.task_id;
       const t = window.tasks[window.tasks.length - 1];
-      if (t && (!t.id || t.id >= 400)) t.id = +newId;
+      if (t && (!t.id || t.id >= 400)) t.id = savedId;
     }
-    // reload เพื่อให้ steps/attachments ถูกต้อง
+    if (r.ok && savedId && pendingFiles.length) {
+      await _uploadPendingFiles(savedId, pendingFiles, 0);
+    }
+    // reload เพื่อให้ steps/attachments ถูกต้อง และให้ URL ดาวน์โหลดจาก Supabase กลับมาแสดง
     _loadFromServer(true).then(() => renderAll());
   });
 };

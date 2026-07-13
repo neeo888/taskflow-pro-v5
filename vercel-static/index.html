@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260713-avatar-everywhere">
+  <link rel="stylesheet" href="css/style.css?v=20260714-multi-file-download">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -1951,6 +1951,46 @@
       color: var(--danger);
     }
 
+
+    .atch-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .atch-download {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--accent2);
+      border-radius: 8px;
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      transition: all .12s ease;
+      white-space: nowrap;
+    }
+
+    .atch-download:hover {
+      border-color: var(--accent);
+      background: rgba(14, 206, 180, .08);
+      transform: translateY(-1px);
+    }
+
+    .atch-loading {
+      background: #EEF3FF;
+      color: #3C3489;
+      animation: pulseAttach 1.1s ease-in-out infinite;
+    }
+
+    @keyframes pulseAttach {
+      0%, 100% { opacity: .55; }
+      50% { opacity: 1; }
+    }
+
     /* ── PROFILE PIC OVERLAY ── */
     .profile-pic-overlay {
       position: absolute;
@@ -2432,7 +2472,7 @@
         </div>
         <input type="file" id="task-file-input" multiple accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.txt"
           style="display:none;" onchange="processTaskFiles(this.files);this.value=''" />
-        <input type="file" id="task-camera-input" accept="image/*" capture="environment" style="display:none;"
+        <input type="file" id="task-camera-input" multiple accept="image/*" capture="environment" style="display:none;"
           onchange="processTaskFiles(this.files);this.value=''" />
         <div id="task-attach-list"></div>
       </div>
@@ -2495,7 +2535,7 @@
         </div>
         <input type="file" id="sw-file-input" multiple accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" style="display:none;"
           onchange="processSwFiles(this.files);this.value=''" />
-        <input type="file" id="sw-camera-input" accept="image/*" capture="environment" style="display:none;"
+        <input type="file" id="sw-camera-input" multiple accept="image/*" capture="environment" style="display:none;"
           onchange="processSwFiles(this.files);this.value=''" />
         <div id="sw-attach-list"></div>
         <div
@@ -2915,87 +2955,107 @@
     var taskPendingFiles = [];
     var swPendingFiles = [];
 
+    function _readPendingFile(file, obj, renderFn) {
+      const r = new FileReader();
+      r.onload = e => {
+        obj.data = e.target.result;
+        obj.loading = false;
+        if (typeof renderFn === 'function') renderFn();
+      };
+      r.onerror = () => {
+        obj.error = true;
+        obj.loading = false;
+        if (typeof renderFn === 'function') renderFn();
+        toast('อ่านไฟล์ไม่ได้: ' + (obj.name || 'ไฟล์'));
+      };
+      r.readAsDataURL(file);
+    }
+
+    function _pendingFileObj(f, prefix) {
+      const mimeType = f.type || 'application/octet-stream';
+      const isImage  = mimeType.startsWith('image/');
+      let ext = (f.name && f.name.includes('.')) ? f.name.split('.').pop().toLowerCase() : '';
+      if (!ext || ext.length > 8 || ext === 'blob') {
+        ext = mimeType.split('/')[1] || (isImage ? 'jpg' : 'file');
+        ext = ext.replace(/[^a-z0-9]/gi, '').toLowerCase() || (isImage ? 'jpg' : 'file');
+      }
+      const displayName = (f.name && f.name !== 'blob' && f.name !== 'image')
+        ? f.name : (prefix + '_' + Date.now() + '.' + ext);
+      return { name: displayName, size: fmtSz(f.size), type: ext, mime: mimeType, data: null, url: null, loading: true };
+    }
+
     function processTaskFiles(files) {
-      Array.from(files).forEach(f => {
-        const mimeType = f.type || 'application/octet-stream';
-        const isImage  = mimeType.startsWith('image/');
-        // ระบุ extension จาก MIME type ถ้าชื่อไม่มี (กรณีถ่ายจากกล้อง)
-        let ext = f.name.split('.').pop().toLowerCase();
-        if (isImage && (ext === f.name || ext.length > 5 || ext === 'blob')) {
-          ext = mimeType === 'image/png' ? 'png' : 'jpg';
-        }
-        const displayName = (f.name && f.name !== 'blob' && f.name !== 'image')
-          ? f.name : ('รูปภาพ_' + Date.now() + '.' + ext);
-        const obj = { name: displayName, size: fmtSz(f.size), type: ext, data: null };
+      Array.from(files || []).forEach(f => {
+        const obj = _pendingFileObj(f, 'รูปภาพ');
         taskPendingFiles.push(obj);
-        renderTaskAttachList(); // แสดง placeholder ⏳ ก่อน
-        if (isImage) {
+        renderTaskAttachList(); // แสดง placeholder ก่อน แล้วค่อยเติม preview/download เมื่ออ่านไฟล์เสร็จ
+        if ((f.type || '').startsWith('image/')) {
           compressTaskImage(f, (data) => {
             if (data) {
               obj.data  = data;
               obj.type  = 'jpg';
+              obj.mime  = 'image/jpeg';
               const bytes = Math.round((data.length - 'data:image/jpeg;base64,'.length) * 3 / 4);
               obj.size  = fmtSz(bytes);
+              obj.loading = false;
+              renderTaskAttachList();
             } else {
-              // fallback: อ่านดิบ
-              const r = new FileReader();
-              r.onload = e => { obj.data = e.target.result; obj.type = 'jpg'; renderTaskAttachList(); };
-              r.readAsDataURL(f);
+              _readPendingFile(f, obj, renderTaskAttachList);
             }
-            renderTaskAttachList();
           });
+        } else {
+          _readPendingFile(f, obj, renderTaskAttachList);
         }
       });
     }
     function processSwFiles(files) {
-      Array.from(files).forEach(f => {
-        const mimeType = f.type || 'application/octet-stream';
-        const isImage  = mimeType.startsWith('image/');
-        let ext = f.name.split('.').pop().toLowerCase();
-        if (isImage && (ext === f.name || ext.length > 5 || ext === 'blob')) {
-          ext = mimeType === 'image/png' ? 'png' : 'jpg';
-        }
-        const displayName = (f.name && f.name !== 'blob' && f.name !== 'image')
-          ? f.name : ('ผลงาน_' + Date.now() + '.' + ext);
-        const obj = { name: displayName, size: fmtSz(f.size), type: ext, data: null };
+      Array.from(files || []).forEach(f => {
+        const obj = _pendingFileObj(f, 'ผลงาน');
         swPendingFiles.push(obj);
         renderSwAttachList();
-        if (isImage) {
+        if ((f.type || '').startsWith('image/')) {
           compressTaskImage(f, (data) => {
             if (data) {
-              obj.data = data; obj.type = 'jpg';
+              obj.data = data; obj.type = 'jpg'; obj.mime = 'image/jpeg';
               const bytes = Math.round((data.length - 'data:image/jpeg;base64,'.length) * 3 / 4);
               obj.size = fmtSz(bytes);
+              obj.loading = false;
+              renderSwAttachList();
             } else {
-              const r = new FileReader();
-              r.onload = e => { obj.data = e.target.result; obj.type = 'jpg'; renderSwAttachList(); };
-              r.readAsDataURL(f);
+              _readPendingFile(f, obj, renderSwAttachList);
             }
-            renderSwAttachList();
           });
+        } else {
+          _readPendingFile(f, obj, renderSwAttachList);
         }
       });
     }
     function fmtSz(b) { if (b < 1024) return b + 'B'; if (b < 1048576) return Math.round(b / 1024) + 'KB'; return (b / 1048576).toFixed(1) + 'MB'; }
 
     function _atchItemHtml(f, onDel) {
-      const ic = ficon(f.type);
-      const isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(f.type);
-      const hasThumb = isImg && f.data;
-      // ถ้ารูปยังกำลัง compress อยู่ → แสดง spinning placeholder
-      const hasThumbReal = f.data && typeof f.data === 'string' && f.data.startsWith('data:image/');
-      const thumbEl = hasThumbReal
-        ? `<img style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid #eee;" src="${f.data}" alt="${f.name}" onerror="this.style.display='none'"/>`
-        : isImg && !f.data
-          ? `<div class="atch-icon" style="background:#EEF3FF;color:#3C3489;position:relative;"><span style="font-size:8px;">⏳</span></div>`
+      const typ = String(f.type || f.mime || '').toLowerCase();
+      const ic = ficon(typ);
+      const src = f.data || f.url || '';
+      const isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(typ) || String(f.mime || '').startsWith('image/') || /^data:image\//.test(src) || /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(src);
+      const nm = safeAttr(f.name || 'ไฟล์แนบ');
+      const srcAttr = safeAttr(src);
+      const nmJs = safeJs(f.name || 'ไฟล์แนบ');
+      const srcJs = safeJs(src);
+      const thumbEl = isImg && src
+        ? `<img class="atch-thumb" src="${srcAttr}" alt="${nm}" onerror="this.outerHTML='<div class=&quot;atch-icon&quot; style=&quot;background:${ic.bg};color:${ic.fg};&quot;>${ic.t}</div>'"/>`
+        : (f.loading || (isImg && !src))
+          ? `<div class="atch-icon atch-loading">⏳</div>`
           : `<div class="atch-icon" style="background:${ic.bg};color:${ic.fg};">${ic.t}</div>`;
+      const downloadBtn = src
+        ? `<button class="atch-download" title="ดาวน์โหลด" onclick="event.stopPropagation();downloadFile('${nmJs}','${srcJs}')">⬇ โหลด</button>`
+        : '';
       return `<div class="atch-item">
     <div style="flex-shrink:0;">${thumbEl}</div>
     <div style="flex:1;min-width:0;">
-      <div class="atch-name">${f.name}</div>
-      <div class="atch-size">${f.size}</div>
+      <div class="atch-name" title="${nm}">${nm}</div>
+      <div class="atch-size">${safeAttr(f.size || '')}${f.loading ? ' · กำลังเตรียมไฟล์...' : ''}</div>
     </div>
-    ${onDel ? `<button class="atch-del" title="ลบ" onclick="${onDel}">✕</button>` : ''}
+    <div class="atch-actions">${downloadBtn}${onDel ? `<button class="atch-del" title="ลบ" onclick="${onDel}">✕</button>` : ''}</div>
   </div>`;
     }
     function renderTaskAttachList() {
@@ -3022,7 +3082,7 @@
       const note = gi('sw-note').value.trim();
       if (!swPendingFiles.length && !note) { toast('กรุณาแนบไฟล์หรือเขียนหมายเหตุก่อนส่ง'); return; }
       if (!t.submittedFiles) t.submittedFiles = [];
-      t.submittedFiles = [...swPendingFiles.map(f => ({ name: f.name, size: f.size, type: f.type, data: f.data || null }))];
+      t.submittedFiles = [...swPendingFiles.map(f => ({ name: f.name, size: f.size, type: f.type, mime: f.mime || '', data: f.data || null, url: f.url || null }))];
       t.submitNote = note; t.prog = 100;
       if (t.col !== 'done') t.col = 'review';
       t.progressLog.push({ prog: 100, note: 'ส่งงาน: ' + note, authorId: currentUser.id, at: now2() });
@@ -3161,6 +3221,7 @@
     const gi = id => document.getElementById(id);
     function getInits(n) { const p = (n || '').trim().split(' ').filter(Boolean); return p.length >= 2 ? p[0][0] + p[1][0] : (p[0] || '?').substring(0, 2); }
     function safeAttr(v) { return String(v || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function safeJs(v) { return String(v || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,'\\n'); }
     function findU(id) { return users.find(u => u.id === id); }
     function avEl(u, sz = 28, r = 9) { if (!u) return ''; const c = AVC[(u.color || 0) % 8]; const base = `width:${sz}px;height:${sz}px;border-radius:${r}px;display:flex;align-items:center;justify-content:center;font-size:${Math.floor(sz * .32)}px;font-weight:700;flex-shrink:0;overflow:hidden;`; return u.avatar ? `<div style="${base}background:#e2e8f0;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"/></div>` : `<div style="${base}background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; }
     function miniAv(u) { if (!u) return ''; const c = AVC[(u.color || 0) % 8]; return u.avatar ? `<div class="bc-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"/></div>` : `<div class="bc-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; }
@@ -3905,7 +3966,7 @@
     </div>`: ''}
 
     <!-- attachments -->
-    ${t.attachments.length ? `<div class="dp-sec"><div class="dp-sec-t">📎 ไฟล์แนบ</div>${t.attachments.map(f => { return _atchItemHtml(f, null) + (f.data ? `<button style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--accent2);font-family:'Sarabun',sans-serif;margin-left:auto;" onclick="downloadFile('${f.name}','${f.data}')">⬇ บันทึก</button>` : ''); }).join('')}</div>` : ''}
+    ${t.attachments.length ? `<div class="dp-sec"><div class="dp-sec-t">📎 ไฟล์แนบ</div>${t.attachments.map(f => _atchItemHtml(f, null)).join('')}</div>` : ''}
 
     <!-- progress log -->
     ${t.progressLog.length ? `<div class="dp-sec"><div class="dp-sec-t">ประวัติความคืบหน้า</div>${[...t.progressLog].reverse().map(lg => {
@@ -3919,7 +3980,7 @@
     <!-- submitted files -->
     ${t.submittedFiles?.length ? `<div class="dp-sec"><div class="dp-sec-t">📤 ไฟล์งานที่ส่ง</div>
     ${t.submitNote ? `<div style="background:#EAF3DE;border-radius:8px;padding:8px 11px;font-size:11px;color:#27500A;margin-bottom:7px;">${t.submitNote}</div>` : ''}
-    ${t.submittedFiles.map(f => { const ic = ficon(f.type); const hasThumb = f.data && ['jpg', 'jpeg', 'png'].includes(f.type); return `<div class="atch-item">${hasThumb ? `<img class="atch-thumb" src="${f.data}" alt="${f.name}"/>` : `<div class="atch-icon" style="background:${ic.bg};color:${ic.fg};">${ic.t}</div>`}<div style="flex:1;min-width:0;"><div class="atch-name">${f.name}</div><div class="atch-size">${f.size}</div></div><button style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--accent2);font-family:'Sarabun',sans-serif;" onclick="toast('ดาวน์โหลด ${f.name}')">ดาวน์โหลด</button></div>`; }).join('')}
+    ${t.submittedFiles.map(f => _atchItemHtml(f, null)).join('')}
     </div>`: ''}
     <!-- obstacles -->
     <div class="dp-sec">
@@ -4251,14 +4312,14 @@
       const newSteps = pendingStepsList.map((label, i) => ({ id: nid++, label }));
       if (id) {
         const t = tasks.find(t => t.id == id);
-        if (t) { Object.assign(t, { title, desc: gi('t-desc').value, date: gi('t-date').value, priority: gi('t-priority').value, tags: [...selTags], asgn: [...selAsgn], attachments: taskPendingFiles.map(({ name, size, type, data }) => ({ name, size, type, data })), steps: newSteps, branch: gi('t-branch')?.value || t.branch || '', dept_key: gi('t-dept')?.value || t.dept_key || '' }); }
+        if (t) { Object.assign(t, { title, desc: gi('t-desc').value, date: gi('t-date').value, priority: gi('t-priority').value, tags: [...selTags], asgn: [...selAsgn], attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), steps: newSteps, branch: gi('t-branch')?.value || t.branch || '', dept_key: gi('t-dept')?.value || t.dept_key || '' }); }
         toast('แก้ไขงานแล้ว');
       } else {
         tasks.push({
           id: nid++, title, desc: gi('t-desc').value, col: _defaultCol || 'todo',
           branch: gi('t-branch').value || currentUser?.branch || '',
           dept_key: gi('t-dept').value || '',
-          ackBy: [], tags: [...selTags], asgn: [...selAsgn], date: gi('t-date').value, prog: 0, priority: gi('t-priority').value, steps: newSteps, stepChecks: {}, attachments: taskPendingFiles.map(({ name, size, type, data }) => ({ name, size, type, data })), submittedFiles: [], submitNote: '', obstacles: [], comments: [], progressLog: [], createdBy: currentUser.id
+          ackBy: [], tags: [...selTags], asgn: [...selAsgn], date: gi('t-date').value, prog: 0, priority: gi('t-priority').value, steps: newSteps, stepChecks: {}, attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), submittedFiles: [], submitNote: '', obstacles: [], comments: [], progressLog: [], createdBy: currentUser.id
         });
         // add notification + sound
         if (selAsgn.length) {
@@ -4487,7 +4548,8 @@
       if (!dataUrl) { toast('ไม่มีข้อมูลไฟล์ (ไฟล์นี้อัปโหลดก่อนเวอร์ชันนี้)'); return; }
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = name;
+      a.download = name || 'download';
+      if (/^https?:\/\//i.test(dataUrl)) { a.target = '_blank'; a.rel = 'noopener'; }
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -4856,7 +4918,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260713-avatar-everywhere"></script>
+<script src="js/script.js?v=20260714-multi-file-download"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -4873,6 +4935,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260713-avatar-everywhere"></script>
+<script src="js/sync.js?v=20260714-multi-file-download"></script>
 </body>
 </html>
