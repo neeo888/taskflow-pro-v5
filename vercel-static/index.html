@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260714-image-preview">
+  <link rel="stylesheet" href="css/style.css?v=20260714-edit-text">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -1435,6 +1435,45 @@
       white-space: nowrap;
     }
 
+
+    .dp-edit-top,
+    .dp-inline-edit {
+      border: 1px solid rgba(14, 206, 180, .35);
+      background: rgba(14, 206, 180, .10);
+      color: var(--accent2);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 900;
+      font-family: 'Sarabun', sans-serif;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all .14s ease;
+      margin-left: 10px;
+    }
+
+    .dp-edit-top:hover,
+    .dp-inline-edit:hover {
+      background: var(--accent);
+      color: #08223F;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(14, 206, 180, .20);
+    }
+
+    .dp-inline-edit {
+      padding: 5px 10px;
+      font-size: 11px;
+      margin-left: auto;
+    }
+
+    @media (max-width: 640px) {
+      .dp-edit-top { padding: 7px 9px; font-size: 11px; }
+      .dp-edit-top { max-width: 118px; overflow: hidden; text-overflow: ellipsis; }
+    }
+
     .dp-scroll {
       flex: 1;
       overflow-y: auto;
@@ -2480,6 +2519,7 @@
   <div class="dp" id="dp">
     <div class="dp-hd">
       <div class="dp-htitle" id="dp-title">รายละเอียดงาน</div>
+      <button class="dp-edit-top" id="dp-edit-btn" type="button" style="display:none;">✏️ แก้ไขข้อความ</button>
       <button class="mx" onclick="closeDP()">✕</button>
     </div>
     <div class="dp-scroll" id="dp-body"></div>
@@ -3998,8 +4038,14 @@
       const steps = ['todo', 'doing', 'review', 'done'];
       const si = steps.indexOf(t.col);
       const sLabels = { todo: 'รอดำเนินการ', doing: 'กำลังทำ', review: 'รอตรวจ', done: 'แล้วเสร็จ' };
+      const canEditText = !!(currentUser && (canAssign() || t.createdBy === currentUser.id));
 
       gi('dp-title').textContent = t.title;
+      const dpEditBtn = gi('dp-edit-btn');
+      if (dpEditBtn) {
+        dpEditBtn.style.display = canEditText ? 'inline-flex' : 'none';
+        dpEditBtn.onclick = canEditText ? (() => openTaskModalEdit(t.id)) : null;
+      }
 
       // Build step checks HTML for each assignee
       let stepChecksHtml = '';
@@ -4051,7 +4097,7 @@
       ${t.date ? `<div style="font-size:11px;color:${ov ? 'var(--danger)' : 'var(--text3)'};">📅 ${t.date}${ov ? ' ⚠️ เกินกำหนด' : ''}</div>` : ''}
     </div>
 
-    ${t.desc ? `<div class="dp-sec"><div class="dp-sec-t">รายละเอียด</div><div style="font-size:12px;color:var(--text2);line-height:1.6;">${t.desc}</div></div>` : ''}
+    ${t.desc ? `<div class="dp-sec"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="dp-sec-t" style="margin-bottom:0;">รายละเอียด</div>${canEditText ? `<button class="dp-inline-edit" onclick="openTaskModalEdit(${t.id})">✏️ แก้ไขข้อความ</button>` : ''}</div><div style="font-size:12px;color:var(--text2);line-height:1.6;white-space:pre-wrap;">${t.desc}</div></div>` : (canEditText ? `<div class="dp-sec"><button class="dp-inline-edit" style="margin-left:0;" onclick="openTaskModalEdit(${t.id})">✏️ เพิ่ม/แก้ไขรายละเอียด</button></div>` : '')}
 
     <!-- assignees -->
     ${t.verifiedBy ? `<div class="dp-sec"><div class="dp-sec-t">ตรวจสอบโดย</div><div style="display:flex;align-items:center;gap:8px;background:#E0F2FE;border-radius:10px;padding:9px 12px;">${avEl(findU(t.verifiedBy) || users[0], 24, 8)}<span style="font-size:12px;font-weight:600;color:#0369A1;">🔍 ${(findU(t.verifiedBy) || { name: '-' }).name} — ตรวจสอบงานแล้ว</span></div></div>` : ''}
@@ -5071,7 +5117,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260714-image-preview"></script>
+<script src="js/script.js?v=20260714-edit-text"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -5088,6 +5134,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260714-image-preview"></script>
+<script src="js/sync.js?v=20260714-edit-text"></script>
 </body>
 </html>
