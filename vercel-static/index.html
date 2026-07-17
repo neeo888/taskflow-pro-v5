@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260718-calendar-send">
+  <link rel="stylesheet" href="css/style.css?v=20260718-calendar-reminder">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -1565,7 +1565,8 @@
       align-items: center;
       flex-wrap: wrap;
     }
-    .calendar-email-input {
+    .calendar-email-input,
+    .calendar-reminder-select {
       flex: 1;
       min-width: 190px;
       border: .5px solid var(--border);
@@ -1578,7 +1579,8 @@
       color: var(--text);
       outline: none;
     }
-    .calendar-email-input:focus {
+    .calendar-email-input:focus,
+    .calendar-reminder-select:focus {
       border-color: rgba(14, 206, 180, .65);
       box-shadow: 0 0 0 3px rgba(14, 206, 180, .10);
     }
@@ -3582,12 +3584,24 @@
       }
       return email;
     }
+    function calendarReminderMinutes(tid) {
+      const v = parseInt(gi('cal-remind-' + tid)?.value || '30', 10);
+      return Number.isFinite(v) && v >= 0 ? v : 30;
+    }
+    function calendarReminderLabel(min) {
+      if (!min) return 'ไม่แจ้งเตือนล่วงหน้า';
+      if (min < 60) return `เตือนก่อน ${min} นาที`;
+      if (min === 60) return 'เตือนก่อน 1 ชั่วโมง';
+      if (min < 1440) return `เตือนก่อน ${Math.round(min / 60)} ชั่วโมง`;
+      return `เตือนก่อน ${Math.round(min / 1440)} วัน`;
+    }
     function openCalendarEvent(tid, provider) {
       const t = tasks.find(x => x.id === tid); if (!t) return;
       const email = calendarEmailValue(tid); if (email === null) return;
       const { start, end } = taskCalendarRange(t);
       const title = `TaskFlow: ${t.title}`;
-      const details = calText(t);
+      const reminder = calendarReminderMinutes(tid);
+      const details = `${calText(t)}\n\n🔔 ${calendarReminderLabel(reminder)}`;
       let url = '';
       if (provider === 'google') {
         const params = new URLSearchParams({
@@ -3619,9 +3633,11 @@
       const t = tasks.find(x => x.id === tid); if (!t) return;
       const email = calendarEmailValue(tid); if (email === null) return;
       const { start, end } = taskCalendarRange(t);
+      const reminder = calendarReminderMinutes(tid);
       const esc = v => String(v || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
       const attendee = email ? `ATTENDEE;CN=${esc(email)};RSVP=TRUE:mailto:${email}\r\n` : '';
-      const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//TaskFlow Pro v5//TH\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nBEGIN:VEVENT\r\nUID:taskflow-${t.id}-${Date.now()}@taskflow-pro-v5\r\nDTSTAMP:${calDateUTC(new Date())}\r\nDTSTART:${calDateUTC(start)}\r\nDTEND:${calDateUTC(end)}\r\nSUMMARY:${esc('TaskFlow: ' + t.title)}\r\nDESCRIPTION:${esc(calText(t))}\r\nLOCATION:${esc('TaskFlow Pro v5')}\r\n${attendee}END:VEVENT\r\nEND:VCALENDAR\r\n`;
+      const alarm = reminder > 0 ? `BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:${esc('TaskFlow แจ้งเตือน: ' + t.title)}\r\nTRIGGER:-PT${reminder}M\r\nEND:VALARM\r\n` : '';
+      const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//TaskFlow Pro v5//TH\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nBEGIN:VEVENT\r\nUID:taskflow-${t.id}-${Date.now()}@taskflow-pro-v5\r\nDTSTAMP:${calDateUTC(new Date())}\r\nDTSTART:${calDateUTC(start)}\r\nDTEND:${calDateUTC(end)}\r\nSUMMARY:${esc('TaskFlow: ' + t.title)}\r\nDESCRIPTION:${esc(calText(t) + '\n\n🔔 ' + calendarReminderLabel(reminder))}\r\nLOCATION:${esc('TaskFlow Pro v5')}\r\n${attendee}${alarm}END:VEVENT\r\nEND:VCALENDAR\r\n`;
       const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -4373,15 +4389,24 @@
     ${t.desc ? `<div class="dp-sec"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="dp-sec-t" style="margin-bottom:0;">รายละเอียด</div>${canEditText ? `<button class="dp-inline-edit" onclick="openTaskModalEdit(${t.id})">✏️ แก้ไขข้อความ</button>` : ''}</div><div style="font-size:12px;color:var(--text2);line-height:1.6;white-space:pre-wrap;">${t.desc}</div></div>` : (canEditText ? `<div class="dp-sec"><button class="dp-inline-edit" style="margin-left:0;" onclick="openTaskModalEdit(${t.id})">✏️ เพิ่ม/แก้ไขรายละเอียด</button></div>` : '')}
 
     <div class="dp-sec">
-      <div class="dp-sec-t">📅 ส่งเข้าปฏิทิน Gmail / Hotmail</div>
+      <div class="dp-sec-t">⚙️ ตั้งค่าปฏิทินและการแจ้งเตือน</div>
       <div class="calendar-send-box">
         <div class="calendar-send-row">
           <input class="calendar-email-input" id="cal-email-${t.id}" type="email" placeholder="ใส่อีเมลผู้รับ เช่น user@gmail.com หรือ user@hotmail.com" value="${safeAttr(currentUser?.email || '')}">
-          <button class="calendar-btn google" type="button" onclick="openCalendarEvent(${t.id},'google')">Google Calendar</button>
-          <button class="calendar-btn outlook" type="button" onclick="openCalendarEvent(${t.id},'outlook')">Hotmail / Outlook</button>
-          <button class="calendar-btn ics" type="button" onclick="downloadCalendarIcs(${t.id})">โหลด .ics</button>
+          <select class="calendar-reminder-select" id="cal-remind-${t.id}" title="ตั้งเตือนก่อนถึงเวลานัดหรือกำหนดส่ง">
+            <option value="0">ไม่ต้องเตือน</option>
+            <option value="5">เตือนก่อน 5 นาที</option>
+            <option value="15">เตือนก่อน 15 นาที</option>
+            <option value="30" selected>เตือนก่อน 30 นาที</option>
+            <option value="60">เตือนก่อน 1 ชั่วโมง</option>
+            <option value="180">เตือนก่อน 3 ชั่วโมง</option>
+            <option value="1440">เตือนก่อน 1 วัน</option>
+          </select>
+          <button class="calendar-btn google" type="button" onclick="openCalendarEvent(${t.id},'google')">ส่งไป Google Calendar</button>
+          <button class="calendar-btn outlook" type="button" onclick="openCalendarEvent(${t.id},'outlook')">ส่งไป Hotmail / Outlook</button>
+          <button class="calendar-btn ics" type="button" onclick="downloadCalendarIcs(${t.id})">โหลด .ics พร้อมเตือน</button>
         </div>
-        <div class="calendar-hint">ระบบจะใส่ชื่องาน รายละเอียด ผู้รับผิดชอบ และ ${taskDueLabel(t)} ให้ในปฏิทินอัตโนมัติ</div>
+        <div class="calendar-hint">ตั้งอีเมลและเวลาแจ้งเตือนก่อนถึงนัด/กำหนดส่งได้ ระบบจะใส่ชื่องาน รายละเอียด ผู้รับผิดชอบ และ ${taskDueLabel(t)} ให้อัตโนมัติ</div>
       </div>
     </div>
 
@@ -5440,7 +5465,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260718-calendar-send"></script>
+<script src="js/script.js?v=20260718-calendar-reminder"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -5457,6 +5482,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260718-calendar-send"></script>
+<script src="js/sync.js?v=20260718-calendar-reminder"></script>
 </body>
 </html>
