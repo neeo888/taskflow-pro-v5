@@ -5180,6 +5180,7 @@
     }
     function submitTask() {
       const title = gi('t-title').value.trim(); if (!title) { toast('กรุณาระบุชื่องาน'); return; }
+      if (!selAsgn.length) { toast('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน'); return; }
       const id = gi('t-id').value;
       const newSteps = pendingStepsList.map((label, i) => ({ id: nid++, label }));
       if (id) {

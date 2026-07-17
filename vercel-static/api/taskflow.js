@@ -39,6 +39,26 @@ async function sb(path, opts = {}) {
   return data;
 }
 async function bodyJson(req) { try { return await req.json(); } catch { return {}; } }
+async function sendTelegramMessages(chatIds, text) {
+  const token = String(TELEGRAM_BOT_TOKEN || '').trim();
+  const ids = [...new Set((chatIds || []).map(v => String(v || '').trim()).filter(Boolean))];
+  if (!token || !ids.length || !text) return { sent: 0, skipped: true };
+  let sent = 0;
+  for (const chatId of ids) {
+    try {
+      const tg = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+      });
+      const data = await tg.json().catch(() => null);
+      if (tg.ok && data?.ok) sent += 1;
+    } catch (_) {
+      // ห้ามทำให้การบันทึกงานล้มเหลวเพราะ Telegram ส่งไม่ผ่าน
+    }
+  }
+  return { sent, skipped: false };
+}
 function token64() {
   const a = new Uint8Array(32);
   crypto.getRandomValues(a);
@@ -272,13 +292,31 @@ async function getTasks(req) {
       ackBy: t.ack_by || [],
     };
   });
-  return ok({ tasks: out });
+  const visible = s.urole === 'user' ? out.filter(t => (t.asgn || []).includes(Number(s.id))) : out;
+  return ok({ tasks: visible });
 }
 async function taskSave(req) {
   const s = await auth(req);
+  if (!['admin', 'manager', 'assistant'].includes(s.urole)) return err('Forbidden', 403);
   const b = await bodyJson(req);
   if (!b.title) return err('Missing title');
+  const assignedIds = [...new Set((Array.isArray(b.asgn) ? b.asgn : []).map(uid => Number(uid)).filter(Boolean))];
+  if (!assignedIds.length) return err('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน');
+
   let id = Number(b.id || 0);
+  let previousAssignedIds = [];
+  if (id) {
+    const prev = await sb(`/rest/v1/tf_task_assignees?task_id=eq.${id}&select=user_id`, { method: 'GET' });
+    previousAssignedIds = prev.map(x => Number(x.user_id));
+  }
+
+  if (s.urole !== 'admin') {
+    const inUsers = `in.(${assignedIds.join(',')})`;
+    const targetUsers = await sb(`/rest/v1/tf_users?id=${inUsers}&select=id,branch`, { method: 'GET' });
+    const outsideBranch = targetUsers.some(u => String(u.branch || '') !== String(s.branch || ''));
+    if (outsideBranch) return err('มอบหมายได้เฉพาะสมาชิกในสาขาของคุณ', 403);
+  }
+
   const payload = { title: b.title, description: b.desc || '', col: b.col || 'todo', priority: b.priority || 'normal', due_date: b.date || null, branch: b.branch || s.branch || '', dept_key: b.dept_key || '', tags: b.tags || [], ack_by: b.ackBy || [] };
   if (id) {
     await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
@@ -288,15 +326,26 @@ async function taskSave(req) {
     const rows = await sb('/rest/v1/tf_tasks', { method: 'POST', body: JSON.stringify({ ...payload, created_by: s.id }) });
     id = Number(rows[0].id);
   }
-  if (Array.isArray(b.asgn) && b.asgn.length) {
-    await sb('/rest/v1/tf_task_assignees', { method: 'POST', body: JSON.stringify(b.asgn.map(uid => ({ task_id: id, user_id: Number(uid) }))) });
-    if (!b.id) {
-      const notifs = b.asgn.filter(uid => Number(uid) !== s.id).map(uid => ({ type: 'new_task', title: '🔔 งานใหม่ถูกมอบหมาย', body: `"${b.title}" โดย ${s.name}`, task_id: id, for_user_id: Number(uid) }));
-      if (notifs.length) await sb('/rest/v1/tf_notifications', { method: 'POST', body: JSON.stringify(notifs) });
-    }
+
+  await sb('/rest/v1/tf_task_assignees', { method: 'POST', body: JSON.stringify(assignedIds.map(uid => ({ task_id: id, user_id: uid }))) });
+
+  const newlyAssignedIds = assignedIds.filter(uid => !previousAssignedIds.includes(uid));
+  const notifyIds = newlyAssignedIds.filter(uid => Number(uid) !== Number(s.id));
+  let assignmentEmails = [];
+  let telegramSent = 0;
+  if (notifyIds.length) {
+    const inNotify = `in.(${notifyIds.join(',')})`;
+    const recipients = await sb(`/rest/v1/tf_users?id=${inNotify}&select=id,name,email,telegram_chat_id`, { method: 'GET' });
+    assignmentEmails = recipients.map(u => u.email).filter(Boolean);
+    const notifs = notifyIds.map(uid => ({ type: 'new_task', title: '🔔 งานใหม่ถูกมอบหมาย', body: `"${b.title}" โดย ${s.name}`, task_id: id, for_user_id: Number(uid) }));
+    if (notifs.length) await sb('/rest/v1/tf_notifications', { method: 'POST', body: JSON.stringify(notifs) });
+    const tgText = `🔔 TaskFlow Pro v5\nคุณได้รับมอบหมายงาน: ${b.title}\nโดย: ${s.name}${b.date ? `\nกำหนดส่ง: ${b.date}` : ''}\nกรุณาเข้าสู่ระบบเพื่อตรวจสอบรายละเอียด`;
+    const tg = await sendTelegramMessages(recipients.map(u => u.telegram_chat_id), tgText);
+    telegramSent = tg.sent || 0;
   }
+
   if (Array.isArray(b.steps) && b.steps.length) await sb('/rest/v1/tf_task_steps', { method: 'POST', body: JSON.stringify(b.steps.map((st, i) => ({ task_id: id, label: st.label || st, sort_order: i }))) });
-  return ok({ task_id: id });
+  return ok({ task_id: id, assignment_emails: assignmentEmails, telegram_sent: telegramSent });
 }
 async function simplePatch(req, table, idField, payloadFn) {
   await auth(req);

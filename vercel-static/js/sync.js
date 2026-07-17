@@ -294,6 +294,7 @@ const _orig_submitTask = window.submitTask;
 window.submitTask = function () {
   const title = gi('t-title').value.trim();
   if (!title) { toast('กรุณาระบุชื่องาน'); return; }
+  if (!window.selAsgn || !window.selAsgn.length) { toast('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน'); return; }
   const idVal = gi('t-id').value;
   const isEdit = !!idVal;
   const pendingFiles = (window.taskPendingFiles || []).filter(f => f && f.data && !f.url);
@@ -320,6 +321,11 @@ window.submitTask = function () {
   if (!payload.title) return;
 
   _api('task_save', payload).then(async r => {
+    if (!r.ok) {
+      if (typeof toast === 'function') toast(r.error || 'บันทึกงานขึ้น Supabase ไม่สำเร็จ');
+      _loadFromServer(true).then(() => renderAll());
+      return;
+    }
     const savedId = Number(r.task_id || payload.id || idVal || 0);
     if (r.ok && savedId && !isEdit) {
       // อัปเดต ID ท้องถิ่นให้ตรงกับ server
