@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260717-edit-checklist">
+  <link rel="stylesheet" href="css/style.css?v=20260717-sort-due">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -3060,7 +3060,7 @@
             <span class="tf-task-count-badge">${pendingAckTasks.length ? pendingAckTasks.length + ' รอรับทราบ' : myTasks.length + ' งาน'}</span>
           </div>
         </div>
-        ${myTasks.length ? myTasks.slice(0, 12).map(t => {
+        ${myTasks.length ? sortTasksByDue(myTasks).slice(0, 12).map(t => {
           const cfg = COL[t.col] || COL.todo;
           const ov = t.date && new Date(t.date) < new Date() && cfg.g !== 'done';
           return `<div class="tf-task-row" onclick="openTaskFromNotifList(${t.id})">
@@ -3443,6 +3443,62 @@
     function fmtSz(b) { if (b < 1024) return b + 'B'; if (b < 1048576) return Math.round(b / 1024) + 'KB'; return (b / 1048576).toFixed(1) + 'MB'; }
     function ficon(t) { return FICON[t] || { bg: '#F1EFE8', fg: '#444441', t: 'FILE' }; }
     function now2() { return new Date().toISOString().split('T')[0]; }
+
+    const TH_MONTHS = {
+      'มค': 1, 'ม.ค': 1, 'ม.ค.': 1, 'มกราคม': 1,
+      'กพ': 2, 'ก.พ': 2, 'ก.พ.': 2, 'กุมภาพันธ์': 2,
+      'มีค': 3, 'มี.ค': 3, 'มี.ค.': 3, 'มีนาคม': 3,
+      'เมย': 4, 'เม.ย': 4, 'เม.ย.': 4, 'เมษายน': 4,
+      'พค': 5, 'พ.ค': 5, 'พ.ค.': 5, 'พฤษภาคม': 5,
+      'มิย': 6, 'มิ.ย': 6, 'มิ.ย.': 6, 'มิถุนายน': 6,
+      'กค': 7, 'ก.ค': 7, 'ก.ค.': 7, 'กรกฎาคม': 7,
+      'สค': 8, 'ส.ค': 8, 'ส.ค.': 8, 'สิงหาคม': 8,
+      'กย': 9, 'ก.ย': 9, 'ก.ย.': 9, 'กันยายน': 9,
+      'ตค': 10, 'ต.ค': 10, 'ต.ค.': 10, 'ตุลาคม': 10,
+      'พย': 11, 'พ.ย': 11, 'พ.ย.': 11, 'พฤศจิกายน': 11,
+      'ธค': 12, 'ธ.ค': 12, 'ธ.ค.': 12, 'ธันวาคม': 12,
+    };
+    function normalizeYear(y) {
+      y = parseInt(y, 10);
+      if (!Number.isFinite(y)) return null;
+      if (y < 100) y += 2500;
+      if (y > 2400) y -= 543;
+      return y;
+    }
+    function makeDateMs(y, m, d, hh = 0, mm = 0) {
+      y = normalizeYear(y); m = parseInt(m, 10); d = parseInt(d, 10);
+      if (!y || !m || !d) return Number.MAX_SAFE_INTEGER;
+      const dt = new Date(y, m - 1, d, parseInt(hh || 0, 10), parseInt(mm || 0, 10), 0, 0);
+      return Number.isNaN(dt.getTime()) ? Number.MAX_SAFE_INTEGER : dt.getTime();
+    }
+    function taskDueTime(t) {
+      if (t?.date) {
+        const direct = new Date(t.date + (String(t.date).length <= 10 ? 'T00:00:00' : '')).getTime();
+        if (!Number.isNaN(direct)) return direct;
+      }
+      const src = `${t?.title || ''} ${t?.desc || ''}`;
+      let m = src.match(/(20\d{2}|25\d{2})[-/](\d{1,2})[-/](\d{1,2})(?:\s+(\d{1,2})[.:](\d{2}))?/);
+      if (m) return makeDateMs(m[1], m[2], m[3], m[4], m[5]);
+      m = src.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2})[.:](\d{2}))?/);
+      if (m) return makeDateMs(m[3], m[2], m[1], m[4], m[5]);
+      m = src.match(/(\d{1,2})\s*(ม\.ค\.?|ก\.พ\.?|มี\.ค\.?|เม\.ย\.?|พ\.ค\.?|มิ\.ย\.?|ก\.ค\.?|ส\.ค\.?|ก\.ย\.?|ต\.ค\.?|พ\.ย\.?|ธ\.ค\.?|มค|กพ|มีค|เมย|พค|มิย|กค|สค|กย|ตค|พย|ธค|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(\d{2,4})(?:\s+(\d{1,2})[.:](\d{2}))?/i);
+      if (m) return makeDateMs(m[3], TH_MONTHS[m[2]] || TH_MONTHS[m[2].replace(/\.$/, '')], m[1], m[4], m[5]);
+      return Number.MAX_SAFE_INTEGER;
+    }
+    function sortTasksByDue(list, doneLast = false) {
+      const pr = { urgent: 0, high: 1, normal: 2, low: 3 };
+      return [...(list || [])].sort((a, b) => {
+        if (doneLast) {
+          const ad = COL[a.col]?.g === 'done' ? 1 : 0, bd = COL[b.col]?.g === 'done' ? 1 : 0;
+          if (ad !== bd) return ad - bd;
+        }
+        const da = taskDueTime(a), db = taskDueTime(b);
+        if (da !== db) return da - db;
+        const pa = pr[a.priority] ?? 9, pb = pr[b.priority] ?? 9;
+        if (pa !== pb) return pa - pb;
+        return (b.id || 0) - (a.id || 0);
+      });
+    }
 
     // ══════════════════════════════════════════════════════════════
     // สาขา กปภ. เขต 10 (costcenter → ชื่อสาขา)
@@ -3886,7 +3942,7 @@
       gi('hgreeting').textContent = (h < 12 ? 'สวัสดีตอนเช้า ' : h < 17 ? 'สวัสดีตอนบ่าย ' : 'สวัสดีตอนเย็น ') + currentUser.name;
       gi('hactions').innerHTML = canAssign() ? `<button class="btn-pri" onclick="openTaskModalNew()">+ มอบหมายงาน</button>` : '';
       const myT = tasks.filter(t => canSeeTask(t));
-      const myWip = myT.filter(t => COL[t.col] && (COL[t.col] || COL['done']).g === 'wip');
+      const myWip = sortTasksByDue(myT.filter(t => COL[t.col] && (COL[t.col] || COL['done']).g === 'wip'));
       const allObs = tasks.flatMap(t => t.obstacles);
       gi('hmetrics').innerHTML = [
         { l: 'งาน WIP ของฉัน', v: myWip.length, c: '#F59E0B', sub: 'กำลังดำเนินการ' },
@@ -3904,8 +3960,8 @@
     function switchMyTab(tab) { myTaskTab = tab; gi('tab-wip').classList.toggle('active', tab === 'wip'); gi('tab-completed').classList.toggle('active', tab === 'completed'); renderMyTasks(); }
     function renderMyTasks() {
       const myT = tasks.filter(t => canSeeTask(t));
-      const wip = myT.filter(t => COL[t.col] && (COL[t.col] || COL['done']).g === 'wip');
-      const done = myT.filter(t => t.col === 'done' || t.col === 'verified');
+      const wip = sortTasksByDue(myT.filter(t => COL[t.col] && (COL[t.col] || COL['done']).g === 'wip'));
+      const done = sortTasksByDue(myT.filter(t => t.col === 'done' || t.col === 'verified'));
       gi('tc-wip').textContent = wip.length; gi('tc-done').textContent = done.length;
       const list = myTaskTab === 'wip' ? wip : done;
       gi('my-tasks-list').innerHTML = list.length ? list.map(t => taskCard(t)).join('') : `<div style="text-align:center;padding:40px;font-size:13px;color:var(--text3);">${myTaskTab === 'wip' ? 'ไม่มีงานที่กำลังดำเนินการ' : 'ยังไม่มีงานที่เสร็จ'}</div>`;
@@ -3945,8 +4001,8 @@
       const uid = currentUser.id;
       // กรองเฉพาะงานที่มีสิทธิ์เห็น (user role = เฉพาะงานที่ assign)
       const myT = tasks.filter(t => canSeeTask(t));
-      const wip = myT.filter(t => COL[t.col] && (COL[t.col] || COL['done']).g === 'wip');
-      const done = myT.filter(t => t.col === 'done' || t.col === 'verified');
+      const wip = sortTasksByDue(myT.filter(t => COL[t.col] && (COL[t.col] || COL['done']).g === 'wip'));
+      const done = sortTasksByDue(myT.filter(t => t.col === 'done' || t.col === 'verified'));
       const review = myT.filter(t => t.col === 'review');
       const pct = Math.round(myT.length ? done.length / myT.length * 100 : 0);
       const kc = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)';
@@ -3981,7 +4037,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:12px;">ความคืบหน้างานของฉัน</div>
-        ${myT.length ? myT.map(t => {
+        ${myT.length ? sortTasksByDue(myT, true).map(t => {
         const cfg = COL[t.col]; return `<div style="margin-bottom:10px;cursor:pointer;" onclick="showDP(${t.id})">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
             <span style="font-size:11px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</span>
@@ -3999,7 +4055,7 @@
           ${[{ l: 'ขั้นตอนทั้งหมด', v: totalSteps, c: '#6366F1' }, { l: 'เสร็จแล้ว', v: doneSteps, c: '#10B981' }, { l: 'คงเหลือ', v: totalSteps - doneSteps, c: '#F59E0B' }, { l: '%สำเร็จ', v: Math.round(totalSteps ? doneSteps / totalSteps * 100 : 0) + '%', c: '#8B5CF6' }].map(m => `<div style="background:var(--surface);border-radius:9px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:${m.c};">${m.v}</div><div style="font-size:9px;color:var(--text3);">${m.l}</div></div>`).join('')}
         </div>
         <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px;">งานที่มีขั้นตอนค้าง</div>
-        ${myT.filter(t => t.steps?.length).map(t => {
+        ${sortTasksByDue(myT.filter(t => t.steps?.length)).map(t => {
         const mySC = t.stepChecks[uid] || {}; const doneC = Object.values(mySC).filter(v => v.done).length; const tot = t.steps.length; const ppct = Math.round(tot ? doneC / tot * 100 : 0); return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer;" onclick="showDP(${t.id})">
           <div style="flex:1;min-width:0;"><span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">${t.title}</span>
           <div style="height:4px;background:var(--surface);border-radius:2px;overflow:hidden;margin-top:3px;"><div style="width:${ppct}%;height:100%;background:var(--purple);border-radius:2px;"></div></div></div>
@@ -4033,7 +4089,7 @@
     function renderBoard() {
       gi('bactions').innerHTML = `<button class="btn-pri" onclick="openTaskModalNew()">+ มอบหมายงาน</button>`;
       gi('board-wrap').innerHTML = ['todo', 'doing', 'review', 'done', 'verified'].map(col => {
-        const cfg = COL[col]; const ct = tasks.filter(t => t.col === col && canSeeTask(t));
+        const cfg = COL[col]; const ct = sortTasksByDue(tasks.filter(t => t.col === col && canSeeTask(t)));
         return `<div class="col">
       <div class="col-hd"><div class="col-dot" style="background:${cfg.c};"></div><span class="col-name">${cfg.n}</span><span class="col-cnt">${ct.length}</span></div>
       <div class="cards">${ct.map(t => boardCard(t, col)).join('') || `<div style="text-align:center;padding:12px;font-size:10px;color:var(--text3);">ว่าง</div>`}</div>
@@ -5225,7 +5281,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260717-edit-checklist"></script>
+<script src="js/script.js?v=20260717-sort-due"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -5242,6 +5298,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260717-edit-checklist"></script>
+<script src="js/sync.js?v=20260717-sort-due"></script>
 </body>
 </html>
