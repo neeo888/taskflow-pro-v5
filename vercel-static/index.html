@@ -4753,6 +4753,19 @@
       return showDP(id, fullPage);
     }
 
+    // คลิกงานจาก Dashboard: ใช้ event delegation ช่วยอีกชั้น
+    // เพื่อให้คลิกได้ทั้งแถว แม้บาง browser/mobile จะไม่ยิง inline onclick ตามคาด
+    document.addEventListener('click', function(e) {
+      const row = e.target.closest && e.target.closest('.dash-task-row[data-task-id]');
+      if (!row) return;
+      if (e.target.closest('button,a,input,select,textarea')) return;
+      const tid = row.getAttribute('data-task-id');
+      if (!tid) return;
+      e.preventDefault();
+      e.stopPropagation();
+      showDP(tid, true);
+    }, true);
+
     function showDP(id, fullPage = true) {
       const tid = Number(id);
       const t = tasks.find(t => Number(t.id) === tid || String(t.id) === String(id));
