@@ -2170,6 +2170,51 @@
       opacity: .5;
     }
 
+
+    .dash-task-row {
+      cursor: pointer;
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin: 0 -10px 8px;
+      transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+
+    .dash-task-row:hover,
+    .dash-task-row:focus {
+      background: #F3F6FF;
+      box-shadow: inset 3px 0 0 var(--purple);
+      outline: none;
+      transform: translateX(2px);
+    }
+
+    .dash-task-row:active { transform: translateX(1px) scale(.998); }
+
+    .dash-task-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dash-open-pill {
+      margin-left: 8px;
+      border: .5px solid #DDE5F2;
+      background: #fff;
+      color: var(--purple);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 9px;
+      font-weight: 800;
+      opacity: 0;
+      transition: opacity .15s ease;
+    }
+
+    .dash-task-row:hover .dash-open-pill,
+    .dash-task-row:focus .dash-open-pill { opacity: 1; }
+
     /* CHART */
     .chart-wrap {
       position: relative;
@@ -4582,10 +4627,11 @@
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:12px;">ความคืบหน้างานของฉัน</div>
         ${myT.length ? sortTasksByDue(myT, true).map(t => {
-        const cfg = COL[t.col]; return `<div style="margin-bottom:10px;cursor:pointer;" onclick="showDP(${t.id})">
+        const cfg = COL[t.col]; return `<div class="dash-task-row" role="button" tabindex="0" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <span style="font-size:11px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</span>
+            <span class="dash-task-title">${t.title}</span>
             <span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:8px;">${t.prog}%</span>
+            <span class="dash-open-pill">ดูงาน</span>
           </div>
           <div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden;"><div style="width:${t.prog}%;height:100%;background:${cfg.c};border-radius:3px;"></div></div>
           <div style="font-size:9px;color:var(--text3);margin-top:2px;">${cfg.n} · ${taskDueLabel(t)}</div>
@@ -4600,10 +4646,11 @@
         </div>
         <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px;">งานที่มีขั้นตอนค้าง</div>
         ${sortTasksByDue(myT.filter(t => t.steps?.length)).map(t => {
-        const mySC = t.stepChecks[uid] || {}; const doneC = Object.values(mySC).filter(v => v.done).length; const tot = t.steps.length; const ppct = Math.round(tot ? doneC / tot * 100 : 0); return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer;" onclick="showDP(${t.id})">
-          <div style="flex:1;min-width:0;"><span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">${t.title}</span>
+        const mySC = t.stepChecks[uid] || {}; const doneC = Object.values(mySC).filter(v => v.done).length; const tot = t.steps.length; const ppct = Math.round(tot ? doneC / tot * 100 : 0); return `<div class="dash-task-row" style="display:flex;align-items:center;gap:8px;margin-bottom:7px;" role="button" tabindex="0" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
+          <div style="flex:1;min-width:0;"><span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;font-weight:700;">${t.title}</span>
           <div style="height:4px;background:var(--surface);border-radius:2px;overflow:hidden;margin-top:3px;"><div style="width:${ppct}%;height:100%;background:var(--purple);border-radius:2px;"></div></div></div>
           <span style="font-size:10px;font-weight:700;color:var(--purple);">${doneC}/${tot}</span>
+          <span class="dash-open-pill" style="opacity:.9;">ดูงาน</span>
         </div>`;
       }).join('')}
       </div>
@@ -4701,8 +4748,15 @@
     // ══════════════════════════
     // DETAIL PANEL (full)
     // ══════════════════════════
+    function openTaskDetail(id, fullPage = true, ev) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      return showDP(id, fullPage);
+    }
+
     function showDP(id, fullPage = true) {
-      const t = tasks.find(t => t.id === id); if (!t) return;
+      const tid = Number(id);
+      const t = tasks.find(t => Number(t.id) === tid || String(t.id) === String(id));
+      if (!t) { toast('ไม่พบรายละเอียดงานนี้ กรุณารีเฟรชข้อมูลอีกครั้ง'); return; }
       activeDetailTaskId = id;
       const cfg = COL[t.col]; const pr = PRIO[t.priority];
       const asgns = users.filter(u => t.asgn.includes(u.id));
@@ -4910,6 +4964,9 @@
     function addObsComment(tid, oid) { const inp = gi('oci-' + oid); if (!inp || !inp.value.trim()) return; const t = tasks.find(t => t.id === tid); const o = t?.obstacles.find(o => o.id === oid); if (!o) return; o.comments.push({ id: nid++, authorId: currentUser.id, text: inp.value.trim(), at: now2() }); showDP(tid); toast('เพิ่มคอมเมนต์แล้ว'); }
 
     function closeDP() { gi('dp').classList.remove('open', 'full'); }
+    window.showDP = showDP;
+    window.openTaskDetail = openTaskDetail;
+    window.closeDP = closeDP;
     function delTask(id) { if (confirm('ลบงาน?')) { tasks = tasks.filter(t => t.id !== id); closeDP(); renderAll(); toast('ลบงานแล้ว'); } }
     function updateObsBadge() {
       const b = gi('obs-badge'); if (!b) return;
