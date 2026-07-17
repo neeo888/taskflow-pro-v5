@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260718-due-time">
+  <link rel="stylesheet" href="css/style.css?v=20260718-calendar-send">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -1549,6 +1549,61 @@
       .step-edit-row { align-items: stretch; flex-wrap: wrap; }
       .step-label { min-width: 100%; }
       .step-edit-input { min-width: 100%; }
+    }
+
+
+
+    .calendar-send-box {
+      background: linear-gradient(135deg, rgba(14, 206, 180, .08), rgba(99, 102, 241, .08));
+      border: .5px solid rgba(99, 102, 241, .18);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .calendar-send-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .calendar-email-input {
+      flex: 1;
+      min-width: 190px;
+      border: .5px solid var(--border);
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      outline: none;
+    }
+    .calendar-email-input:focus {
+      border-color: rgba(14, 206, 180, .65);
+      box-shadow: 0 0 0 3px rgba(14, 206, 180, .10);
+    }
+    .calendar-btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .calendar-btn.google { background: #EEF3FF; color: #3C3489; }
+    .calendar-btn.outlook { background: #E6F1FB; color: #0C447C; }
+    .calendar-btn.ics { background: #E6FBF7; color: #064E3B; }
+    .calendar-hint {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 7px;
+      line-height: 1.5;
     }
 
     .dp-sec {
@@ -3503,6 +3558,79 @@
       const hasTime = d.getHours() || d.getMinutes() || extractTimeParts(`${t?.title || ''} ${t?.desc || ''}`);
       return `กำหนดแล้วเสร็จ: ${date}${hasTime ? ` เวลา ${pad(d.getHours())}:${pad(d.getMinutes())} น.` : ''}`;
     }
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+    function taskCalendarRange(t) {
+      let startMs = taskDueTime(t);
+      if (startMs === Number.MAX_SAFE_INTEGER) startMs = Date.now() + 60 * 60 * 1000;
+      const start = new Date(startMs);
+      const end = new Date(startMs + 60 * 60 * 1000);
+      return { start, end };
+    }
+    function calDateUTC(d) {
+      return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+    }
+    function calText(t) {
+      const asgnNames = (t.asgn || []).map(id => findU(id)?.name).filter(Boolean).join(', ');
+      return `${t.desc || ''}\n\nสถานะ: ${(COL[t.col] || COL.todo).n}\nความสำคัญ: ${(PRIO[t.priority] || PRIO.normal).l}\nผู้รับผิดชอบ: ${asgnNames || '-'}\n${taskDueLabel(t)}`.trim();
+    }
+    function calendarEmailValue(tid) {
+      const inp = gi('cal-email-' + tid);
+      const email = (inp?.value || '').trim();
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        toast('กรุณาใส่อีเมลให้ถูกต้อง'); inp?.focus(); return null;
+      }
+      return email;
+    }
+    function openCalendarEvent(tid, provider) {
+      const t = tasks.find(x => x.id === tid); if (!t) return;
+      const email = calendarEmailValue(tid); if (email === null) return;
+      const { start, end } = taskCalendarRange(t);
+      const title = `TaskFlow: ${t.title}`;
+      const details = calText(t);
+      let url = '';
+      if (provider === 'google') {
+        const params = new URLSearchParams({
+          action: 'TEMPLATE',
+          text: title,
+          dates: `${calDateUTC(start)}/${calDateUTC(end)}`,
+          details,
+          location: 'TaskFlow Pro v5',
+        });
+        if (email) params.set('add', email);
+        url = `https://calendar.google.com/calendar/render?${params.toString()}`;
+      } else {
+        const params = new URLSearchParams({
+          path: '/calendar/action/compose',
+          rru: 'addevent',
+          subject: title,
+          startdt: start.toISOString(),
+          enddt: end.toISOString(),
+          body: details,
+          location: 'TaskFlow Pro v5',
+        });
+        if (email) params.set('to', email);
+        url = `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+      toast(provider === 'google' ? 'เปิด Google Calendar แล้ว' : 'เปิด Outlook/Hotmail Calendar แล้ว');
+    }
+    function downloadCalendarIcs(tid) {
+      const t = tasks.find(x => x.id === tid); if (!t) return;
+      const email = calendarEmailValue(tid); if (email === null) return;
+      const { start, end } = taskCalendarRange(t);
+      const esc = v => String(v || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+      const attendee = email ? `ATTENDEE;CN=${esc(email)};RSVP=TRUE:mailto:${email}\r\n` : '';
+      const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//TaskFlow Pro v5//TH\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nBEGIN:VEVENT\r\nUID:taskflow-${t.id}-${Date.now()}@taskflow-pro-v5\r\nDTSTAMP:${calDateUTC(new Date())}\r\nDTSTART:${calDateUTC(start)}\r\nDTEND:${calDateUTC(end)}\r\nSUMMARY:${esc('TaskFlow: ' + t.title)}\r\nDESCRIPTION:${esc(calText(t))}\r\nLOCATION:${esc('TaskFlow Pro v5')}\r\n${attendee}END:VEVENT\r\nEND:VCALENDAR\r\n`;
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `taskflow-${t.id}.ics`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 800);
+      toast('ดาวน์โหลดไฟล์ปฏิทิน .ics แล้ว');
+    }
+
     function sortTasksByDue(list, doneLast = false) {
       const pr = { urgent: 0, high: 1, normal: 2, low: 3 };
       return [...(list || [])].sort((a, b) => {
@@ -4243,6 +4371,19 @@
     </div>
 
     ${t.desc ? `<div class="dp-sec"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="dp-sec-t" style="margin-bottom:0;">รายละเอียด</div>${canEditText ? `<button class="dp-inline-edit" onclick="openTaskModalEdit(${t.id})">✏️ แก้ไขข้อความ</button>` : ''}</div><div style="font-size:12px;color:var(--text2);line-height:1.6;white-space:pre-wrap;">${t.desc}</div></div>` : (canEditText ? `<div class="dp-sec"><button class="dp-inline-edit" style="margin-left:0;" onclick="openTaskModalEdit(${t.id})">✏️ เพิ่ม/แก้ไขรายละเอียด</button></div>` : '')}
+
+    <div class="dp-sec">
+      <div class="dp-sec-t">📅 ส่งเข้าปฏิทิน Gmail / Hotmail</div>
+      <div class="calendar-send-box">
+        <div class="calendar-send-row">
+          <input class="calendar-email-input" id="cal-email-${t.id}" type="email" placeholder="ใส่อีเมลผู้รับ เช่น user@gmail.com หรือ user@hotmail.com" value="${safeAttr(currentUser?.email || '')}">
+          <button class="calendar-btn google" type="button" onclick="openCalendarEvent(${t.id},'google')">Google Calendar</button>
+          <button class="calendar-btn outlook" type="button" onclick="openCalendarEvent(${t.id},'outlook')">Hotmail / Outlook</button>
+          <button class="calendar-btn ics" type="button" onclick="downloadCalendarIcs(${t.id})">โหลด .ics</button>
+        </div>
+        <div class="calendar-hint">ระบบจะใส่ชื่องาน รายละเอียด ผู้รับผิดชอบ และ ${taskDueLabel(t)} ให้ในปฏิทินอัตโนมัติ</div>
+      </div>
+    </div>
 
     <!-- assignees -->
     ${t.verifiedBy ? `<div class="dp-sec"><div class="dp-sec-t">ตรวจสอบโดย</div><div style="display:flex;align-items:center;gap:8px;background:#E0F2FE;border-radius:10px;padding:9px 12px;">${avEl(findU(t.verifiedBy) || users[0], 24, 8)}<span style="font-size:12px;font-weight:600;color:#0369A1;">🔍 ${(findU(t.verifiedBy) || { name: '-' }).name} — ตรวจสอบงานแล้ว</span></div></div>` : ''}
@@ -5299,7 +5440,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260718-due-time"></script>
+<script src="js/script.js?v=20260718-calendar-send"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -5316,6 +5457,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260718-due-time"></script>
+<script src="js/sync.js?v=20260718-calendar-send"></script>
 </body>
 </html>
