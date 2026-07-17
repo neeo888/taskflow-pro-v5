@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260717-sort-due">
+  <link rel="stylesheet" href="css/style.css?v=20260718-due-time">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -3471,12 +3471,21 @@
       const dt = new Date(y, m - 1, d, parseInt(hh || 0, 10), parseInt(mm || 0, 10), 0, 0);
       return Number.isNaN(dt.getTime()) ? Number.MAX_SAFE_INTEGER : dt.getTime();
     }
+    function extractTimeParts(src) {
+      const m = String(src || '').match(/(?:^|\s)([01]?\d|2[0-3])[.:](\d{2})(?:\s*น\.?)?(?=\s|$)/);
+      return m ? { hh: parseInt(m[1], 10), mm: parseInt(m[2], 10) } : null;
+    }
     function taskDueTime(t) {
+      const src = `${t?.title || ''} ${t?.desc || ''}`;
       if (t?.date) {
         const direct = new Date(t.date + (String(t.date).length <= 10 ? 'T00:00:00' : '')).getTime();
-        if (!Number.isNaN(direct)) return direct;
+        if (!Number.isNaN(direct)) {
+          const dt = new Date(direct);
+          const tm = extractTimeParts(src);
+          if (tm && dt.getHours() === 0 && dt.getMinutes() === 0) dt.setHours(tm.hh, tm.mm, 0, 0);
+          return dt.getTime();
+        }
       }
-      const src = `${t?.title || ''} ${t?.desc || ''}`;
       let m = src.match(/(20\d{2}|25\d{2})[-/](\d{1,2})[-/](\d{1,2})(?:\s+(\d{1,2})[.:](\d{2}))?/);
       if (m) return makeDateMs(m[1], m[2], m[3], m[4], m[5]);
       m = src.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2})[.:](\d{2}))?/);
@@ -3484,6 +3493,15 @@
       m = src.match(/(\d{1,2})\s*(ม\.ค\.?|ก\.พ\.?|มี\.ค\.?|เม\.ย\.?|พ\.ค\.?|มิ\.ย\.?|ก\.ค\.?|ส\.ค\.?|ก\.ย\.?|ต\.ค\.?|พ\.ย\.?|ธ\.ค\.?|มค|กพ|มีค|เมย|พค|มิย|กค|สค|กย|ตค|พย|ธค|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s*(\d{2,4})(?:\s+(\d{1,2})[.:](\d{2}))?/i);
       if (m) return makeDateMs(m[3], TH_MONTHS[m[2]] || TH_MONTHS[m[2].replace(/\.$/, '')], m[1], m[4], m[5]);
       return Number.MAX_SAFE_INTEGER;
+    }
+    function taskDueLabel(t) {
+      const ms = taskDueTime(t);
+      if (ms === Number.MAX_SAFE_INTEGER) return 'ไม่มีกำหนดแล้วเสร็จ';
+      const d = new Date(ms);
+      const pad = n => String(n).padStart(2, '0');
+      const date = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+      const hasTime = d.getHours() || d.getMinutes() || extractTimeParts(`${t?.title || ''} ${t?.desc || ''}`);
+      return `กำหนดแล้วเสร็จ: ${date}${hasTime ? ` เวลา ${pad(d.getHours())}:${pad(d.getMinutes())} น.` : ''}`;
     }
     function sortTasksByDue(list, doneLast = false) {
       const pr = { urgent: 0, high: 1, normal: 2, low: 3 };
@@ -4044,7 +4062,7 @@
             <span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:8px;">${t.prog}%</span>
           </div>
           <div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden;"><div style="width:${t.prog}%;height:100%;background:${cfg.c};border-radius:3px;"></div></div>
-          <div style="font-size:9px;color:var(--text3);margin-top:2px;">${cfg.n}</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:2px;">${cfg.n} · ${taskDueLabel(t)}</div>
         </div>`;
       }).join('') : `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">ยังไม่มีงาน</div>`}
       </div>
@@ -5281,7 +5299,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260717-sort-due"></script>
+<script src="js/script.js?v=20260718-due-time"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -5298,6 +5316,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260717-sort-due"></script>
+<script src="js/sync.js?v=20260718-due-time"></script>
 </body>
 </html>
