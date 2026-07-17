@@ -4144,7 +4144,7 @@
       if (isAdmin()) return true;
 
       // ถูก assign โดยตรง — ทุก role เห็นเสมอ
-      if (t.asgn.includes(currentUser.id)) return true;
+      if ((Array.isArray(t.asgn) ? t.asgn.map(Number) : []).includes(Number(currentUser.id))) return true;
 
       // ผู้ปฏิบัติงาน (user) — เห็นเฉพาะงานที่ assign ให้ตัวเองเท่านั้น
       if (currentUser.urole === 'user') return false;
@@ -4174,7 +4174,7 @@
       return parts.join('');
     }
 
-    function canUpdateTask(t) { return (t.asgn.includes(currentUser.id) || t.createdBy === currentUser.id || isAM()) && t.col !== 'done'; }
+    function canUpdateTask(t) { const a = Array.isArray(t?.asgn) ? t.asgn.map(Number) : []; return (a.includes(Number(currentUser.id)) || t.createdBy === currentUser.id || isAM()) && t.col !== 'done' && t.col !== 'verified'; }
 
     // ══════════════════════════
     // AUTH
@@ -4567,16 +4567,16 @@
 
     function taskCard(t) {
       const cfg = COL[t.col]; const pr = PRIO[t.priority];
-      const asgns = users.filter(u => t.asgn.includes(u.id));
-      const ov = t.date && new Date(t.date) < new Date() && t.col !== 'done';
-      const openObs = t.obstacles.filter(o => !o.resolved).length;
+      const asgns = users.filter(u => (Array.isArray(t.asgn) ? t.asgn.map(Number) : []).includes(Number(u.id)));
+      const ov = t.date && new Date(t.date) < new Date() && t.col !== 'done' && t.col !== 'verified';
+      const openObs = (t.obstacles || []).filter(o => !o.resolved).length;
       const myStepsDone = t.steps ? (t.stepChecks[currentUser.id] ? Object.values(t.stepChecks[currentUser.id]).filter(v => v.done).length : 0) : 0;
       return `<div class="task-card${ov ? ' overdue' : ''}" onclick="showDP(${t.id})">
     <div class="tc-hd">
       <div class="tc-title">${t.title}</div>
       <div class="tc-badges"><span class="badge" style="background:${cfg.c}22;color:${cfg.c};">${cfg.n}</span><span class="badge" style="background:${pr.bg};color:${pr.fg};">${pr.l}</span></div>
     </div>
-    ${t.tags.length ? `<div class="tc-tags">${t.tags.map(tg => `<span class="tag">${tg}</span>`).join('')}</div>` : ''}
+    ${(t.tags || []).length ? `<div class="tc-tags">${(t.tags || []).map(tg => `<span class="tag">${tg}</span>`).join('')}</div>` : ''}
     <div class="tc-prog-row"><div class="tc-prog-track"><div class="tc-prog-fill" style="width:${t.prog}%;background:${cfg.c};"></div></div><span style="font-size:10px;font-weight:700;color:${cfg.c};min-width:28px;text-align:right;">${t.prog}%</span></div>
     <div class="tc-meta">
       ${t.date ? `<div class="tc-meta-item" style="color:${ov ? 'var(--danger)' : 'var(--text3)'};">📅 ${t.date}${ov ? ' ⚠️' : ''}</div>` : ''}
@@ -4636,7 +4636,7 @@
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:12px;">ความคืบหน้างานของฉัน</div>
         ${myT.length ? sortTasksByDue(myT, true).map(t => {
-        const cfg = COL[t.col]; return `<div class="dash-task-row" role="button" tabindex="0" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onpointerdown="openTaskDetail(${t.id}, true, event)" ontouchend="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
+        const cfg = COL[t.col] || COL.todo; return `<div class="dash-task-row" role="button" tabindex="0" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onpointerdown="openTaskDetail(${t.id}, true, event)" ontouchend="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
             <span class="dash-task-title">${t.title}</span>
             <span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:8px;">${t.prog}%</span>
@@ -4668,7 +4668,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:10px;">คอมเมนต์ที่ได้รับ</div>
-        ${tasks.filter(t => t.asgn.includes(uid) && t.comments?.length).flatMap(t => t.comments.map(c => ({ ...c, ttitle: t.title, tid: t.id }))).slice(0, 5).map(c => { const u2 = findU(c.authorId); const roleCls = u2?.urole === 'admin' ? 'admin-comment' : u2?.urole === 'manager' ? 'mgr-comment' : ''; return `<div class="comment-item" style="cursor:pointer;" onclick="showDP(${c.tid})"><div class="comment-bubble ${roleCls}"><div class="cb-author">${u2 ? avEl(u2, 18, 6) : ''}<span>${u2?.name || ''}</span><span style="font-size:9px;padding:1px 6px;border-radius:8px;background:${u2?.urole === 'manager' ? '#EEF3FF' : '#E6FBF7'};color:${u2?.urole === 'manager' ? '#3C3489' : '#064E3B'};">${u2?.urole === 'manager' ? 'หัวหน้า' : 'Admin'}</span></div><div class="cb-text">${c.text}</div><div class="cb-at">${c.ttitle} · ${c.at}</div></div></div>`; }).join('') || `<div style="text-align:center;padding:14px;font-size:12px;color:var(--text3);">ยังไม่มีคอมเมนต์</div>`}
+        ${tasks.filter(t => (Array.isArray(t.asgn) ? t.asgn.map(Number) : []).includes(Number(uid)) && t.comments?.length).flatMap(t => t.comments.map(c => ({ ...c, ttitle: t.title, tid: t.id }))).slice(0, 5).map(c => { const u2 = findU(c.authorId); const roleCls = u2?.urole === 'admin' ? 'admin-comment' : u2?.urole === 'manager' ? 'mgr-comment' : ''; return `<div class="comment-item" style="cursor:pointer;" onclick="showDP(${c.tid})"><div class="comment-bubble ${roleCls}"><div class="cb-author">${u2 ? avEl(u2, 18, 6) : ''}<span>${u2?.name || ''}</span><span style="font-size:9px;padding:1px 6px;border-radius:8px;background:${u2?.urole === 'manager' ? '#EEF3FF' : '#E6FBF7'};color:${u2?.urole === 'manager' ? '#3C3489' : '#064E3B'};">${u2?.urole === 'manager' ? 'หัวหน้า' : 'Admin'}</span></div><div class="cb-text">${c.text}</div><div class="cb-at">${c.ttitle} · ${c.at}</div></div></div>`; }).join('') || `<div style="text-align:center;padding:14px;font-size:12px;color:var(--text3);">ยังไม่มีคอมเมนต์</div>`}
       </div>
 
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
@@ -4700,16 +4700,16 @@
 
     function boardCard(t, col) {
       const cfg = COL[col]; const pr = PRIO[t.priority];
-      const asgns = users.filter(u => t.asgn.includes(u.id));
+      const asgns = users.filter(u => (Array.isArray(t.asgn) ? t.asgn.map(Number) : []).includes(Number(u.id)));
       const ov = t.date && new Date(t.date) < new Date() && col !== 'done';
-      const openObs = t.obstacles.filter(o => !o.resolved).length;
+      const openObs = (t.obstacles || []).filter(o => !o.resolved).length;
       const hasComments = t.comments?.length > 0;
       const opts = col === 'review' ? `<option value="done">✅ เสร็จสิ้น</option><option value="verified">🔍 ตรวจสอบแล้ว</option><option value="doing">↩️ ส่งกลับ</option>` :
         col === 'todo' ? `<option value="doing">▶ เริ่มทำ</option><option value="review">⏩ ส่งตรวจ</option>` :
           col === 'doing' ? `<option value="todo">↩️ คืน</option><option value="review">✔ ส่งตรวจ</option><option value="done">✅ เสร็จ</option>` : col === 'verified' ? `<option value="done">↩️ ยกเลิกผ่านตรวจ</option>` : '';
       return `<div class="bcard${ov ? ' overdue' : ''}" onclick="showDP(${t.id})">
     <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px;">
-      ${t.tags.map(tg => `<span style="font-size:8px;font-weight:700;padding:1px 6px;border-radius:6px;background:#EEF3FF;color:#3C3489;">${tg}</span>`).join('')}
+      ${(t.tags || []).map(tg => `<span style="font-size:8px;font-weight:700;padding:1px 6px;border-radius:6px;background:#EEF3FF;color:#3C3489;">${tg}</span>`).join('')}
       <span style="font-size:8px;font-weight:700;padding:1px 6px;border-radius:6px;background:${pr.bg};color:${pr.fg};">${pr.l}</span>
       ${openObs ? `<span style="font-size:8px;font-weight:700;padding:1px 6px;border-radius:6px;background:#FFEDEE;color:#A32D2D;">⚠️${openObs}</span>` : ''}
       ${hasComments ? `<span style="font-size:8px;padding:1px 6px;border-radius:6px;background:#EEF3FF;color:#3C3489;">💬${t.comments.length}</span>` : ''}
@@ -4765,7 +4765,20 @@
       _lastOpenDetailAt = nowTs;
       const row = ev?.target?.closest ? ev.target.closest('[data-task-id]') : null;
       const tid = id || row?.getAttribute('data-task-id');
-      showDP(tid, fullPage);
+      try {
+        showDP(tid, fullPage);
+      } catch (err) {
+        console.error('[TaskFlow] open detail failed', err);
+        toast('เปิดรายละเอียดงานไม่สำเร็จ กำลังซ่อมข้อมูลแล้วลองใหม่');
+        const t = normalizeDetailTask(tasks.find(x => String(x.id) === String(tid)));
+        if (t) {
+          const dp = gi('dp');
+          gi('dp-title').textContent = t.title || 'รายละเอียดงาน';
+          gi('dp-body').innerHTML = `<div class="dp-sec"><div class="dp-sec-t">รายละเอียดงาน</div><div style="font-size:13px;line-height:1.7;color:var(--text2);white-space:pre-wrap;">${t.desc || 'ไม่มีรายละเอียด'}</div></div><div class="dp-sec"><div class="dp-sec-t">สถานะ</div><span class="badge" style="background:${(COL[t.col] || COL.todo).c}22;color:${(COL[t.col] || COL.todo).c};">${(COL[t.col] || COL.todo).n}</span></div>`;
+          dp.classList.toggle('full', !!fullPage);
+          dp.classList.add('open');
+        }
+      }
       return false;
     }
 
@@ -4783,17 +4796,36 @@
     document.addEventListener('pointerdown', handleDashTaskPointer, true);
     document.addEventListener('touchend', handleDashTaskPointer, true);
 
+    function normalizeDetailTask(t) {
+      if (!t) return null;
+      if (!Array.isArray(t.asgn)) t.asgn = [];
+      t.asgn = t.asgn.map(x => Number(x)).filter(Boolean);
+      if (!Array.isArray(t.tags)) t.tags = [];
+      if (!Array.isArray(t.steps)) t.steps = [];
+      if (!t.stepChecks || typeof t.stepChecks !== 'object') t.stepChecks = {};
+      if (!Array.isArray(t.attachments)) t.attachments = [];
+      if (!Array.isArray(t.progressLog)) t.progressLog = [];
+      if (!Array.isArray(t.submittedFiles)) t.submittedFiles = [];
+      if (!Array.isArray(t.obstacles)) t.obstacles = [];
+      if (!Array.isArray(t.comments)) t.comments = [];
+      if (!COL[t.col]) t.col = 'todo';
+      if (!PRIO[t.priority]) t.priority = 'normal';
+      t.prog = Math.max(0, Math.min(100, Number(t.prog || 0)));
+      return t;
+    }
+
     function showDP(id, fullPage = true) {
       const tid = Number(id);
-      const t = tasks.find(t => Number(t.id) === tid || String(t.id) === String(id));
+      const t = normalizeDetailTask(tasks.find(t => Number(t.id) === tid || String(t.id) === String(id)));
       if (!t) { toast('ไม่พบรายละเอียดงานนี้ กรุณารีเฟรชข้อมูลอีกครั้ง'); return; }
-      activeDetailTaskId = id;
-      const cfg = COL[t.col]; const pr = PRIO[t.priority];
-      const asgns = users.filter(u => t.asgn.includes(u.id));
-      const ov = t.date && new Date(t.date) < new Date() && t.col !== 'done';
-      const steps = ['todo', 'doing', 'review', 'done'];
+      activeDetailTaskId = t.id;
+      const cfg = COL[t.col] || COL.todo;
+      const pr = PRIO[t.priority] || PRIO.normal;
+      const asgns = users.filter(u => t.asgn.map(Number).includes(Number(u.id)));
+      const ov = t.date && new Date(t.date) < new Date() && t.col !== 'done' && t.col !== 'verified';
+      const steps = ['todo', 'doing', 'review', 'done', 'verified'];
       const si = steps.indexOf(t.col);
-      const sLabels = { todo: 'รอดำเนินการ', doing: 'กำลังทำ', review: 'รอตรวจ', done: 'แล้วเสร็จ' };
+      const sLabels = { todo: 'รอดำเนินการ', doing: 'กำลังทำ', review: 'รอตรวจ', done: 'แล้วเสร็จ', verified: 'ตรวจสอบแล้ว' };
       const canEditText = !!(currentUser && (canAssign() || t.createdBy === currentUser.id));
 
       gi('dp-title').textContent = t.title;
@@ -4806,7 +4838,7 @@
       // Build step checks HTML for each assignee
       let stepChecksHtml = '';
       if (t.steps?.length) {
-        const viewUsers = isAM() ? asgns : [currentUser].filter(u => t.asgn.includes(u.id));
+        const viewUsers = isAM() ? asgns : [currentUser].filter(u => (Array.isArray(t.asgn) ? t.asgn.map(Number) : []).includes(Number(u.id)));
         stepChecksHtml = viewUsers.map(u => {
           const mySC = t.stepChecks[u.id] || {};
           const doneC = Object.values(mySC).filter(v => v.done).length;
@@ -4834,7 +4866,7 @@
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
       <span class="badge" style="background:${cfg.c}22;color:${cfg.c};">${cfg.n}</span>
       <span class="badge" style="background:${pr.bg};color:${pr.fg};">${pr.l}</span>
-      ${t.tags.map(tg => `<span class="badge" style="background:#EEF3FF;color:#3C3489;">${tg}</span>`).join('')}
+      ${(t.tags || []).map(tg => `<span class="badge" style="background:#EEF3FF;color:#3C3489;">${tg}</span>`).join('')}
     </div>
 
     <!-- flow -->
@@ -4885,10 +4917,10 @@
     </div>`: ''}
 
     <!-- attachments -->
-    ${t.attachments.length ? `<div class="dp-sec"><div class="dp-sec-t">📎 ไฟล์แนบ</div>${t.attachments.map(f => _atchItemHtml(f, null)).join('')}</div>` : ''}
+    ${(t.attachments || []).length ? `<div class="dp-sec"><div class="dp-sec-t">📎 ไฟล์แนบ</div>${(t.attachments || []).map(f => _atchItemHtml(f, null)).join('')}</div>` : ''}
 
     <!-- progress log -->
-    ${t.progressLog.length ? `<div class="dp-sec"><div class="dp-sec-t">ประวัติความคืบหน้า</div>${[...t.progressLog].reverse().map(lg => {
+    ${(t.progressLog || []).length ? `<div class="dp-sec"><div class="dp-sec-t">ประวัติความคืบหน้า</div>${[...(t.progressLog || [])].reverse().map(lg => {
         const u2 = findU(lg.authorId); return `<div style="display:flex;gap:7px;padding:6px 0;border-bottom:.5px solid var(--border);">${u2 ? avEl(u2, 20, 6) : ''}
       <div><div style="font-size:10px;font-weight:700;color:var(--text2);">${u2?.name || ''} <span style="font-weight:400;color:var(--text3);">${lg.at}</span></div>${lg.note ? `<div style="font-size:11px;margin-top:2px;">${lg.note}</div>` : ''}</div>
       <span style="margin-left:auto;font-size:11px;font-weight:700;color:var(--purple);">${lg.prog}%</span>
@@ -4897,17 +4929,17 @@
 
 
     <!-- submitted files -->
-    ${t.submittedFiles?.length ? `<div class="dp-sec"><div class="dp-sec-t">📤 ไฟล์งานที่ส่ง</div>
+    ${(t.submittedFiles || []).length ? `<div class="dp-sec"><div class="dp-sec-t">📤 ไฟล์งานที่ส่ง</div>
     ${t.submitNote ? `<div style="background:#EAF3DE;border-radius:8px;padding:8px 11px;font-size:11px;color:#27500A;margin-bottom:7px;">${t.submitNote}</div>` : ''}
-    ${t.submittedFiles.map(f => _atchItemHtml(f, null)).join('')}
+    ${(t.submittedFiles || []).map(f => _atchItemHtml(f, null)).join('')}
     </div>`: ''}
     <!-- obstacles -->
     <div class="dp-sec">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div class="dp-sec-t" style="margin-bottom:0;">⚠️ อุปสรรค (${t.obstacles.length})</div>
+        <div class="dp-sec-t" style="margin-bottom:0;">⚠️ อุปสรรค (${(t.obstacles || []).length})</div>
         ${canUpdateTask(t) ? `<button style="background:var(--warn);border:none;border-radius:7px;padding:4px 10px;font-size:10px;font-weight:700;color:#fff;cursor:pointer;font-family:'Sarabun',sans-serif;" onclick="openObsModal(${t.id})">+ บันทึก</button>` : ''}
       </div>
-      ${t.obstacles.map(o => obsHtml(o, t.id)).join('') || `<div style="text-align:center;padding:10px;font-size:11px;color:var(--text3);">ไม่มีอุปสรรค</div>`}
+      ${(t.obstacles || []).map(o => obsHtml(o, t.id)).join('') || `<div style="text-align:center;padding:10px;font-size:11px;color:var(--text3);">ไม่มีอุปสรรค</div>`}
     </div>
 
     <!-- COMMENTS SECTION -->
