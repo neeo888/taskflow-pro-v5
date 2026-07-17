@@ -137,6 +137,7 @@ async function _loadFromServer(silent = false) {
         id: +u.id,
         color: +(u.color || 0),
         avatar: u.avatar_url || '',
+        telegram_chat_id: u.telegram_chat_id || '',
         pass: '',
       }));
     }
@@ -234,13 +235,14 @@ window.doLocalLogin = async function () {
             dept: ad.dept || '', dept_key: ad.dept_key || '',
             branch: ad.branch || '', branch_name: ad.branch_name || '',
             email: ad.email || '', urole: ad.urole || 'user',
-            color: +(ad.color || 0), avatar: ad.avatar_url || '', pass: '',
+            color: +(ad.color || 0), avatar: ad.avatar_url || '', telegram_chat_id: ad.telegram_chat_id || '', pass: '',
           };
           window.users.push(u);
         } else {
           Object.assign(u, {
             id: +ad.id, name: ad.name, urole: ad.urole || u.urole,
             avatar: ad.avatar_url || u.avatar,
+            telegram_chat_id: ad.telegram_chat_id || u.telegram_chat_id || '',
             branch: ad.branch || u.branch, branch_name: ad.branch_name || u.branch_name,
             dept: ad.dept || u.dept, dept_key: ad.dept_key || u.dept_key,
           });
@@ -498,11 +500,12 @@ const _orig_saveProfile = window.saveProfile;
 window.saveProfile = async function () {
   const name = gi('p-name') ? gi('p-name').value.trim() : (window.currentUser?.name || '');
   const email = gi('p-email') ? gi('p-email').value.trim() : (window.currentUser?.email || '');
+  const telegramChatId = gi('p-telegram') ? gi('p-telegram').value.trim() : (window.currentUser?.telegram_chat_id || '');
   _orig_saveProfile.call(this);
   const avatarBeforeSave = window.currentUser?.avatar || '';
   if (!_isPhpSrv() || !window.currentUser) return;
 
-  const saved = await _api('profile_save', { name, email });
+  const saved = await _api('profile_save', { name, email, telegram_chat_id: telegramChatId });
   if (!saved.ok) {
     if (typeof toast === 'function') toast('บันทึกชื่อ/อีเมลขึ้น Supabase ไม่สำเร็จ');
     return;
@@ -552,9 +555,10 @@ window.submitMember = function () {
   const dept = gi('m-dept') ? gi('m-dept').value : '';
   const urole = gi('m-urole') ? gi('m-urole').value : 'user';
   const pass = gi('m-pass') ? gi('m-pass').value : '';
+  const telegramChatId = gi('m-telegram') ? gi('m-telegram').value.trim() : '';
   _orig_submitMember.call(this);
   if (_isPhpSrv() && name && email) {
-    const payload = { id: id ? +id : 0, name, email, role, dept, urole };
+    const payload = { id: id ? +id : 0, name, email, role, dept, urole, telegram_chat_id: telegramChatId };
     if (pass) payload.new_password = pass;
     _api('member_save', payload).then(r => {
       if (r.ok) _loadFromServer(true).then(() => { renderAll(); if (typeof renderMembers === 'function') renderMembers(); });

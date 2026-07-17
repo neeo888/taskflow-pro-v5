@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260718-calendar-multi-telegram">
+  <link rel="stylesheet" href="css/style.css?v=20260718-assignee-telegram-email">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -1768,6 +1768,39 @@
       margin-top: 7px;
     }
     .calendar-btn.telegram { background: #E7F5FD; color: #0C4A6E; }
+    .calendar-recipient-box {
+      border: .5px solid var(--border);
+      border-radius: 14px;
+      background: #F8FAFF;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .calendar-recipient-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+      color: var(--text3);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .calendar-recipient-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #EEF3FF;
+      color: #3C3489;
+      font-weight: 800;
+      font-size: 10px;
+    }
+    .telegram-user-hint {
+      font-size: 10px;
+      line-height: 1.45;
+      color: var(--text3);
+      margin-top: 5px;
+    }
 
     @media (max-width: 640px) {
       .calendar-settings-btn { padding: 8px 9px; font-size: 0; gap: 0; }
@@ -2936,6 +2969,9 @@
           <div class="mfl"><label>รหัสผ่าน</label><input id="m-pass" type="password"
               placeholder="ค่าเริ่มต้น user123" /></div>
         </div>
+        <div class="mfl"><label>Telegram Chat ID ของสมาชิก</label><input id="m-telegram" placeholder="เช่น 123456789 หรือ -100xxxxxxxxxx" />
+          <div class="telegram-user-hint">ใช้สำหรับส่งแจ้งเตือนงานไป Telegram ของคนที่ถูกมอบหมายงานโดยอัตโนมัติ</div>
+        </div>
         <div class="mfl"><label>บทบาท</label><select id="m-urole">
             <option value="user">ผู้ใช้ทั่วไป</option>
             <option value="manager">หัวหน้างาน</option>
@@ -3042,10 +3078,24 @@
       <div class="mhd"><span class="mhd-t">⚙️ ตั้งค่าปฏิทินส่วนกลาง</span><button class="mx"
           onclick="closeModal('modal-calendar-settings')">✕</button></div>
       <div class="mbody">
+        <div class="calendar-recipient-box">
+          <div class="mfl" style="margin-bottom:10px;">
+            <label>ผู้รับปฏิทิน / แจ้งเตือน</label>
+            <select id="cal-recipient-mode">
+              <option value="assignees">ตามผู้รับมอบหมายงาน</option>
+              <option value="both">ผู้รับมอบหมายงาน + อีเมลส่วนกลาง</option>
+              <option value="global">อีเมลส่วนกลางเท่านั้น</option>
+            </select>
+          </div>
+          <div class="calendar-recipient-summary">
+            <span class="calendar-recipient-chip">สิทธิผู้ใช้</span>
+            <span>ผู้ใช้ทั่วไปจะส่งได้เฉพาะงานของตัวเอง ส่วนหัวหน้า/Admin ส่งถึงผู้รับผิดชอบในงานได้ทั้งหมด</span>
+          </div>
+        </div>
         <div class="mfl">
-          <label>อีเมลปลายทางสำหรับปฏิทิน — ใส่ได้หลายอีเมล</label>
+          <label>อีเมลส่วนกลาง / อีเมลเสริม — ใส่ได้หลายอีเมล</label>
           <textarea id="cal-global-emails" class="calendar-emails-input" placeholder="เช่น user1@gmail.com, user2@hotmail.com&#10;หรือพิมพ์แยกบรรทัดละ 1 อีเมล"></textarea>
-          <div class="telegram-mini-note">ใช้ comma, เว้นวรรค หรือขึ้นบรรทัดใหม่คั่นแต่ละอีเมลได้</div>
+          <div class="telegram-mini-note">ถ้าเลือก “ตามผู้รับมอบหมายงาน” ระบบจะดึงอีเมลของคนที่ถูกมอบหมายงานให้อัตโนมัติ ช่องนี้ใช้เป็นอีเมลเสริม/สำรอง</div>
         </div>
         <div class="mfl">
           <label>ตั้งค่าเตือนก่อนถึงกำหนด — เลือกได้หลายเวลา</label>
@@ -3070,14 +3120,14 @@
               <input id="cal-telegram-token" type="password" placeholder="เช่น 123456:ABC..." autocomplete="off" />
             </div>
             <div class="mfl" style="margin-bottom:0;">
-              <label>Chat ID / Group ID</label>
+              <label>Chat ID / Group ID กลาง (ไม่บังคับ)</label>
               <input id="cal-telegram-chat" placeholder="เช่น 123456789 หรือ -100xxxxxxxxxx" />
             </div>
           </div>
-          <div class="telegram-mini-note">ถ้าตั้ง TELEGRAM_BOT_TOKEN ใน Vercel แล้ว ช่อง Bot Token สามารถเว้นว่างได้ แต่ต้องใส่ Chat ID เพื่อส่งเข้าห้อง/แชทจริง</div>
+          <div class="telegram-mini-note">ถ้าตั้ง TELEGRAM_BOT_TOKEN ใน Vercel แล้ว ช่อง Bot Token สามารถเว้นว่างได้ ระบบจะส่งถึง Telegram Chat ID ของผู้รับมอบหมายงาน และส่งเข้าห้องกลางถ้าใส่ Chat ID ด้านล่าง</div>
         </div>
         <div class="calendar-settings-modal-note">
-          ตั้งค่าตรงนี้ครั้งเดียว แล้วทุกงานที่กดส่งไป Google Calendar / Hotmail / Telegram / ดาวน์โหลด .ics จะใช้ค่าเดียวกันทันที ไม่ต้องตั้งทีละงาน
+          ตั้งค่าตรงนี้ครั้งเดียว แล้วทุกงานที่กดส่งไป Google Calendar / Hotmail / Telegram / ดาวน์โหลด .ics จะดึงผู้รับจากคนที่ถูกมอบหมายงานตามสิทธิที่ล็อกอินให้อัตโนมัติ
         </div>
       </div>
       <div class="mft">
@@ -3127,9 +3177,14 @@
             <label>ชื่อ-สกุล *</label>
             <input id="p-name" placeholder="กรอกชื่อ-สกุล" />
           </div>
-          <div class="mfl" style="margin-bottom:0;">
+          <div class="mfl" style="margin-bottom:10px;">
             <label>อีเมล</label>
             <input id="p-email" type="email" placeholder="อีเมล" />
+          </div>
+          <div class="mfl" style="margin-bottom:0;">
+            <label>Telegram Chat ID ของฉัน</label>
+            <input id="p-telegram" placeholder="เช่น 123456789 หรือ -100xxxxxxxxxx" />
+            <div class="telegram-user-hint">ใช้สำหรับรับแจ้งเตือนงานที่ถูกมอบหมายผ่าน Telegram</div>
           </div>
         </div>
 
@@ -3615,12 +3670,12 @@
     var users = [
       // ── Local Accounts สำหรับ login โดยไม่ผ่าน กปภ. ─────────
       // username = wwcode หรือ email  |  pass = รหัสผ่าน
-      { id: 1,  wwcode: 'admin',   name: 'กนกวรรณ พลชัย',  role: 'ผู้ดูแลระบบ',       dept: 'ฝ่ายเทคโนโลยี', dept_key: 'บริการ',    branch: '5512027', branch_name: "หน่วยงาน", email: 'admin@pwa.local',   pass: 'Pwa@12345', urole: 'admin',     color: 3, avatar: '' },
-      { id: 2,  wwcode: 'manager', name: 'อนุชา สมิทธิ์',   role: 'ผู้จัดการสาขา',     dept: 'สำนักงาน',      dept_key: 'อำนวยการ', branch: '5512027', branch_name: "หน่วยงาน", email: 'manager@pwa.local', pass: 'Pwa@12345', urole: 'manager',   color: 0, avatar: '' },
-      { id: 3,  wwcode: 'assist',  name: 'วรรณา ศรีทอง',   role: 'ผู้ช่วยผู้จัดการ',   dept: 'สำนักงาน',      dept_key: 'อำนวยการ', branch: '5512027', branch_name: "หน่วยงาน", email: 'assist@pwa.local',  pass: 'Pwa@12345', urole: 'assistant', color: 5, avatar: '' },
-      { id: 4,  wwcode: 'user1',   name: 'มนัสวิน ทองดี',  role: 'ช่างเทคนิค',         dept: 'งานบริการ',     dept_key: 'บริการ',    branch: '5512027', branch_name: "หน่วยงาน", email: 'user1@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 1, avatar: '' },
-      { id: 5,  wwcode: 'user2',   name: 'สุธีรา วงศ์กล้า', role: 'นักบัญชี',           dept: 'งานการเงิน',   dept_key: 'จัดเก็บ',   branch: '5512027', branch_name: "หน่วยงาน", email: 'user2@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 2, avatar: '' },
-      { id: 6,  wwcode: 'user3',   name: 'ธนภัทร วงศ์ดี',   role: 'วิศวกร',             dept: 'งานผลิต',      dept_key: 'ผลิต',      branch: '5512027', branch_name: "หน่วยงาน", email: 'user3@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 4, avatar: '' },
+      { id: 1,  wwcode: 'admin',   name: 'กนกวรรณ พลชัย',  role: 'ผู้ดูแลระบบ',       dept: 'ฝ่ายเทคโนโลยี', dept_key: 'บริการ',    branch: '5512027', branch_name: "หน่วยงาน", email: 'admin@pwa.local',   pass: 'Pwa@12345', urole: 'admin',     color: 3, avatar: '', telegram_chat_id: '' },
+      { id: 2,  wwcode: 'manager', name: 'อนุชา สมิทธิ์',   role: 'ผู้จัดการสาขา',     dept: 'สำนักงาน',      dept_key: 'อำนวยการ', branch: '5512027', branch_name: "หน่วยงาน", email: 'manager@pwa.local', pass: 'Pwa@12345', urole: 'manager',   color: 0, avatar: '', telegram_chat_id: '' },
+      { id: 3,  wwcode: 'assist',  name: 'วรรณา ศรีทอง',   role: 'ผู้ช่วยผู้จัดการ',   dept: 'สำนักงาน',      dept_key: 'อำนวยการ', branch: '5512027', branch_name: "หน่วยงาน", email: 'assist@pwa.local',  pass: 'Pwa@12345', urole: 'assistant', color: 5, avatar: '', telegram_chat_id: '' },
+      { id: 4,  wwcode: 'user1',   name: 'มนัสวิน ทองดี',  role: 'ช่างเทคนิค',         dept: 'งานบริการ',     dept_key: 'บริการ',    branch: '5512027', branch_name: "หน่วยงาน", email: 'user1@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 1, avatar: '', telegram_chat_id: '' },
+      { id: 5,  wwcode: 'user2',   name: 'สุธีรา วงศ์กล้า', role: 'นักบัญชี',           dept: 'งานการเงิน',   dept_key: 'จัดเก็บ',   branch: '5512027', branch_name: "หน่วยงาน", email: 'user2@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 2, avatar: '', telegram_chat_id: '' },
+      { id: 6,  wwcode: 'user3',   name: 'ธนภัทร วงศ์ดี',   role: 'วิศวกร',             dept: 'งานผลิต',      dept_key: 'ผลิต',      branch: '5512027', branch_name: "หน่วยงาน", email: 'user3@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 4, avatar: '', telegram_chat_id: '' },
     ];
     let allTags = ['ออกแบบ', 'พัฒนา', 'ด่วน', 'การตลาด', 'ข้อมูล', 'วิจัย', 'QA', 'DevOps'];
 
@@ -3815,6 +3870,7 @@
       try { saved = JSON.parse(localStorage.getItem(calendarSettingsKey()) || '{}') || {}; } catch { saved = {}; }
       const emails = parseCalendarEmails((saved.emails || []).join ? saved.emails.join('\n') : (saved.emails || saved.email || currentUser?.email || ''));
       return {
+        recipientMode: saved.recipientMode || 'assignees',
         emails,
         reminders: normaliseReminderList(saved.reminders || saved.reminder || 30),
         telegramEnabled: !!saved.telegramEnabled,
@@ -3822,10 +3878,32 @@
         telegramChatId: String(saved.telegramChatId || '').trim()
       };
     }
-    function calendarEmailsValue() {
-      const emails = getCalendarSettings().emails;
+    function taskRecipientUsers(t) {
+      const ids = [...new Set((t?.asgn || []).map(Number).filter(Boolean))];
+      let list = users.filter(u => ids.includes(Number(u.id)));
+      if (!isAM()) list = list.filter(u => Number(u.id) === Number(currentUser?.id));
+      return list;
+    }
+    function taskRecipientEmails(t, settings = getCalendarSettings()) {
+      const fromAssignees = taskRecipientUsers(t).map(u => u.email).filter(Boolean);
+      const globalEmails = settings.emails || [];
+      if (settings.recipientMode === 'global') return [...new Set(globalEmails)];
+      if (settings.recipientMode === 'both') return [...new Set([...fromAssignees, ...globalEmails])];
+      return [...new Set(fromAssignees.length ? fromAssignees : globalEmails)];
+    }
+    function taskRecipientTelegramChats(t, settings = getCalendarSettings()) {
+      const fromAssignees = taskRecipientUsers(t).map(u => u.telegram_chat_id || u.telegramChatId || u.telegram || '').filter(Boolean);
+      const globalChat = settings.telegramChatId ? [settings.telegramChatId] : [];
+      if (settings.recipientMode === 'global') return [...new Set(globalChat)];
+      if (settings.recipientMode === 'both') return [...new Set([...fromAssignees, ...globalChat])];
+      return [...new Set(fromAssignees.length ? fromAssignees : globalChat)];
+    }
+    function calendarEmailsValue(tid) {
+      const t = tasks.find(x => x.id === tid);
+      const emails = taskRecipientEmails(t);
       const bad = emails.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
-      if (bad) { toast('กรุณาตั้งค่าอีเมลปฏิทินให้ถูกต้อง: ' + bad); openCalendarSettings(); return null; }
+      if (bad) { toast('อีเมลผู้รับไม่ถูกต้อง: ' + bad); openCalendarSettings(); return null; }
+      if (!emails.length) { toast('ไม่พบอีเมลผู้รับงาน กรุณาเพิ่มอีเมลในโปรไฟล์/สมาชิก'); openCalendarSettings(); return null; }
       return emails;
     }
     function calendarReminderMinutes(tid) { return getCalendarSettings().reminders; }
@@ -3842,12 +3920,14 @@
     }
     function calendarSettingsSummary() {
       const s = getCalendarSettings();
-      const emailText = s.emails.length ? `${s.emails.length} อีเมล` : 'ยังไม่ได้ตั้งค่าอีเมล';
-      const tg = s.telegramEnabled && s.telegramChatId ? ' · Telegram เปิดใช้' : '';
-      return `${emailText} · ${calendarReminderListLabel(s.reminders)}${tg}`;
+      const modeText = s.recipientMode === 'global' ? 'อีเมลส่วนกลาง' : s.recipientMode === 'both' ? 'ผู้รับมอบหมาย + ส่วนกลาง' : 'ตามผู้รับมอบหมาย';
+      const emailText = s.emails.length ? ` · เสริม ${s.emails.length} อีเมล` : '';
+      const tg = s.telegramEnabled ? ' · Telegram เปิดใช้' : '';
+      return `${modeText}${emailText} · ${calendarReminderListLabel(s.reminders)}${tg}`;
     }
     function openCalendarSettings() {
       const s = getCalendarSettings();
+      const mode = gi('cal-recipient-mode'); if (mode) mode.value = s.recipientMode || 'assignees';
       const emails = gi('cal-global-emails');
       if (emails) emails.value = s.emails.join('\n');
       document.querySelectorAll('.cal-remind-check').forEach(ch => { ch.checked = s.reminders.includes(parseInt(ch.value, 10)); });
@@ -3857,6 +3937,7 @@
       openModal('modal-calendar-settings');
     }
     function saveCalendarSettings() {
+      const recipientMode = gi('cal-recipient-mode')?.value || 'assignees';
       const emails = parseCalendarEmails(gi('cal-global-emails')?.value || '');
       const bad = emails.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
       if (bad) { toast('อีเมลไม่ถูกต้อง: ' + bad); gi('cal-global-emails')?.focus(); return; }
@@ -3865,8 +3946,7 @@
       const telegramEnabled = !!gi('cal-telegram-enabled')?.checked;
       const telegramBotToken = (gi('cal-telegram-token')?.value || '').trim();
       const telegramChatId = (gi('cal-telegram-chat')?.value || '').trim();
-      if (telegramEnabled && !telegramChatId) { toast('กรุณาใส่ Telegram Chat ID'); gi('cal-telegram-chat')?.focus(); return; }
-      localStorage.setItem(calendarSettingsKey(), JSON.stringify({ emails, reminders, telegramEnabled, telegramBotToken, telegramChatId }));
+      localStorage.setItem(calendarSettingsKey(), JSON.stringify({ recipientMode, emails, reminders, telegramEnabled, telegramBotToken, telegramChatId }));
       closeModal('modal-calendar-settings');
       toast('บันทึกตั้งค่าปฏิทินส่วนกลางแล้ว');
       renderAll();
@@ -3874,7 +3954,7 @@
     }
     function openCalendarEvent(tid, provider) {
       const t = tasks.find(x => x.id === tid); if (!t) return;
-      const emails = calendarEmailsValue(); if (emails === null) return;
+      const emails = calendarEmailsValue(tid); if (emails === null) return;
       const { start, end } = taskCalendarRange(t);
       const title = `TaskFlow: ${t.title}`;
       const reminders = calendarReminderMinutes(tid);
@@ -3914,16 +3994,18 @@
     async function sendCalendarTelegram(tid) {
       const t = tasks.find(x => x.id === tid); if (!t) return;
       const s = getCalendarSettings();
-      if (!s.telegramEnabled || !s.telegramChatId) { toast('กรุณาตั้งค่า Telegram ก่อน'); openCalendarSettings(); return; }
+      const chatIds = taskRecipientTelegramChats(t, s);
+      if (!s.telegramEnabled) { toast('กรุณาเปิดใช้ Telegram ในตั้งค่าปฏิทินก่อน'); openCalendarSettings(); return; }
+      if (!chatIds.length) { toast('ไม่พบ Telegram Chat ID ของผู้รับงาน กรุณาเพิ่มในโปรไฟล์/สมาชิก'); openCalendarSettings(); return; }
       try {
         const tok = window._apiToken || localStorage.getItem('tf_tok') || '';
         const res = await fetch('php/api.php?action=telegram_send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Token': tok },
-          body: JSON.stringify({ chat_id: s.telegramChatId, bot_token: s.telegramBotToken, text: telegramCalendarText(t) })
+          body: JSON.stringify({ chat_ids: chatIds, bot_token: s.telegramBotToken, text: telegramCalendarText(t) })
         }).then(r => r.json());
         if (!res.ok) throw new Error(res.error || 'ส่ง Telegram ไม่สำเร็จ');
-        toast('ส่งแจ้งเตือนไป Telegram แล้ว');
+        toast('ส่งแจ้งเตือนไป Telegram แล้ว ' + chatIds.length + ' รายการ');
       } catch (e) {
         toast(String(e.message || e));
         openCalendarSettings();
@@ -3931,7 +4013,7 @@
     }
     function downloadCalendarIcs(tid) {
       const t = tasks.find(x => x.id === tid); if (!t) return;
-      const emails = calendarEmailsValue(); if (emails === null) return;
+      const emails = calendarEmailsValue(tid); if (emails === null) return;
       const { start, end } = taskCalendarRange(t);
       const reminders = calendarReminderMinutes(tid);
       const esc = v => String(v || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
@@ -4883,7 +4965,7 @@
         return `<tr><td><div style="display:flex;align-items:center;gap:8px;">${avEl(u, 28, 9)}<div><div style="font-weight:600;font-size:12px;">${u.name}</div><div style="font-size:10px;color:var(--text3);">${u.email}</div></div></div></td><td><div style="font-size:12px;">${u.role}</div><div style="font-size:10px;color:var(--text3);">${u.dept || ''}</div></td><td><span class="rb ${rc}" style="padding:3px 10px;">${rl}</span></td><td><span style="font-size:13px;font-weight:700;color:var(--amber);">${wip}</span></td><td><span style="font-size:13px;font-weight:700;color:var(--green);">${done}</span></td><td><div style="display:flex;align-items:center;gap:7px;"><div style="flex:1;height:5px;background:var(--surface);border-radius:3px;overflow:hidden;min-width:50px;"><div style="width:${kpi}%;height:100%;background:${kc};border-radius:3px;"></div></div><span style="font-size:11px;font-weight:700;color:${kc};">${kpi}%</span></div></td><td><div style="display:flex;gap:5px;"><button class="act-btn" onclick="editMember(${u.id})">แก้ไข</button>${canAssign() && u.id !== currentUser.id ? `<button class="act-btn" onclick="openTransferOnlyModal(${u.id})" title="โอนย้ายงาน" style="color:var(--purple);border-color:var(--purple);">⇄ โอนงาน</button>` : ''}${isAdmin() && u.id !== currentUser.id ? `<button class="act-btn del" onclick="delMember(${u.id})">🗑 ลบ</button>` : ''}</div></td></tr>`;
       }).join('');
     }
-    function editMember(id) { const u = findU(id); if (!u) return; gi('m-id').value = u.id; gi('m-name').value = u.name; gi('m-role-txt').value = u.role; gi('m-dept').value = u.dept || ''; gi('m-email').value = u.email; gi('m-pass').value = ''; gi('m-urole').value = u.urole; openModal('modal-member'); }
+    function editMember(id) { const u = findU(id); if (!u) return; gi('m-id').value = u.id; gi('m-name').value = u.name; gi('m-role-txt').value = u.role; gi('m-dept').value = u.dept || ''; gi('m-email').value = u.email; gi('m-pass').value = ''; if (gi('m-telegram')) gi('m-telegram').value = u.telegram_chat_id || u.telegramChatId || u.telegram || ''; gi('m-urole').value = u.urole; openModal('modal-member'); }
     function delMember(id) {
       if (!isAdmin()) { toast('เฉพาะ Admin เท่านั้น'); return; }
       const u = findU(id); if (!u) return;
@@ -5122,8 +5204,8 @@
       }
       closeModal('modal-task'); renderAll(); renderBell();
     }
-    function openMemberModal() { gi('m-id').value = ''; gi('m-name').value = ''; gi('m-role-txt').value = ''; gi('m-dept').value = ''; gi('m-email').value = ''; gi('m-pass').value = ''; gi('m-urole').value = 'user'; openModal('modal-member'); }
-    function submitMember() { const name = gi('m-name').value.trim(), email = gi('m-email').value.trim(); if (!name || !email) { toast('กรุณากรอกชื่อและอีเมล'); return; } const id = gi('m-id').value; if (id) { const u = findU(parseInt(id)); if (u) { u.name = name; u.role = gi('m-role-txt').value; u.dept = gi('m-dept').value; u.email = email; u.urole = gi('m-urole').value; if (gi('m-pass').value) u.pass = gi('m-pass').value; } toast('แก้ไขสมาชิกแล้ว'); } else { users.push({ id: nid++, name, role: gi('m-role-txt').value, dept: gi('m-dept').value, email, pass: gi('m-pass').value || 'user123', urole: gi('m-urole').value, color: users.length % 8 }); toast('เพิ่มสมาชิกแล้ว'); } closeModal('modal-member'); renderMembers(); }
+    function openMemberModal() { gi('m-id').value = ''; gi('m-name').value = ''; gi('m-role-txt').value = ''; gi('m-dept').value = ''; gi('m-email').value = ''; gi('m-pass').value = ''; if (gi('m-telegram')) gi('m-telegram').value = ''; gi('m-urole').value = 'user'; openModal('modal-member'); }
+    function submitMember() { const name = gi('m-name').value.trim(), email = gi('m-email').value.trim(); const telegramChatId = gi('m-telegram') ? gi('m-telegram').value.trim() : ''; if (!name || !email) { toast('กรุณากรอกชื่อและอีเมล'); return; } const id = gi('m-id').value; if (id) { const u = findU(parseInt(id)); if (u) { u.name = name; u.role = gi('m-role-txt').value; u.dept = gi('m-dept').value; u.email = email; u.telegram_chat_id = telegramChatId; u.urole = gi('m-urole').value; if (gi('m-pass').value) u.pass = gi('m-pass').value; } toast('แก้ไขสมาชิกแล้ว'); } else { users.push({ id: nid++, name, role: gi('m-role-txt').value, dept: gi('m-dept').value, email, telegram_chat_id: telegramChatId, pass: gi('m-pass').value || 'user123', urole: gi('m-urole').value, color: users.length % 8 }); toast('เพิ่มสมาชิกแล้ว'); } closeModal('modal-member'); renderMembers(); }
 
     function renderProgFilePreview(files) {
       const box = gi('prog-file-preview'); if (!box) return;
@@ -5153,6 +5235,7 @@
       const u = currentUser; if (!u) return;
       gi('p-name').value = u.name;
       gi('p-email').value = u.email;
+      const ptg = gi('p-telegram'); if (ptg) ptg.value = u.telegram_chat_id || u.telegramChatId || u.telegram || '';
       // Role badge
       const rl = { admin: 'Admin', manager: 'หัวหน้า', assistant: 'ผู้ช่วย', user: 'ผู้ใช้' };
       const rc = { admin: 'rb-admin', manager: 'rb-mgr', assistant: 'rb-asst', user: 'rb-user' };
@@ -5269,6 +5352,7 @@
     function saveProfile() {
       const name = gi('p-name').value.trim();
       const email = gi('p-email').value.trim();
+      const telegramChatId = gi('p-telegram') ? gi('p-telegram').value.trim() : '';
       if (!name) { toast('กรุณาระบุชื่อ'); return; }
       const croppedAvatar = buildProfileCroppedAvatar();
       if (croppedAvatar && croppedAvatar.startsWith('data:')) {
@@ -5277,8 +5361,9 @@
       }
       currentUser.name = name;
       if (email) currentUser.email = email;
+      currentUser.telegram_chat_id = telegramChatId;
       const u = findU(currentUser.id);
-      if (u) { u.name = name; if (email) u.email = email; }
+      if (u) { u.name = name; if (email) u.email = email; u.telegram_chat_id = telegramChatId; }
       profileCropState = null;
       closeModal('modal-profile');
       updateTopbar();
@@ -5761,7 +5846,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260718-calendar-multi-telegram"></script>
+<script src="js/script.js?v=20260718-assignee-telegram-email"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -5778,6 +5863,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260718-calendar-multi-telegram"></script>
+<script src="js/sync.js?v=20260718-assignee-telegram-email"></script>
 </body>
 </html>

@@ -74,13 +74,18 @@ async function localLogin(req) {
   const expires = new Date(Date.now() + SESSION_HOURS * 3600 * 1000).toISOString();
   await sb('/rest/v1/tf_sessions', { method: 'POST', body: JSON.stringify({ token, user_id: u.id, expires_at: expires }) });
   await sb(`/rest/v1/tf_users?id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ last_login: new Date().toISOString() }) });
-  return ok({ token, user: { id: Number(u.id), wwcode: u.wwcode, name: u.name, role: u.role, dept: u.dept, dept_key: u.dept_key, branch: u.branch, branch_name: u.branch_name, email: u.email, urole: u.urole, color: Number(u.color || 0), avatar_url: u.avatar_url || '' } });
+  return ok({ token, user: { id: Number(u.id), wwcode: u.wwcode, name: u.name, role: u.role, dept: u.dept, dept_key: u.dept_key, branch: u.branch, branch_name: u.branch_name, email: u.email, urole: u.urole, color: Number(u.color || 0), avatar_url: u.avatar_url || '', telegram_chat_id: u.telegram_chat_id || '' } });
 }
 async function getUsers(req) {
   const s = await auth(req);
   const q = s.urole === 'admin' ? '' : `&branch=eq.${encodeURIComponent(s.branch || '')}`;
-  const rows = await sb(`/rest/v1/tf_users?select=id,wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,avatar_url${q}&order=id.asc`, { method: 'GET' });
-  return ok({ users: rows });
+  try {
+    const rows = await sb(`/rest/v1/tf_users?select=id,wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,avatar_url,telegram_chat_id${q}&order=id.asc`, { method: 'GET' });
+    return ok({ users: rows });
+  } catch (e) {
+    const rows = await sb(`/rest/v1/tf_users?select=id,wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,avatar_url${q}&order=id.asc`, { method: 'GET' });
+    return ok({ users: rows.map(u => ({ ...u, telegram_chat_id: '' })), warning: 'telegram_chat_id column missing; run latest supabase/schema.sql' });
+  }
 }
 
 async function profileSave(req) {
@@ -89,9 +94,22 @@ async function profileSave(req) {
   const name = String(b.name || '').trim();
   const email = String(b.email || '').trim();
   if (!name) return err('Missing name');
-  const payload = { name, email, updated_at: new Date().toISOString() };
-  const rows = await sb(`/rest/v1/tf_users?id=eq.${s.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
-  return ok({ user: rows?.[0] || null });
+  const telegramChatId = String(b.telegram_chat_id || b.telegramChatId || '').trim();
+  const payload = { name, email, telegram_chat_id: telegramChatId, updated_at: new Date().toISOString() };
+  try {
+    const rows = await sb(`/rest/v1/tf_users?id=eq.${s.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    let user = rows?.[0] || null;
+    if (user?.id) {
+      try {
+        const patched = await sb(`/rest/v1/tf_users?id=eq.${user.id}`, { method: 'PATCH', body: JSON.stringify({ telegram_chat_id: telegramChatId, updated_at: new Date().toISOString() }) });
+        user = patched?.[0] || user;
+      } catch (_) { user.telegram_chat_id = telegramChatId; }
+    }
+    return ok({ user });
+  } catch (e) {
+    const rows = await sb(`/rest/v1/tf_users?id=eq.${s.id}`, { method: 'PATCH', body: JSON.stringify({ name, email, updated_at: new Date().toISOString() }) });
+    return ok({ user: rows?.[0] || null, warning: 'telegram_chat_id column missing; run latest supabase/schema.sql' });
+  }
 }
 
 async function avatarUpload(req) {
@@ -153,6 +171,7 @@ async function memberSave(req) {
   const urole = ['admin', 'manager', 'assistant', 'user'].includes(b.urole) ? b.urole : 'user';
   const color = Number.isFinite(Number(b.color)) ? Number(b.color) : 0;
   const newPassword = String(b.new_password || b.password || '').trim();
+  const telegramChatId = String(b.telegram_chat_id || b.telegramChatId || '').trim();
   const wwcode = String(b.wwcode || makeWwcode(email, name)).trim();
 
   // Preferred path: use SQL function so password is hashed by pgcrypto in Supabase.
@@ -171,13 +190,16 @@ async function memberSave(req) {
         p_email: email,
         p_urole: urole,
         p_color: color,
+        p_telegram_chat_id: telegramChatId,
         p_new_password: newPassword || null,
       }),
     });
-    return ok({ user: rows?.[0] || null });
+    const user = rows?.[0] || null;
+    if (user && !('telegram_chat_id' in user)) user.telegram_chat_id = telegramChatId;
+    return ok({ user });
   } catch (e) {
     // Fallback keeps non-password profile fields working if schema has not been updated yet.
-    const payload = { name, email, role, dept, dept_key: deptKey, branch, branch_name: branchName, urole, color, updated_at: new Date().toISOString() };
+    const payload = { name, email, role, dept, dept_key: deptKey, branch, branch_name: branchName, urole, color, telegram_chat_id: telegramChatId, updated_at: new Date().toISOString() };
     if (id) {
       const rows = await sb(`/rest/v1/tf_users?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       return ok({ user: rows?.[0] || null, warning: 'tf_member_save RPC missing; password was not changed' });
@@ -348,20 +370,24 @@ async function notifications(req) {
 async function telegramSend(req) {
   await auth(req);
   const b = await bodyJson(req);
-  const chatId = String(b.chat_id || '').trim();
+  const chatIds = [...new Set([...(Array.isArray(b.chat_ids) ? b.chat_ids : []), b.chat_id].map(v => String(v || '').trim()).filter(Boolean))];
   const text = String(b.text || '').trim();
   const token = String(TELEGRAM_BOT_TOKEN || b.bot_token || '').trim();
-  if (!chatId) return err('Missing Telegram chat_id');
+  if (!chatIds.length) return err('Missing Telegram chat_id');
   if (!text) return err('Missing Telegram message');
   if (!token) return err('Missing TELEGRAM_BOT_TOKEN or bot_token');
-  const tg = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-  });
-  const data = await tg.json().catch(() => null);
-  if (!tg.ok || !data?.ok) return err(data?.description || 'Telegram send failed', 502);
-  return ok({ telegram: data.result });
+  const sent = [];
+  for (const chatId of chatIds) {
+    const tg = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+    });
+    const data = await tg.json().catch(() => null);
+    if (!tg.ok || !data?.ok) return err(data?.description || `Telegram send failed: ${chatId}`, 502);
+    sent.push(data.result);
+  }
+  return ok({ telegram: sent, sent: sent.length });
 }
 
 async function tagSave(req) {
