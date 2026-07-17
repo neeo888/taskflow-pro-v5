@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260718-calendar-reminder">
+  <link rel="stylesheet" href="css/style.css?v=20260718-calendar-global-settings">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -306,6 +306,39 @@
       color: var(--danger);
     }
 
+    .tb-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      position: relative;
+    }
+
+    .tb-user {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .tb-user-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      line-height: 1.1;
+    }
+
+    .tb-scope {
+      font-size: 9px;
+      color: rgba(255, 255, 255, .45);
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 110px;
+    }
+
     .body-wrap {
       display: flex;
       flex: 1;
@@ -341,7 +374,8 @@
       }
       .tb-spacer { min-width: 4px; }
       .rb { display: none; }
-      .tb-name { display: none; }
+      .tb-name, .tb-scope { display: none; }
+      .tb-actions { gap: 6px; }
       .tb-logout {
         padding: 5px 8px;
         font-size: 9px;
@@ -1608,6 +1642,68 @@
       line-height: 1.5;
     }
 
+    .calendar-settings-btn {
+      border: .5px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      color: rgba(255,255,255,.88);
+      border-radius: 12px;
+      padding: 8px 11px;
+      cursor: pointer;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all .18s ease;
+    }
+    .calendar-settings-btn:hover {
+      background: rgba(14,206,180,.18);
+      border-color: rgba(14,206,180,.36);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+    .calendar-setting-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.72);
+      border: .5px solid rgba(100,116,139,.14);
+      color: var(--text2);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .calendar-setting-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .calendar-settings-modal-note {
+      background: linear-gradient(135deg, rgba(14,206,180,.10), rgba(99,102,241,.08));
+      border: .5px solid rgba(99,102,241,.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: var(--text2);
+      font-size: 11px;
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 640px) {
+      .calendar-settings-btn { padding: 8px 9px; font-size: 0; gap: 0; }
+      .calendar-settings-btn::before { content: '📅'; font-size: 15px; }
+      .calendar-setting-summary { align-items: stretch; }
+      .calendar-setting-summary .calendar-btn { width: 100%; }
+    }
+
     .dp-sec {
       margin-bottom: 16px;
     }
@@ -2413,6 +2509,7 @@
       </div>
 
       <div class="tb-actions">
+        <button class="calendar-settings-btn" onclick="openCalendarSettings()" title="ตั้งค่าปฏิทินและแจ้งเตือนส่วนกลาง">📅 ตั้งค่าปฏิทิน</button>
         <button class="bell-btn" onclick="toggleNotifDrop()" title="การแจ้งเตือน" aria-label="การแจ้งเตือน">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C8.68629 2 6 4.68629 6 8V13.5L4.5 15.5V17H19.5V15.5L18 13.5V8C18 4.68629 15.3137 2 12 2ZM9.5 18.5C9.5 19.8807 10.6193 21 12 21C13.3807 21 14.5 19.8807 14.5 18.5H9.5Z" fill="#2DD4BF" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="round"/>
@@ -2865,6 +2962,39 @@
     </div>
   </div>
 
+  <!-- GLOBAL CALENDAR SETTINGS MODAL -->
+  <div class="modal-bg" id="modal-calendar-settings">
+    <div class="modal" style="width:460px;">
+      <div class="mhd"><span class="mhd-t">⚙️ ตั้งค่าปฏิทินส่วนกลาง</span><button class="mx"
+          onclick="closeModal('modal-calendar-settings')">✕</button></div>
+      <div class="mbody">
+        <div class="mfl">
+          <label>อีเมลปลายทางสำหรับปฏิทิน</label>
+          <input id="cal-global-email" type="email" placeholder="เช่น user@gmail.com หรือ user@hotmail.com" />
+        </div>
+        <div class="mfl">
+          <label>แจ้งเตือนก่อนถึงกำหนด</label>
+          <select id="cal-global-remind">
+            <option value="0">ไม่ต้องเตือน</option>
+            <option value="5">เตือนก่อน 5 นาที</option>
+            <option value="15">เตือนก่อน 15 นาที</option>
+            <option value="30">เตือนก่อน 30 นาที</option>
+            <option value="60">เตือนก่อน 1 ชั่วโมง</option>
+            <option value="180">เตือนก่อน 3 ชั่วโมง</option>
+            <option value="1440">เตือนก่อน 1 วัน</option>
+          </select>
+        </div>
+        <div class="calendar-settings-modal-note">
+          ตั้งค่าตรงนี้ครั้งเดียว แล้วทุกงานที่กดส่งไป Google Calendar / Hotmail / ดาวน์โหลด .ics จะใช้ค่าเดียวกันทันที ไม่ต้องตั้งทีละงาน
+        </div>
+      </div>
+      <div class="mft">
+        <button class="btn-sec" onclick="closeModal('modal-calendar-settings')">ยกเลิก</button>
+        <button class="btn-pri" onclick="saveCalendarSettings()">💾 บันทึกตั้งค่า</button>
+      </div>
+    </div>
+  </div>
+
   <!-- PROFILE MODAL -->
   <div class="modal-bg" id="modal-profile">
     <div class="modal" style="width:420px;">
@@ -3002,6 +3132,7 @@
     let notifications = [];
     let notifDropOpen = false;
     let popupTaskId = null;
+    let activeDetailTaskId = null;
 
     // ── เสียงแจ้งเตือนงานใหม่ (ดังขึ้น + มีเสียง bass) ──────────────
     function playNotifSound() {
@@ -3576,24 +3707,52 @@
       const asgnNames = (t.asgn || []).map(id => findU(id)?.name).filter(Boolean).join(', ');
       return `${t.desc || ''}\n\nสถานะ: ${(COL[t.col] || COL.todo).n}\nความสำคัญ: ${(PRIO[t.priority] || PRIO.normal).l}\nผู้รับผิดชอบ: ${asgnNames || '-'}\n${taskDueLabel(t)}`.trim();
     }
+    function calendarSettingsKey() { return 'tf_calendar_settings_' + (currentUser?.id || 'guest'); }
+    function getCalendarSettings() {
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem(calendarSettingsKey()) || '{}') || {}; } catch { saved = {}; }
+      const reminder = parseInt(saved.reminder ?? '30', 10);
+      return {
+        email: String(saved.email || currentUser?.email || '').trim(),
+        reminder: Number.isFinite(reminder) && reminder >= 0 ? reminder : 30
+      };
+    }
     function calendarEmailValue(tid) {
-      const inp = gi('cal-email-' + tid);
-      const email = (inp?.value || '').trim();
+      const email = getCalendarSettings().email.trim();
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        toast('กรุณาใส่อีเมลให้ถูกต้อง'); inp?.focus(); return null;
+        toast('กรุณาตั้งค่าอีเมลปฏิทินให้ถูกต้อง'); openCalendarSettings(); return null;
       }
       return email;
     }
-    function calendarReminderMinutes(tid) {
-      const v = parseInt(gi('cal-remind-' + tid)?.value || '30', 10);
-      return Number.isFinite(v) && v >= 0 ? v : 30;
-    }
+    function calendarReminderMinutes(tid) { return getCalendarSettings().reminder; }
     function calendarReminderLabel(min) {
       if (!min) return 'ไม่แจ้งเตือนล่วงหน้า';
       if (min < 60) return `เตือนก่อน ${min} นาที`;
       if (min === 60) return 'เตือนก่อน 1 ชั่วโมง';
       if (min < 1440) return `เตือนก่อน ${Math.round(min / 60)} ชั่วโมง`;
       return `เตือนก่อน ${Math.round(min / 1440)} วัน`;
+    }
+    function calendarSettingsSummary() {
+      const s = getCalendarSettings();
+      return `${s.email ? 'อีเมล: ' + s.email : 'ยังไม่ได้ตั้งค่าอีเมล'} · ${calendarReminderLabel(s.reminder)}`;
+    }
+    function openCalendarSettings() {
+      const s = getCalendarSettings();
+      const email = gi('cal-global-email');
+      const remind = gi('cal-global-remind');
+      if (email) email.value = s.email || '';
+      if (remind) remind.value = String(s.reminder);
+      openModal('modal-calendar-settings');
+    }
+    function saveCalendarSettings() {
+      const email = (gi('cal-global-email')?.value || '').trim();
+      const reminder = parseInt(gi('cal-global-remind')?.value || '30', 10);
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('กรุณาใส่อีเมลให้ถูกต้อง'); gi('cal-global-email')?.focus(); return; }
+      localStorage.setItem(calendarSettingsKey(), JSON.stringify({ email, reminder: Number.isFinite(reminder) && reminder >= 0 ? reminder : 30 }));
+      closeModal('modal-calendar-settings');
+      toast('บันทึกตั้งค่าปฏิทินส่วนกลางแล้ว');
+      renderAll();
+      if (activeDetailTaskId) showDP(activeDetailTaskId);
     }
     function openCalendarEvent(tid, provider) {
       const t = tasks.find(x => x.id === tid); if (!t) return;
@@ -4321,6 +4480,7 @@
     // ══════════════════════════
     function showDP(id, fullPage = true) {
       const t = tasks.find(t => t.id === id); if (!t) return;
+      activeDetailTaskId = id;
       const cfg = COL[t.col]; const pr = PRIO[t.priority];
       const asgns = users.filter(u => t.asgn.includes(u.id));
       const ov = t.date && new Date(t.date) < new Date() && t.col !== 'done';
@@ -4389,24 +4549,18 @@
     ${t.desc ? `<div class="dp-sec"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="dp-sec-t" style="margin-bottom:0;">รายละเอียด</div>${canEditText ? `<button class="dp-inline-edit" onclick="openTaskModalEdit(${t.id})">✏️ แก้ไขข้อความ</button>` : ''}</div><div style="font-size:12px;color:var(--text2);line-height:1.6;white-space:pre-wrap;">${t.desc}</div></div>` : (canEditText ? `<div class="dp-sec"><button class="dp-inline-edit" style="margin-left:0;" onclick="openTaskModalEdit(${t.id})">✏️ เพิ่ม/แก้ไขรายละเอียด</button></div>` : '')}
 
     <div class="dp-sec">
-      <div class="dp-sec-t">⚙️ ตั้งค่าปฏิทินและการแจ้งเตือน</div>
+      <div class="dp-sec-t">📅 ส่งเข้าปฏิทิน</div>
       <div class="calendar-send-box">
+        <div class="calendar-setting-summary">
+          <span class="calendar-setting-pill">⚙️ ${calendarSettingsSummary()}</span>
+          <button class="calendar-btn ics" type="button" onclick="openCalendarSettings()">ตั้งค่าปฏิทินส่วนกลาง</button>
+        </div>
         <div class="calendar-send-row">
-          <input class="calendar-email-input" id="cal-email-${t.id}" type="email" placeholder="ใส่อีเมลผู้รับ เช่น user@gmail.com หรือ user@hotmail.com" value="${safeAttr(currentUser?.email || '')}">
-          <select class="calendar-reminder-select" id="cal-remind-${t.id}" title="ตั้งเตือนก่อนถึงเวลานัดหรือกำหนดส่ง">
-            <option value="0">ไม่ต้องเตือน</option>
-            <option value="5">เตือนก่อน 5 นาที</option>
-            <option value="15">เตือนก่อน 15 นาที</option>
-            <option value="30" selected>เตือนก่อน 30 นาที</option>
-            <option value="60">เตือนก่อน 1 ชั่วโมง</option>
-            <option value="180">เตือนก่อน 3 ชั่วโมง</option>
-            <option value="1440">เตือนก่อน 1 วัน</option>
-          </select>
           <button class="calendar-btn google" type="button" onclick="openCalendarEvent(${t.id},'google')">ส่งไป Google Calendar</button>
           <button class="calendar-btn outlook" type="button" onclick="openCalendarEvent(${t.id},'outlook')">ส่งไป Hotmail / Outlook</button>
           <button class="calendar-btn ics" type="button" onclick="downloadCalendarIcs(${t.id})">โหลด .ics พร้อมเตือน</button>
         </div>
-        <div class="calendar-hint">ตั้งอีเมลและเวลาแจ้งเตือนก่อนถึงนัด/กำหนดส่งได้ ระบบจะใส่ชื่องาน รายละเอียด ผู้รับผิดชอบ และ ${taskDueLabel(t)} ให้อัตโนมัติ</div>
+        <div class="calendar-hint">ตั้งค่าอีเมลและเวลาแจ้งเตือนครั้งเดียวจากปุ่ม “ตั้งค่าปฏิทินส่วนกลาง” แล้วทุกงานจะใช้ค่านี้อัตโนมัติ ระบบจะใส่ชื่องาน รายละเอียด ผู้รับผิดชอบ และ ${taskDueLabel(t)} ให้อัตโนมัติ</div>
       </div>
     </div>
 
@@ -5465,7 +5619,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260718-calendar-reminder"></script>
+<script src="js/script.js?v=20260718-calendar-global-settings"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -5482,6 +5636,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260718-calendar-reminder"></script>
+<script src="js/sync.js?v=20260718-calendar-global-settings"></script>
 </body>
 </html>
