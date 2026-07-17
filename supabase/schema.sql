@@ -174,6 +174,8 @@ on conflict (id) do update set
   allowed_mime_types = excluded.allowed_mime_types;
 
 -- Verify local login for Vercel/Supabase API
+-- ต้อง drop ก่อน เพราะ PostgreSQL ไม่อนุญาตให้ CREATE OR REPLACE เปลี่ยน return table type
+drop function if exists public.tf_verify_login(text, text);
 create or replace function public.tf_verify_login(p_username text, p_password text)
 returns table (
   id bigint,
@@ -202,6 +204,9 @@ as $$
 $$;
 
 -- Save member with password hashing for Vercel/Supabase API
+-- drop ทั้ง signature เก่าและใหม่ เพื่อให้รัน schema ซ้ำได้ปลอดภัย
+drop function if exists public.tf_member_save(bigint, text, text, text, text, text, text, text, text, text, smallint, text);
+drop function if exists public.tf_member_save(bigint, text, text, text, text, text, text, text, text, text, smallint, text, text);
 create or replace function public.tf_member_save(
   p_id bigint default null,
   p_wwcode text default null,
