@@ -704,18 +704,100 @@ window.addCustomTag = function () {
 };
 
 // ══════════════════════════════════════════════════════════════
-// 23. PATCH deleteGlobalTagFromPage — ลบ tag ผ่าน API
+// 23. PATCH tag edit/delete — จัดการประเภทงานผ่าน Supabase จริง
 // ══════════════════════════════════════════════════════════════
-const _orig_deleteGlobalTagFromPage = window.deleteGlobalTagFromPage;
-window.deleteGlobalTagFromPage = function (idx) {
-  const tag = window.allTags[idx];
-  if (!tag) return;
-  if (!confirm('ลบประเภทงาน "' + tag + '"?')) return;
-  window.allTags.splice(idx, 1);
-  window.tasks.forEach(t => { t.tags = t.tags.filter(tg => tg !== tag); });
+function _cleanTagName(name) {
+  return String(name || '').trim();
+}
+
+function _refreshTagScreens() {
+  if (typeof buildTagPicker === 'function') buildTagPicker();
   if (typeof renderTagsPage === 'function') renderTagsPage();
-  toast('ลบประเภทงาน "' + tag + '" แล้ว');
-  if (_isPhpSrv()) _api('tag_delete', { name: tag });
+  if (typeof renderAll === 'function') renderAll();
+}
+
+function _removeTagEverywhere(tag) {
+  window.allTags = (window.allTags || []).filter(t => t !== tag);
+  window.selTags = (window.selTags || []).filter(t => t !== tag);
+  (window.tasks || []).forEach(task => {
+    task.tags = (task.tags || []).filter(t => t !== tag);
+  });
+}
+
+function _renameTagEverywhere(oldName, newName) {
+  window.allTags = (window.allTags || []).map(t => t === oldName ? newName : t);
+  window.allTags = [...new Set(window.allTags)];
+  window.selTags = (window.selTags || []).map(t => t === oldName ? newName : t);
+  window.selTags = [...new Set(window.selTags)];
+  (window.tasks || []).forEach(task => {
+    task.tags = [...new Set((task.tags || []).map(t => t === oldName ? newName : t))];
+  });
+}
+
+async function _deleteTagPersist(tag) {
+  if (!_isPhpSrv()) return { ok: true, _offline: true };
+  return _api('tag_delete', { name: tag });
+}
+
+async function _renameTagPersist(oldName, newName) {
+  if (!_isPhpSrv()) return { ok: true, _offline: true };
+  return _api('tag_rename', { old_name: oldName, new_name: newName });
+}
+
+const _orig_deleteGlobalTagFromPage = window.deleteGlobalTagFromPage;
+window.deleteGlobalTagFromPage = async function (idx) {
+  const tag = (window.allTags || [])[idx];
+  if (!tag) return;
+  if (!confirm('ลบประเภทงาน "' + tag + '"?\n\nระบบจะลบประเภทงานนี้ออกจากงานทุกงานที่ใช้อยู่ด้วย')) return;
+
+  const r = await _deleteTagPersist(tag);
+  if (!r.ok) {
+    toast('ลบประเภทงานไม่สำเร็จ: ' + (r.error || ''));
+    return;
+  }
+
+  _removeTagEverywhere(tag);
+  _refreshTagScreens();
+  toast('✅ ลบประเภทงาน "' + tag + '" แล้ว' + (r.updated_tasks ? ' และอัปเดตงาน ' + r.updated_tasks + ' งาน' : ''));
+};
+
+const _orig_deleteGlobalTag = window.deleteGlobalTag;
+window.deleteGlobalTag = async function (tag) {
+  tag = _cleanTagName(tag);
+  if (!tag) return;
+  if (!confirm('ลบประเภทงาน "' + tag + '"?\n\nระบบจะลบประเภทงานนี้ออกจากงานทุกงานที่ใช้อยู่ด้วย')) return;
+
+  const r = await _deleteTagPersist(tag);
+  if (!r.ok) {
+    toast('ลบประเภทงานไม่สำเร็จ: ' + (r.error || ''));
+    return;
+  }
+
+  _removeTagEverywhere(tag);
+  _refreshTagScreens();
+  toast('✅ ลบประเภทงาน "' + tag + '" แล้ว');
+};
+
+const _orig_startEditTag = window.startEditTag;
+window.startEditTag = async function (idx) {
+  const oldName = (window.allTags || [])[idx];
+  if (!oldName) return;
+  const newName = _cleanTagName(prompt('แก้ไขชื่อประเภทงาน:', oldName));
+  if (!newName || newName === oldName) return;
+  if ((window.allTags || []).includes(newName)) {
+    toast('มีชื่อนี้อยู่แล้ว');
+    return;
+  }
+
+  const r = await _renameTagPersist(oldName, newName);
+  if (!r.ok) {
+    toast('แก้ไขประเภทงานไม่สำเร็จ: ' + (r.error || ''));
+    return;
+  }
+
+  _renameTagEverywhere(oldName, newName);
+  _refreshTagScreens();
+  toast('✅ เปลี่ยนชื่อประเภทงานเป็น "' + newName + '" แล้ว' + (r.updated_tasks ? ' และอัปเดตงาน ' + r.updated_tasks + ' งาน' : ''));
 };
 
 // ══════════════════════════════════════════════════════════════

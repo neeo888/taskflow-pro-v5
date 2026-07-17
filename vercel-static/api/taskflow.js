@@ -454,12 +454,42 @@ async function tagSave(req) {
   await sb('/rest/v1/tf_tags?on_conflict=name', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ name }) });
   return ok({ name });
 }
+async function _rewriteTaskTags(mapper) {
+  const rows = await sb('/rest/v1/tf_tasks?select=id,tags', { method: 'GET' });
+  let updated = 0;
+  for (const row of rows || []) {
+    const before = Array.isArray(row.tags) ? row.tags : [];
+    const after = [...new Set((mapper(before) || []).map(v => String(v || '').trim()).filter(Boolean))];
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      await sb(`/rest/v1/tf_tasks?id=eq.${Number(row.id)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ tags: after }) });
+      updated += 1;
+    }
+  }
+  return updated;
+}
 async function tagDelete(req) {
   const s = await auth(req);
   if (!['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
   const b = await bodyJson(req);
-  await sb(`/rest/v1/tf_tags?name=eq.${encodeURIComponent(b.name || '')}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
-  return ok();
+  const name = String(b.name || '').trim();
+  if (!name) return err('Missing name');
+  const updated_tasks = await _rewriteTaskTags(tags => tags.filter(t => t !== name));
+  await sb(`/rest/v1/tf_tags?name=eq.${encodeURIComponent(name)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+  return ok({ name, updated_tasks });
+}
+async function tagRename(req) {
+  const s = await auth(req);
+  if (!['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
+  const b = await bodyJson(req);
+  const oldName = String(b.old_name || b.oldName || '').trim();
+  const newName = String(b.new_name || b.newName || '').trim();
+  if (!oldName || !newName) return err('Missing name');
+  if (oldName === newName) return ok({ old_name: oldName, new_name: newName, updated_tasks: 0 });
+  const dup = await sb(`/rest/v1/tf_tags?name=eq.${encodeURIComponent(newName)}&select=name`, { method: 'GET' });
+  if (dup?.length) return err('มีประเภทงานชื่อนี้อยู่แล้ว');
+  await sb(`/rest/v1/tf_tags?name=eq.${encodeURIComponent(oldName)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ name: newName }) });
+  const updated_tasks = await _rewriteTaskTags(tags => tags.map(t => t === oldName ? newName : t));
+  return ok({ old_name: oldName, new_name: newName, updated_tasks });
 }
 async function fileUpload(req) {
   const s = await auth(req);
@@ -513,6 +543,7 @@ export default async function handler(req) {
     if (action === 'telegram_send' && req.method === 'POST') return telegramSend(req);
     if (action === 'tag_save' && req.method === 'POST') return tagSave(req);
     if (action === 'tag_delete' && req.method === 'POST') return tagDelete(req);
+    if (action === 'tag_rename' && req.method === 'POST') return tagRename(req);
     return err(`Unknown: ${action}`, 404);
   } catch (e) {
     return err(e.message || 'Server error', e.status || 500);

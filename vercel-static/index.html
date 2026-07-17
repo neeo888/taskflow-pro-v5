@@ -5725,7 +5725,7 @@
             return;
         }
         list.innerHTML = allTags.map((tag, i) => {
-            const usedCount = tasks.filter(t => t.tags.includes(tag)).length;
+            const usedCount = tasks.filter(t => (t.tags || []).includes(tag)).length;
             return `<div style="display:flex;align-items:center;gap:10px;padding:10px 13px;border:.5px solid var(--border);border-radius:10px;margin-bottom:7px;background:var(--surface);">
                 <span style="background:#EEF3FF;color:#3C3489;font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px;">${tag}</span>
                 <span style="font-size:11px;color:var(--text3);flex:1;">ใช้ใน ${usedCount} งาน</span>
