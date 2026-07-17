@@ -3,6 +3,7 @@ export const config = { runtime: 'edge' };
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SESSION_HOURS = Number(process.env.SESSION_HOURS || 720);
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -344,6 +345,25 @@ async function notifications(req) {
   const rows = await sb(`/rest/v1/tf_notifications?for_user_id=eq.${s.id}&select=*&order=created_at.desc&limit=50`, { method: 'GET' });
   return ok({ notifications: rows });
 }
+async function telegramSend(req) {
+  await auth(req);
+  const b = await bodyJson(req);
+  const chatId = String(b.chat_id || '').trim();
+  const text = String(b.text || '').trim();
+  const token = String(TELEGRAM_BOT_TOKEN || b.bot_token || '').trim();
+  if (!chatId) return err('Missing Telegram chat_id');
+  if (!text) return err('Missing Telegram message');
+  if (!token) return err('Missing TELEGRAM_BOT_TOKEN or bot_token');
+  const tg = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+  });
+  const data = await tg.json().catch(() => null);
+  if (!tg.ok || !data?.ok) return err(data?.description || 'Telegram send failed', 502);
+  return ok({ telegram: data.result });
+}
+
 async function tagSave(req) {
   await auth(req);
   let name = '';
@@ -415,6 +435,7 @@ export default async function handler(req) {
     if (action === 'obstacle_add' && req.method === 'POST') return obstacleAdd(req);
     if (action === 'obstacle_resolve' && req.method === 'POST') return simplePatch(req, 'tf_obstacles', 'id', () => ({ resolved: true, resolved_at: new Date().toISOString() }));
     if (action === 'comment_add' && req.method === 'POST') return commentAdd(req);
+    if (action === 'telegram_send' && req.method === 'POST') return telegramSend(req);
     if (action === 'tag_save' && req.method === 'POST') return tagSave(req);
     if (action === 'tag_delete' && req.method === 'POST') return tagDelete(req);
     return err(`Unknown: ${action}`, 404);

@@ -3,7 +3,7 @@
 <html lang="th">
 
 <head>
-  <link rel="stylesheet" href="css/style.css?v=20260718-calendar-global-settings">
+  <link rel="stylesheet" href="css/style.css?v=20260718-calendar-multi-telegram">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <meta charset="UTF-8" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1E3D'/%3E%3Cpath d='M18 12l12 20-12 20h8l12-20-12-20h-8zm18 0l12 20-12 20h8l12-20-12-20h-8z' fill='%2300D4AA'/%3E%3C/svg%3E">
@@ -1696,12 +1696,86 @@
       line-height: 1.6;
       margin-top: 8px;
     }
+    .calendar-settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .calendar-emails-input {
+      width: 100%;
+      min-height: 92px;
+      resize: vertical;
+      border: .5px solid var(--border);
+      border-radius: 14px;
+      background: #F8FAFF;
+      padding: 12px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      outline: none;
+    }
+    .calendar-emails-input:focus {
+      border-color: rgba(14,206,180,.65);
+      box-shadow: 0 0 0 3px rgba(14,206,180,.10);
+    }
+    .calendar-reminder-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 8px;
+    }
+    .calendar-reminder-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 11px;
+      border: .5px solid var(--border);
+      border-radius: 12px;
+      background: #F8FAFF;
+      color: var(--text2);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+    .calendar-reminder-chip:has(input:checked) {
+      border-color: rgba(14,206,180,.65);
+      background: rgba(14,206,180,.10);
+      color: var(--text);
+    }
+    .calendar-reminder-chip input { accent-color: var(--accent); }
+    .telegram-settings-box {
+      border: .5px solid rgba(36,161,222,.25);
+      background: linear-gradient(135deg, rgba(36,161,222,.08), rgba(14,206,180,.07));
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+    .telegram-settings-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 900;
+      color: var(--text);
+      margin-bottom: 9px;
+      font-size: 13px;
+    }
+    .telegram-mini-note {
+      color: var(--text3);
+      font-size: 10px;
+      line-height: 1.45;
+      margin-top: 7px;
+    }
+    .calendar-btn.telegram { background: #E7F5FD; color: #0C4A6E; }
 
     @media (max-width: 640px) {
       .calendar-settings-btn { padding: 8px 9px; font-size: 0; gap: 0; }
       .calendar-settings-btn::before { content: '📅'; font-size: 15px; }
       .calendar-setting-summary { align-items: stretch; }
       .calendar-setting-summary .calendar-btn { width: 100%; }
+      .calendar-settings-grid { grid-template-columns: 1fr; }
+      .calendar-reminder-grid { grid-template-columns: 1fr; }
     }
 
     .dp-sec {
@@ -2964,28 +3038,46 @@
 
   <!-- GLOBAL CALENDAR SETTINGS MODAL -->
   <div class="modal-bg" id="modal-calendar-settings">
-    <div class="modal" style="width:460px;">
+    <div class="modal" style="width:640px;max-width:calc(100vw - 22px);">
       <div class="mhd"><span class="mhd-t">⚙️ ตั้งค่าปฏิทินส่วนกลาง</span><button class="mx"
           onclick="closeModal('modal-calendar-settings')">✕</button></div>
       <div class="mbody">
         <div class="mfl">
-          <label>อีเมลปลายทางสำหรับปฏิทิน</label>
-          <input id="cal-global-email" type="email" placeholder="เช่น user@gmail.com หรือ user@hotmail.com" />
+          <label>อีเมลปลายทางสำหรับปฏิทิน — ใส่ได้หลายอีเมล</label>
+          <textarea id="cal-global-emails" class="calendar-emails-input" placeholder="เช่น user1@gmail.com, user2@hotmail.com&#10;หรือพิมพ์แยกบรรทัดละ 1 อีเมล"></textarea>
+          <div class="telegram-mini-note">ใช้ comma, เว้นวรรค หรือขึ้นบรรทัดใหม่คั่นแต่ละอีเมลได้</div>
         </div>
         <div class="mfl">
-          <label>แจ้งเตือนก่อนถึงกำหนด</label>
-          <select id="cal-global-remind">
-            <option value="0">ไม่ต้องเตือน</option>
-            <option value="5">เตือนก่อน 5 นาที</option>
-            <option value="15">เตือนก่อน 15 นาที</option>
-            <option value="30">เตือนก่อน 30 นาที</option>
-            <option value="60">เตือนก่อน 1 ชั่วโมง</option>
-            <option value="180">เตือนก่อน 3 ชั่วโมง</option>
-            <option value="1440">เตือนก่อน 1 วัน</option>
-          </select>
+          <label>ตั้งค่าเตือนก่อนถึงกำหนด — เลือกได้หลายเวลา</label>
+          <div class="calendar-reminder-grid" id="cal-reminder-grid">
+            <label class="calendar-reminder-chip"><input type="checkbox" class="cal-remind-check" value="0"> ไม่ต้องเตือน</label>
+            <label class="calendar-reminder-chip"><input type="checkbox" class="cal-remind-check" value="5"> 5 นาที</label>
+            <label class="calendar-reminder-chip"><input type="checkbox" class="cal-remind-check" value="15"> 15 นาที</label>
+            <label class="calendar-reminder-chip"><input type="checkbox" class="cal-remind-check" value="30"> 30 นาที</label>
+            <label class="calendar-reminder-chip"><input type="checkbox" class="cal-remind-check" value="60"> 1 ชั่วโมง</label>
+            <label class="calendar-reminder-chip"><input type="checkbox" class="cal-remind-check" value="180"> 3 ชั่วโมง</label>
+            <label class="calendar-reminder-chip"><input type="checkbox" class="cal-remind-check" value="1440"> 1 วัน</label>
+          </div>
+        </div>
+        <div class="telegram-settings-box">
+          <div class="telegram-settings-title">
+            <span>📨 ส่งแจ้งเตือนไป Telegram</span>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);"><input type="checkbox" id="cal-telegram-enabled"> เปิดใช้</label>
+          </div>
+          <div class="calendar-settings-grid">
+            <div class="mfl" style="margin-bottom:0;">
+              <label>Telegram Bot Token</label>
+              <input id="cal-telegram-token" type="password" placeholder="เช่น 123456:ABC..." autocomplete="off" />
+            </div>
+            <div class="mfl" style="margin-bottom:0;">
+              <label>Chat ID / Group ID</label>
+              <input id="cal-telegram-chat" placeholder="เช่น 123456789 หรือ -100xxxxxxxxxx" />
+            </div>
+          </div>
+          <div class="telegram-mini-note">ถ้าตั้ง TELEGRAM_BOT_TOKEN ใน Vercel แล้ว ช่อง Bot Token สามารถเว้นว่างได้ แต่ต้องใส่ Chat ID เพื่อส่งเข้าห้อง/แชทจริง</div>
         </div>
         <div class="calendar-settings-modal-note">
-          ตั้งค่าตรงนี้ครั้งเดียว แล้วทุกงานที่กดส่งไป Google Calendar / Hotmail / ดาวน์โหลด .ics จะใช้ค่าเดียวกันทันที ไม่ต้องตั้งทีละงาน
+          ตั้งค่าตรงนี้ครั้งเดียว แล้วทุกงานที่กดส่งไป Google Calendar / Hotmail / Telegram / ดาวน์โหลด .ics จะใช้ค่าเดียวกันทันที ไม่ต้องตั้งทีละงาน
         </div>
       </div>
       <div class="mft">
@@ -3708,23 +3800,35 @@
       return `${t.desc || ''}\n\nสถานะ: ${(COL[t.col] || COL.todo).n}\nความสำคัญ: ${(PRIO[t.priority] || PRIO.normal).l}\nผู้รับผิดชอบ: ${asgnNames || '-'}\n${taskDueLabel(t)}`.trim();
     }
     function calendarSettingsKey() { return 'tf_calendar_settings_' + (currentUser?.id || 'guest'); }
+    function parseCalendarEmails(raw) {
+      return [...new Set(String(raw || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean))];
+    }
+    function normaliseReminderList(value) {
+      let arr = Array.isArray(value) ? value : (value === undefined || value === null ? [] : [value]);
+      arr = arr.map(v => parseInt(v, 10)).filter(v => Number.isFinite(v) && v >= 0);
+      if (!arr.length) arr = [30];
+      if (arr.includes(0)) return [0];
+      return [...new Set(arr)].sort((a, b) => a - b);
+    }
     function getCalendarSettings() {
       let saved = {};
       try { saved = JSON.parse(localStorage.getItem(calendarSettingsKey()) || '{}') || {}; } catch { saved = {}; }
-      const reminder = parseInt(saved.reminder ?? '30', 10);
+      const emails = parseCalendarEmails((saved.emails || []).join ? saved.emails.join('\n') : (saved.emails || saved.email || currentUser?.email || ''));
       return {
-        email: String(saved.email || currentUser?.email || '').trim(),
-        reminder: Number.isFinite(reminder) && reminder >= 0 ? reminder : 30
+        emails,
+        reminders: normaliseReminderList(saved.reminders || saved.reminder || 30),
+        telegramEnabled: !!saved.telegramEnabled,
+        telegramBotToken: String(saved.telegramBotToken || '').trim(),
+        telegramChatId: String(saved.telegramChatId || '').trim()
       };
     }
-    function calendarEmailValue(tid) {
-      const email = getCalendarSettings().email.trim();
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        toast('กรุณาตั้งค่าอีเมลปฏิทินให้ถูกต้อง'); openCalendarSettings(); return null;
-      }
-      return email;
+    function calendarEmailsValue() {
+      const emails = getCalendarSettings().emails;
+      const bad = emails.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+      if (bad) { toast('กรุณาตั้งค่าอีเมลปฏิทินให้ถูกต้อง: ' + bad); openCalendarSettings(); return null; }
+      return emails;
     }
-    function calendarReminderMinutes(tid) { return getCalendarSettings().reminder; }
+    function calendarReminderMinutes(tid) { return getCalendarSettings().reminders; }
     function calendarReminderLabel(min) {
       if (!min) return 'ไม่แจ้งเตือนล่วงหน้า';
       if (min < 60) return `เตือนก่อน ${min} นาที`;
@@ -3732,23 +3836,37 @@
       if (min < 1440) return `เตือนก่อน ${Math.round(min / 60)} ชั่วโมง`;
       return `เตือนก่อน ${Math.round(min / 1440)} วัน`;
     }
+    function calendarReminderListLabel(list) {
+      const reminders = normaliseReminderList(list);
+      return reminders.map(calendarReminderLabel).join(', ');
+    }
     function calendarSettingsSummary() {
       const s = getCalendarSettings();
-      return `${s.email ? 'อีเมล: ' + s.email : 'ยังไม่ได้ตั้งค่าอีเมล'} · ${calendarReminderLabel(s.reminder)}`;
+      const emailText = s.emails.length ? `${s.emails.length} อีเมล` : 'ยังไม่ได้ตั้งค่าอีเมล';
+      const tg = s.telegramEnabled && s.telegramChatId ? ' · Telegram เปิดใช้' : '';
+      return `${emailText} · ${calendarReminderListLabel(s.reminders)}${tg}`;
     }
     function openCalendarSettings() {
       const s = getCalendarSettings();
-      const email = gi('cal-global-email');
-      const remind = gi('cal-global-remind');
-      if (email) email.value = s.email || '';
-      if (remind) remind.value = String(s.reminder);
+      const emails = gi('cal-global-emails');
+      if (emails) emails.value = s.emails.join('\n');
+      document.querySelectorAll('.cal-remind-check').forEach(ch => { ch.checked = s.reminders.includes(parseInt(ch.value, 10)); });
+      const tgEnabled = gi('cal-telegram-enabled'); if (tgEnabled) tgEnabled.checked = s.telegramEnabled;
+      const tgToken = gi('cal-telegram-token'); if (tgToken) tgToken.value = s.telegramBotToken || '';
+      const tgChat = gi('cal-telegram-chat'); if (tgChat) tgChat.value = s.telegramChatId || '';
       openModal('modal-calendar-settings');
     }
     function saveCalendarSettings() {
-      const email = (gi('cal-global-email')?.value || '').trim();
-      const reminder = parseInt(gi('cal-global-remind')?.value || '30', 10);
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('กรุณาใส่อีเมลให้ถูกต้อง'); gi('cal-global-email')?.focus(); return; }
-      localStorage.setItem(calendarSettingsKey(), JSON.stringify({ email, reminder: Number.isFinite(reminder) && reminder >= 0 ? reminder : 30 }));
+      const emails = parseCalendarEmails(gi('cal-global-emails')?.value || '');
+      const bad = emails.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+      if (bad) { toast('อีเมลไม่ถูกต้อง: ' + bad); gi('cal-global-emails')?.focus(); return; }
+      let reminders = [...document.querySelectorAll('.cal-remind-check:checked')].map(ch => ch.value);
+      reminders = normaliseReminderList(reminders);
+      const telegramEnabled = !!gi('cal-telegram-enabled')?.checked;
+      const telegramBotToken = (gi('cal-telegram-token')?.value || '').trim();
+      const telegramChatId = (gi('cal-telegram-chat')?.value || '').trim();
+      if (telegramEnabled && !telegramChatId) { toast('กรุณาใส่ Telegram Chat ID'); gi('cal-telegram-chat')?.focus(); return; }
+      localStorage.setItem(calendarSettingsKey(), JSON.stringify({ emails, reminders, telegramEnabled, telegramBotToken, telegramChatId }));
       closeModal('modal-calendar-settings');
       toast('บันทึกตั้งค่าปฏิทินส่วนกลางแล้ว');
       renderAll();
@@ -3756,11 +3874,11 @@
     }
     function openCalendarEvent(tid, provider) {
       const t = tasks.find(x => x.id === tid); if (!t) return;
-      const email = calendarEmailValue(tid); if (email === null) return;
+      const emails = calendarEmailsValue(); if (emails === null) return;
       const { start, end } = taskCalendarRange(t);
       const title = `TaskFlow: ${t.title}`;
-      const reminder = calendarReminderMinutes(tid);
-      const details = `${calText(t)}\n\n🔔 ${calendarReminderLabel(reminder)}`;
+      const reminders = calendarReminderMinutes(tid);
+      const details = `${calText(t)}\n\n🔔 ${calendarReminderListLabel(reminders)}`;
       let url = '';
       if (provider === 'google') {
         const params = new URLSearchParams({
@@ -3770,7 +3888,7 @@
           details,
           location: 'TaskFlow Pro v5',
         });
-        if (email) params.set('add', email);
+        emails.forEach(email => params.append('add', email));
         url = `https://calendar.google.com/calendar/render?${params.toString()}`;
       } else {
         const params = new URLSearchParams({
@@ -3782,28 +3900,51 @@
           body: details,
           location: 'TaskFlow Pro v5',
         });
-        if (email) params.set('to', email);
+        if (emails.length) params.set('to', emails.join(';'));
         url = `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
       }
       window.open(url, '_blank', 'noopener,noreferrer');
       toast(provider === 'google' ? 'เปิด Google Calendar แล้ว' : 'เปิด Outlook/Hotmail Calendar แล้ว');
     }
+    function telegramCalendarText(t) {
+      const { start } = taskCalendarRange(t);
+      const dateText = start.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+      return `📌 TaskFlow Pro v5\nงาน: ${t.title}\nกำหนด: ${dateText}\n${calText(t)}\n\n🔔 ${calendarReminderListLabel(calendarReminderMinutes(t.id))}`;
+    }
+    async function sendCalendarTelegram(tid) {
+      const t = tasks.find(x => x.id === tid); if (!t) return;
+      const s = getCalendarSettings();
+      if (!s.telegramEnabled || !s.telegramChatId) { toast('กรุณาตั้งค่า Telegram ก่อน'); openCalendarSettings(); return; }
+      try {
+        const tok = window._apiToken || localStorage.getItem('tf_tok') || '';
+        const res = await fetch('php/api.php?action=telegram_send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Token': tok },
+          body: JSON.stringify({ chat_id: s.telegramChatId, bot_token: s.telegramBotToken, text: telegramCalendarText(t) })
+        }).then(r => r.json());
+        if (!res.ok) throw new Error(res.error || 'ส่ง Telegram ไม่สำเร็จ');
+        toast('ส่งแจ้งเตือนไป Telegram แล้ว');
+      } catch (e) {
+        toast(String(e.message || e));
+        openCalendarSettings();
+      }
+    }
     function downloadCalendarIcs(tid) {
       const t = tasks.find(x => x.id === tid); if (!t) return;
-      const email = calendarEmailValue(tid); if (email === null) return;
+      const emails = calendarEmailsValue(); if (emails === null) return;
       const { start, end } = taskCalendarRange(t);
-      const reminder = calendarReminderMinutes(tid);
+      const reminders = calendarReminderMinutes(tid);
       const esc = v => String(v || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
-      const attendee = email ? `ATTENDEE;CN=${esc(email)};RSVP=TRUE:mailto:${email}\r\n` : '';
-      const alarm = reminder > 0 ? `BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:${esc('TaskFlow แจ้งเตือน: ' + t.title)}\r\nTRIGGER:-PT${reminder}M\r\nEND:VALARM\r\n` : '';
-      const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//TaskFlow Pro v5//TH\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nBEGIN:VEVENT\r\nUID:taskflow-${t.id}-${Date.now()}@taskflow-pro-v5\r\nDTSTAMP:${calDateUTC(new Date())}\r\nDTSTART:${calDateUTC(start)}\r\nDTEND:${calDateUTC(end)}\r\nSUMMARY:${esc('TaskFlow: ' + t.title)}\r\nDESCRIPTION:${esc(calText(t) + '\n\n🔔 ' + calendarReminderLabel(reminder))}\r\nLOCATION:${esc('TaskFlow Pro v5')}\r\n${attendee}${alarm}END:VEVENT\r\nEND:VCALENDAR\r\n`;
+      const attendees = emails.map(email => `ATTENDEE;CN=${esc(email)};RSVP=TRUE:mailto:${email}\r\n`).join('');
+      const alarms = reminders.filter(v => v > 0).map(reminder => `BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:${esc('TaskFlow แจ้งเตือน: ' + t.title)}\r\nTRIGGER:-PT${reminder}M\r\nEND:VALARM\r\n`).join('');
+      const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//TaskFlow Pro v5//TH\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nBEGIN:VEVENT\r\nUID:taskflow-${t.id}-${Date.now()}@taskflow-pro-v5\r\nDTSTAMP:${calDateUTC(new Date())}\r\nDTSTART:${calDateUTC(start)}\r\nDTEND:${calDateUTC(end)}\r\nSUMMARY:${esc('TaskFlow: ' + t.title)}\r\nDESCRIPTION:${esc(calText(t) + '\n\n🔔 ' + calendarReminderListLabel(reminders))}\r\nLOCATION:${esc('TaskFlow Pro v5')}\r\n${attendees}${alarms}END:VEVENT\r\nEND:VCALENDAR\r\n`;
       const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `taskflow-${t.id}.ics`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 800);
-      toast('ดาวน์โหลดไฟล์ปฏิทิน .ics แล้ว');
+      toast('ดาวน์โหลดไฟล์ปฏิทิน .ics พร้อมหลายเวลาเตือนแล้ว');
     }
 
     function sortTasksByDue(list, doneLast = false) {
@@ -4558,9 +4699,10 @@
         <div class="calendar-send-row">
           <button class="calendar-btn google" type="button" onclick="openCalendarEvent(${t.id},'google')">ส่งไป Google Calendar</button>
           <button class="calendar-btn outlook" type="button" onclick="openCalendarEvent(${t.id},'outlook')">ส่งไป Hotmail / Outlook</button>
+          <button class="calendar-btn telegram" type="button" onclick="sendCalendarTelegram(${t.id})">ส่งไป Telegram</button>
           <button class="calendar-btn ics" type="button" onclick="downloadCalendarIcs(${t.id})">โหลด .ics พร้อมเตือน</button>
         </div>
-        <div class="calendar-hint">ตั้งค่าอีเมลและเวลาแจ้งเตือนครั้งเดียวจากปุ่ม “ตั้งค่าปฏิทินส่วนกลาง” แล้วทุกงานจะใช้ค่านี้อัตโนมัติ ระบบจะใส่ชื่องาน รายละเอียด ผู้รับผิดชอบ และ ${taskDueLabel(t)} ให้อัตโนมัติ</div>
+        <div class="calendar-hint">ตั้งค่าอีเมลหลายรายการ เวลาแจ้งเตือนได้หลายเวลา และ Telegram ครั้งเดียวจากปุ่ม “ตั้งค่าปฏิทินส่วนกลาง” แล้วทุกงานจะใช้ค่านี้อัตโนมัติ ระบบจะใส่ชื่องาน รายละเอียด ผู้รับผิดชอบ และ ${taskDueLabel(t)} ให้อัตโนมัติ</div>
       </div>
     </div>
 
@@ -5619,7 +5761,7 @@
     }
 
   </script>
-<script src="js/script.js?v=20260718-calendar-global-settings"></script>
+<script src="js/script.js?v=20260718-calendar-multi-telegram"></script>
 <script>
 function liveSearch(val) {
   const term = val.toLowerCase();
@@ -5636,6 +5778,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260718-calendar-global-settings"></script>
+<script src="js/sync.js?v=20260718-calendar-multi-telegram"></script>
 </body>
 </html>
