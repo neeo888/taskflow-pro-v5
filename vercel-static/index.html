@@ -3019,20 +3019,27 @@
           <div class="ph">
             <div>
               <div class="pt">ประเภทงาน (Tags)</div>
-              <div class="ps">เพิ่ม ลบ จัดการประเภทงานทั้งหมด</div>
+              <div class="ps">เพิ่ม ลบ จัดการประเภทงานทั้งหมด และเชื่อมโยงกับฐานข้อมูล</div>
             </div>
+            <button class="btn-pri" type="button" onclick="gi('new-tag-global')?.focus()">+ เพิ่มประเภทงาน</button>
           </div>
           <div
-            style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:18px;max-width:600px;">
-            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px;">เพิ่มประเภทงานใหม่</div>
-            <div style="display:flex;gap:8px;margin-bottom:18px;">
-              <input id="new-tag-global" placeholder="พิมพ์ชื่อประเภทงาน..."
-                style="flex:1;border:.5px solid var(--border);border-radius:9px;padding:10px 13px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;background:var(--surface);"
-                onkeydown="if(event.key==='Enter')addGlobalTag()" />
-              <button class="btn-pri" onclick="console.log('คลิกแล้ว'); addGlobalTag()">+ เพิ่ม</button>
+            style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:18px;max-width:720px;">
+            <div style="background:linear-gradient(135deg,#F8FBFF,#F0FDFA);border:.5px solid rgba(45,212,191,.28);border-radius:13px;padding:14px;margin-bottom:18px;">
+              <div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px;">➕ เพิ่มประเภทงาน</div>
+              <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">พิมพ์ชื่อประเภทงานแล้วกด Enter หรือกดปุ่มเพิ่ม ระบบจะบันทึกลง Supabase และแสดงในช่องเลือกประเภทงานทันที</div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input id="new-tag-global" placeholder="เช่น งานด่วน, ประชุม, ตรวจเอกสาร..."
+                  style="flex:1;border:.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:13px;font-family:'Sarabun',sans-serif;outline:none;background:var(--white);"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();addGlobalTag()}" />
+                <button class="btn-pri" type="button" onclick="addGlobalTag()">+ เพิ่ม</button>
+              </div>
             </div>
-            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">ประเภทงานทั้งหมด <span
-                id="tags-count" style="color:var(--text3);font-weight:400;font-size:11px;"></span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+              <div style="font-size:12px;font-weight:800;color:var(--text);">ประเภทงานทั้งหมด <span
+                  id="tags-count" style="color:var(--text3);font-weight:500;font-size:11px;"></span></div>
+              <div style="font-size:10px;color:var(--text3);">แก้ไข / ลบ ได้จากรายการด้านล่าง</div>
+            </div>
             <div id="tags-global-list"></div>
           </div>
         </div>
