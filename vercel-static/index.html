@@ -1160,6 +1160,83 @@
       font-weight: 700;
     }
 
+    /* STANDARD INTERACTION LAYER: keep existing look, improve click/touch/keyboard behavior */
+    button,
+    [role="button"],
+    .ni,
+    .tab,
+    .tb-av,
+    .notif-clear,
+    .upload-zone,
+    .tpick,
+    .apick {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .btn-sec,
+    .btn-pri,
+    .btn-danger,
+    .btn-success,
+    .act-btn,
+    .calendar-btn,
+    .calendar-settings-btn,
+    .upload-btn-sm,
+    .col-addbtn,
+    .tb-logout,
+    .notif-ack-btn,
+    .atch-download {
+      min-height: 40px;
+      line-height: 1.2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      user-select: none;
+      transition: transform .15s ease, box-shadow .15s ease, background .15s ease, opacity .15s ease;
+    }
+
+    button:focus-visible,
+    [role="button"]:focus-visible,
+    .ni:focus-visible,
+    .tab:focus-visible,
+    .dash-task-row:focus-visible,
+    .task-card:focus-visible,
+    .bcard:focus-visible,
+    .notif-item:focus-visible,
+    .upload-zone:focus-visible {
+      outline: 3px solid rgba(99, 102, 241, .28);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, .12);
+    }
+
+    .btn-sec:active,
+    .btn-pri:active,
+    .btn-danger:active,
+    .btn-success:active,
+    .act-btn:active,
+    .calendar-btn:active,
+    .calendar-settings-btn:active,
+    .upload-btn-sm:active,
+    .col-addbtn:active,
+    .tb-logout:active,
+    .notif-ack-btn:active,
+    .atch-download:active,
+    .ni:active,
+    .dash-task-row:active,
+    .task-card:active,
+    .bcard:active {
+      transform: translateY(1px) scale(.99);
+    }
+
+    button:disabled,
+    .btn-disabled,
+    [aria-disabled="true"] {
+      opacity: .55;
+      cursor: not-allowed !important;
+      pointer-events: none;
+    }
+
     /* TAG/ASGN PICKERS */
     .tag-wrap {
       display: flex;
@@ -2670,21 +2747,21 @@
       </div>
 
       <div class="tb-actions">
-        <button class="calendar-settings-btn" onclick="openCalendarSettings()" title="ตั้งค่าปฏิทินและแจ้งเตือนส่วนกลาง">📅 ตั้งค่าปฏิทิน</button>
-        <button class="bell-btn" onclick="toggleNotifDrop()" title="การแจ้งเตือน" aria-label="การแจ้งเตือน">
+        <button class="calendar-settings-btn" type="button" onclick="openCalendarSettings()" title="ตั้งค่าปฏิทินและแจ้งเตือนส่วนกลาง">📅 ตั้งค่าปฏิทิน</button>
+        <button class="bell-btn" type="button" onclick="toggleNotifDrop()" title="การแจ้งเตือน" aria-label="การแจ้งเตือน">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C8.68629 2 6 4.68629 6 8V13.5L4.5 15.5V17H19.5V15.5L18 13.5V8C18 4.68629 15.3137 2 12 2ZM9.5 18.5C9.5 19.8807 10.6193 21 12 21C13.3807 21 14.5 19.8807 14.5 18.5H9.5Z" fill="#2DD4BF" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="round"/>
           </svg>
           <span class="bell-cnt" id="bell-cnt">0</span>
         </button>
         <div class="notif-drop" id="notif-drop">
-          <div class="notif-hd">การแจ้งเตือน <span class="notif-clear" onclick="clearAllNotifs()">ล้างทั้งหมด</span></div>
+          <div class="notif-hd">การแจ้งเตือน <span class="notif-clear" role="button" tabindex="0" data-key-click="true" onclick="clearAllNotifs()">ล้างทั้งหมด</span></div>
           <div id="notif-list"></div>
         </div>
 
         <div class="tb-user">
           <span class="rb" id="tb-rbadge"></span>
-          <div class="tb-av" id="tb-av" onclick="openProfileModal()" title="แก้ไขโปรไฟล์"></div>
+          <div class="tb-av" id="tb-av" role="button" tabindex="0" data-key-click="true" onclick="openProfileModal()" title="แก้ไขโปรไฟล์" aria-label="แก้ไขโปรไฟล์"></div>
           <div class="tb-user-meta">
             <span class="tb-name" id="tb-name"></span>
             <span class="tb-scope" id="tb-scope">-</span>
@@ -2729,9 +2806,9 @@
             </div>
           </div>
           <div class="tabs">
-            <div class="tab active" id="tab-wip" onclick="switchMyTab('wip')">กำลังดำเนินการ<span class="tab-cnt"
+            <div class="tab active" id="tab-wip" role="button" tabindex="0" data-key-click="true" onclick="switchMyTab('wip')">กำลังดำเนินการ<span class="tab-cnt"
                 id="tc-wip">0</span></div>
-            <div class="tab" id="tab-completed" onclick="switchMyTab('completed')">งานแล้วเสร็จ<span class="tab-cnt"
+            <div class="tab" id="tab-completed" role="button" tabindex="0" data-key-click="true" onclick="switchMyTab('completed')">งานแล้วเสร็จ<span class="tab-cnt"
                 id="tc-done">0</span></div>
           </div>
           <div id="my-tasks-list"></div>
@@ -2985,7 +3062,7 @@
         <div class="mfl"><label>มอบหมายให้</label></div>
         <div class="asgn-picks" id="asgn-picker"></div>
         <div class="mfl"><label>📎 แนบไฟล์ / รูปภาพ (JPG, PNG, PDF, DOCX)</label></div>
-        <div class="upload-zone" id="task-upload-zone" onclick="document.getElementById('task-file-input').click()"
+        <div class="upload-zone" id="task-upload-zone" role="button" tabindex="0" data-key-click="true" aria-label="เลือกไฟล์แนบงาน" onclick="document.getElementById('task-file-input').click()"
           ondragover="dragOver(event,'task-upload-zone')" ondragleave="dragLeave(event,'task-upload-zone')"
           ondrop="dropFile(event,'task-file-input')">
           <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">ลากไฟล์มาวาง หรือเลือกไฟล์</div>
@@ -3051,7 +3128,7 @@
         <div class="mfl"><label>หมายเหตุ / บันทึกการส่งงาน</label><textarea id="sw-note"
             placeholder="อธิบายสิ่งที่ทำเสร็จ..."></textarea></div>
         <div class="mfl"><label>📎 อัปโหลดไฟล์งาน / รูปถ่ายผลงาน (JPG, PNG, PDF)</label></div>
-        <div class="upload-zone" id="sw-upload-zone" onclick="document.getElementById('sw-file-input').click()"
+        <div class="upload-zone" id="sw-upload-zone" role="button" tabindex="0" data-key-click="true" aria-label="เลือกไฟล์ส่งงาน" onclick="document.getElementById('sw-file-input').click()"
           ondragover="dragOver(event,'sw-upload-zone')" ondragleave="dragLeave(event,'sw-upload-zone')"
           ondrop="dropFile(event,'sw-file-input')">
           <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">ลากไฟล์มาวาง หรือเลือกไฟล์</div>
@@ -3469,7 +3546,7 @@
         ${all.map(n => {
           const isAck = n.ackBy.includes(currentUser.id);
           const needAck = n.type === 'new_task' && !isAck;
-          return `<div class="notif-item${isAck || n.read ? '' : ' unread'}" onclick="notifClick(${n.id})">
+          return `<div class="notif-item${isAck || n.read ? '' : ' unread'}" role="button" tabindex="0" data-key-click="true" onclick="notifClick(${n.id})">
         <div class="notif-dot${isAck ? ' read' : ''}"></div>
         <div style="flex:1;"><div class="notif-title">${n.title}</div><div class="notif-sub">${n.body}</div>
           ${needAck ? `<button class="notif-ack-btn" onclick="event.stopPropagation(); ackNotif(${n.id});">✋ รับทราบงาน</button>` : ''}
@@ -4500,22 +4577,38 @@
     function buildNav() {
       const am = isAM(), ca = canAssign();
       let h = `<div class="nsec">เมนูหลัก</div>
-  <div class="ni active" id="ni-home" onclick="goPage('home',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 8L8 3l6 5v7a.7.7 0 0 1-.7.7H10v-4H6v4H2.7A.7.7 0 0 1 2 15V8z" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>หน้าหลัก</div>
-  <div class="ni" id="ni-mytasks" onclick="goPage('mytasks',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M4 8h8M4 5h5M4 11h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>งานของฉัน</div>
-  <div class="ni" id="ni-mydash" onclick="goPage('mydash',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M8 4v4l3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Dashboard ของฉัน</div>`;
+  <div class="ni active" id="ni-home" role="button" tabindex="0" data-page="home" onclick="goPage('home',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 8L8 3l6 5v7a.7.7 0 0 1-.7.7H10v-4H6v4H2.7A.7.7 0 0 1 2 15V8z" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>หน้าหลัก</div>
+  <div class="ni" id="ni-mytasks" role="button" tabindex="0" data-page="mytasks" onclick="goPage('mytasks',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M4 8h8M4 5h5M4 11h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>งานของฉัน</div>
+  <div class="ni" id="ni-mydash" role="button" tabindex="0" data-page="mydash" onclick="goPage('mydash',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M8 4v4l3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Dashboard ของฉัน</div>`;
       if (ca) {
         h += `<div class="nsec">จัดการ</div>
-    <div class="ni" id="ni-board" onclick="goPage('board',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="10" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="10" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>กระดานงาน</div>`;
+    <div class="ni" id="ni-board" role="button" tabindex="0" data-page="board" onclick="goPage('board',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="10" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="10" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>กระดานงาน</div>`;
       }
       if (am) {
-        h += `<div class="ni" id="ni-tags" onclick="goPage('tags',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 4a2 2 0 0 1 2-2h3.6l5.7 5.7a2 2 0 0 1 0 2.6L9 14.7a2 2 0 0 1-2.8 0L1.3 10a2 2 0 0 1 0-2.8L2 6.5V4z" stroke="currentColor" stroke-width="1.2"/><circle cx="5.5" cy="5.5" r="1" fill="currentColor"/></svg>ประเภทงาน</div>`;
-        h += `<div class="ni" id="ni-members" onclick="goPage('members',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 14c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="12" cy="5" r="1.8" stroke="currentColor" stroke-width="1.2"/><path d="M12 9.5c1.8 0 3 1.3 3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>ผู้ปฏิบัติงาน</div>
+        h += `<div class="ni" id="ni-tags" role="button" tabindex="0" data-page="tags" onclick="goPage('tags',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 4a2 2 0 0 1 2-2h3.6l5.7 5.7a2 2 0 0 1 0 2.6L9 14.7a2 2 0 0 1-2.8 0L1.3 10a2 2 0 0 1 0-2.8L2 6.5V4z" stroke="currentColor" stroke-width="1.2"/><circle cx="5.5" cy="5.5" r="1" fill="currentColor"/></svg>ประเภทงาน</div>`;
+        h += `<div class="ni" id="ni-members" role="button" tabindex="0" data-page="members" onclick="goPage('members',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 14c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="12" cy="5" r="1.8" stroke="currentColor" stroke-width="1.2"/><path d="M12 9.5c1.8 0 3 1.3 3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>ผู้ปฏิบัติงาน</div>
     <div class="nsec">รายงาน</div>
-    <div class="ni" id="ni-issues" onclick="goPage('issues',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11" r=".7" fill="currentColor"/></svg>อุปสรรคภาพรวม<span class="nbadge" id="obs-badge">${tasks.flatMap(t => t.obstacles).filter(o => !o.resolved).length}</span></div>
-    <div class="ni" id="ni-dashboard" onclick="goPage('dashboard',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="9" width="3" height="6" rx=".5" stroke="currentColor" stroke-width="1.2"/><rect x="6" y="6" width="3" height="9" rx=".5" stroke="currentColor" stroke-width="1.2"/><rect x="11" y="2" width="3" height="13" rx=".5" stroke="currentColor" stroke-width="1.2"/></svg>Dashboard KPI ทีม</div>`;
+    <div class="ni" id="ni-issues" role="button" tabindex="0" data-page="issues" onclick="goPage('issues',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11" r=".7" fill="currentColor"/></svg>อุปสรรคภาพรวม<span class="nbadge" id="obs-badge">${tasks.flatMap(t => t.obstacles).filter(o => !o.resolved).length}</span></div>
+    <div class="ni" id="ni-dashboard" role="button" tabindex="0" data-page="dashboard" onclick="goPage('dashboard',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="9" width="3" height="6" rx=".5" stroke="currentColor" stroke-width="1.2"/><rect x="6" y="6" width="3" height="9" rx=".5" stroke="currentColor" stroke-width="1.2"/><rect x="11" y="2" width="3" height="13" rx=".5" stroke="currentColor" stroke-width="1.2"/></svg>Dashboard KPI ทีม</div>`;
       }
       gi('sidenav').innerHTML = h;
     }
+
+    document.addEventListener('keydown', function (event) {
+      const keyTarget = event.target.closest && event.target.closest('[data-key-click="true"]');
+      if (!keyTarget || event.target.matches('input,textarea,select')) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      keyTarget.click();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      const navItem = event.target.closest && event.target.closest('.ni[data-page]');
+      if (!navItem) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      goPage(navItem.dataset.page, navItem);
+    });
 
     function goPage(p, el) {
       document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
