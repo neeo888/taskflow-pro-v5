@@ -106,8 +106,32 @@
       background: #132847;
       border-radius: 22px;
       padding: 34px 30px;
-      width: 400px;
+      width: min(520px, calc(100vw - 28px));
+      max-height: calc(100vh - 36px);
+      overflow-y: auto;
       border: 1px solid rgba(255, 255, 255, .08);
+      box-shadow: 0 24px 80px rgba(0,0,0,.22);
+    }
+
+    .reg-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 10px;
+    }
+
+    .reg-wide { grid-column: 1 / -1; }
+
+    .pass-wrap { position: relative; }
+    .pass-wrap input { padding-right: 42px !important; }
+    .pass-eye {
+      position:absolute;right:0;top:0;bottom:0;width:42px;background:none;border:none;cursor:pointer;
+      color:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;
+    }
+    .pass-eye:hover { color: rgba(45,212,191,.95); }
+
+    @media (max-width: 560px) {
+      .lbox { width: calc(100vw - 18px); padding: 24px 18px; }
+      .reg-grid { grid-template-columns: 1fr; }
     }
 
     .llogo {
@@ -2719,17 +2743,15 @@
         <!-- ── Local Account login ───────────────── -->
         <div id="form-local">
           <div class="lfl">
-            <label>ชื่อผู้ใช้ หรือ อีเมล</label>
-            <input id="l-local-user" placeholder="username หรือ email" autocomplete="username"
+            <label>รหัสพนักงาน</label>
+            <input id="l-local-user" placeholder="กรอกรหัสพนักงาน" autocomplete="username"
               onkeydown="if(event.key==='Enter')gi('l-local-pass').focus()" />
           </div>
           <div class="lfl">
             <label>รหัสผ่าน</label>
-            <div style="position:relative;">
-              <input id="l-local-pass" type="password" placeholder="รหัสผ่าน" style="padding-right:42px;"
-                autocomplete="current-password" onkeydown="if(event.key==='Enter')doLocalLogin()" />
-              <button type="button" onclick="toggleLocalPass()"
-                style="position:absolute;right:0;top:0;bottom:0;width:42px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;" aria-label="แสดงหรือซ่อนรหัสผ่าน">
+            <div class="pass-wrap">
+              <input id="l-local-pass" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLocalLogin()" />
+              <button type="button" class="pass-eye" onclick="togglePass('l-local-pass')" aria-label="แสดงหรือซ่อนรหัสผ่าน">
                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
                   <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z" stroke="currentColor" stroke-width="1.5" />
                   <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.5" />
@@ -2746,7 +2768,7 @@
           <!-- Account hint -->
           <div style="margin-top:14px;background:rgba(255,255,255,.06);border-radius:9px;padding:10px 12px;">
             <div style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:7px;font-weight:600;letter-spacing:.04em;">
-              🔑 บัญชีเริ่มต้นสำหรับทดสอบ (รหัสผ่าน: Pwa@12345)
+              🔑 บัญชีเริ่มต้นสำหรับทดสอบ: ใช้รหัสพนักงานด้านล่าง (รหัสผ่าน: Pwa@12345)
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
               <button type="button" onclick="quickFill('admin')"
@@ -2771,42 +2793,65 @@
 
         <!-- ── New member registration ───────────── -->
         <div id="form-register" style="display:none;">
-          <div class="lfl">
-            <label>ชื่อ-สกุล *</label>
-            <input id="r-name" placeholder="เช่น สมชาย ใจดี" autocomplete="name"
-              onkeydown="if(event.key==='Enter')gi('r-email').focus()" />
-          </div>
-          <div class="lfl">
-            <label>อีเมล *</label>
-            <input id="r-email" type="email" placeholder="name@example.com" autocomplete="email"
-              onkeydown="if(event.key==='Enter')gi('r-user').focus()" />
-          </div>
-          <div class="lfl">
-            <label>Username (ไม่กรอกได้)</label>
-            <input id="r-user" placeholder="ถ้าไม่กรอก ระบบจะใช้อีเมลเป็นชื่อเข้าใช้"
-              onkeydown="if(event.key==='Enter')gi('r-telegram').focus()" />
-          </div>
-          <div class="lfl">
-            <label>Telegram ID / Chat ID (ไม่กรอกได้)</label>
-            <input id="r-telegram" placeholder="ใช้สำหรับรับแจ้งเตือน Telegram"
-              onkeydown="if(event.key==='Enter')gi('r-pass').focus()" />
-          </div>
-          <div class="lfl">
-            <label>รหัสผ่าน *</label>
-            <input id="r-pass" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="new-password"
-              onkeydown="if(event.key==='Enter')gi('r-pass2').focus()" />
-          </div>
-          <div class="lfl">
-            <label>ยืนยันรหัสผ่าน *</label>
-            <input id="r-pass2" type="password" placeholder="พิมพ์รหัสผ่านอีกครั้ง" autocomplete="new-password"
-              onkeydown="if(event.key==='Enter')doRegister()" />
+          <div class="reg-grid">
+            <div class="lfl reg-wide">
+              <label>ชื่อ-สกุล *</label>
+              <input id="r-name" placeholder="เช่น สมชาย ใจดี" autocomplete="name"
+                onkeydown="if(event.key==='Enter')gi('r-emp').focus()" />
+            </div>
+            <div class="lfl">
+              <label>รหัสพนักงาน *</label>
+              <input id="r-emp" placeholder="ใช้สำหรับ Login" autocomplete="username"
+                onkeydown="if(event.key==='Enter')gi('r-branch').focus()" />
+            </div>
+            <div class="lfl">
+              <label>สาขา *</label>
+              <input id="r-branch" placeholder="เช่น พิษณุโลก" value="พิษณุโลก"
+                onkeydown="if(event.key==='Enter')gi('r-phone').focus()" />
+            </div>
+            <div class="lfl">
+              <label>เบอร์โทร</label>
+              <input id="r-phone" type="tel" placeholder="เช่น 0812345678" autocomplete="tel"
+                onkeydown="if(event.key==='Enter')gi('r-line').focus()" />
+            </div>
+            <div class="lfl">
+              <label>ID Line</label>
+              <input id="r-line" placeholder="เช่น lineid123"
+                onkeydown="if(event.key==='Enter')gi('r-email').focus()" />
+            </div>
+            <div class="lfl reg-wide">
+              <label>อีเมล *</label>
+              <input id="r-email" type="email" placeholder="name@example.com" autocomplete="email"
+                onkeydown="if(event.key==='Enter')gi('r-telegram').focus()" />
+            </div>
+            <div class="lfl reg-wide">
+              <label>Telegram ID / Chat ID (ไม่กรอกได้)</label>
+              <input id="r-telegram" placeholder="ใช้สำหรับรับแจ้งเตือน Telegram"
+                onkeydown="if(event.key==='Enter')gi('r-pass').focus()" />
+            </div>
+            <div class="lfl">
+              <label>รหัสผ่าน *</label>
+              <div class="pass-wrap">
+                <input id="r-pass" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="new-password"
+                  onkeydown="if(event.key==='Enter')gi('r-pass2').focus()" />
+                <button type="button" class="pass-eye" onclick="togglePass('r-pass')" aria-label="แสดงหรือซ่อนรหัสผ่าน">👁</button>
+              </div>
+            </div>
+            <div class="lfl">
+              <label>ยืนยันรหัสผ่าน *</label>
+              <div class="pass-wrap">
+                <input id="r-pass2" type="password" placeholder="พิมพ์รหัสผ่านอีกครั้ง" autocomplete="new-password"
+                  onkeydown="if(event.key==='Enter')doRegister()" />
+                <button type="button" class="pass-eye" onclick="togglePass('r-pass2')" aria-label="แสดงหรือซ่อนรหัสผ่าน">👁</button>
+              </div>
+            </div>
           </div>
           <button type="button" class="lbtn" onclick="doRegister()">สมัครสมาชิกและเข้าสู่ระบบ</button>
           <div style="text-align:center;margin-top:12px;font-size:11px;color:rgba(255,255,255,.55);">
             มีบัญชีแล้ว? <button type="button" onclick="setLoginMode('local')" style="background:none;border:none;color:var(--accent);font-weight:800;cursor:pointer;">กลับไปเข้าสู่ระบบ</button>
           </div>
           <div style="margin-top:12px;background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.22);border-radius:10px;padding:10px 12px;font-size:10px;line-height:1.55;color:rgba(255,255,255,.68);">
-            สมาชิกใหม่จะเป็นสิทธิ์ “ผู้ใช้” โดยอัตโนมัติ และบันทึกจริงใน Supabase เพื่อให้เปิดจากเครื่องอื่นได้
+            สมัครแล้วใช้ “รหัสพนักงาน + รหัสผ่าน” เพื่อเข้าสู่ระบบ ข้อมูลสมาชิกจะบันทึกจริงใน Supabase
           </div>
         </div>
 
@@ -3084,6 +3129,11 @@
       <div class="mbody">
         <input type="hidden" id="t-id" />
         <div class="mfl"><label>ชื่องาน *</label><input id="t-title" placeholder="ระบุชื่องาน..." /></div>
+        <div class="mfl"><label>ประเภทงาน (เพิ่มได้เอง)</label>
+          <div class="ctag-row"><input id="ntag" placeholder="พิมพ์ประเภทงาน แล้ว Enter" /><button
+              type="button" onclick="addCustomTag()">+ เพิ่ม</button></div>
+          <div class="tag-wrap" id="tag-picker"></div>
+        </div>
         <div class="mfl"><label>รายละเอียด</label><textarea id="t-desc" placeholder="อธิบายรายละเอียด..."></textarea>
         </div>
         <div class="mfl"><label>ขั้นตอนงาน (checklist) — ใส่แต่ละขั้นตอนแล้ว Enter</label>
@@ -3141,11 +3191,6 @@
               <option value="urgent">ด่วนมาก</option>
             </select></div>
           <div class="mfl"><label>วันกำหนดส่ง</label><input type="date" id="t-date" /></div>
-        </div>
-        <div class="mfl"><label>ประเภทงาน (เพิ่มได้เอง)</label>
-          <div class="ctag-row"><input id="ntag" placeholder="พิมพ์ประเภทงาน แล้ว Enter" /><button
-              type="button" onclick="addCustomTag()">+ เพิ่ม</button></div>
-          <div class="tag-wrap" id="tag-picker"></div>
         </div>
         <div class="mfl"><label>มอบหมายให้</label></div>
         <div class="asgn-picks" id="asgn-picker"></div>
@@ -4403,10 +4448,12 @@
       el.textContent = msg;
       el.style.display = 'block';
     }
-    function toggleLocalPass() {
-      const inp = gi('l-local-pass');
+    function togglePass(id) {
+      const inp = gi(id);
+      if (!inp) return;
       inp.type = inp.type==='password' ? 'text' : 'password';
     }
+    function toggleLocalPass() { togglePass('l-local-pass'); }
 
     function _setLoginBusy(isBusy, text='กำลังตรวจสอบ...') {
       gi('login-form').style.display = isBusy ? 'none' : 'block';
@@ -4449,7 +4496,7 @@
       const input = gi('l-local-user').value.trim();
       const pass  = gi('l-local-pass').value;
       gi('lerr').style.display = 'none';
-      if (!input || !pass) { showLoginErr('กรุณากรอก username/email และรหัสผ่าน'); return; }
+      if (!input || !pass) { showLoginErr('กรุณากรอกรหัสพนักงานและรหัสผ่าน'); return; }
 
       _setLoginBusy(true, 'กำลังตรวจสอบบัญชี...');
       const isApiServer = window.location.protocol !== 'file:' && !window.location.port.match(/^5[0-9]{3}$|^3000$|^8080$|^4200$/);
@@ -4510,7 +4557,7 @@
       }
 
       if (!u) {
-        showLoginErr(apiError || 'ไม่พบ username/email "' + input + '" — ตรวจสอบชื่อผู้ใช้อีกครั้ง');
+        showLoginErr(apiError || 'ไม่พบรหัสพนักงาน "' + input + '" — ตรวจสอบรหัสพนักงานอีกครั้ง');
         return;
       }
 
@@ -4536,13 +4583,18 @@
     async function doRegister() {
       const name = gi('r-name').value.trim();
       const email = gi('r-email').value.trim();
-      const username = gi('r-user').value.trim();
+      const username = gi('r-emp').value.trim();
+      const branchName = gi('r-branch').value.trim();
+      const phone = gi('r-phone').value.trim();
+      const lineId = gi('r-line').value.trim();
       const telegram = gi('r-telegram').value.trim();
       const password = gi('r-pass').value;
       const password2 = gi('r-pass2').value;
       gi('lerr').style.display = 'none';
 
       if (!name) return showLoginErr('กรุณากรอกชื่อ-สกุล');
+      if (!username) return showLoginErr('กรุณากรอกรหัสพนักงาน');
+      if (!branchName) return showLoginErr('กรุณากรอกสาขา');
       if (!email || !/^\S+@\S+\.\S+$/.test(email)) return showLoginErr('กรุณากรอกอีเมลให้ถูกต้อง');
       if (!password || password.length < 6) return showLoginErr('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
       if (password !== password2) return showLoginErr('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
@@ -4553,7 +4605,7 @@
         const res = await fetch('php/api.php?action=register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, username, password, telegram_chat_id: telegram }),
+          body: JSON.stringify({ name, email, username, wwcode: username, branch_name: branchName, branch: branchName, phone, line_id: lineId, password, telegram_chat_id: telegram }),
           signal: AbortSignal.timeout(10000),
         });
         const data = await res.json().catch(() => null);
@@ -4563,7 +4615,7 @@
           return;
         }
         if (data.token) localStorage.setItem('tf_tok', data.token);
-        const u = _upsertLoginUser(data.user || { name, email, wwcode: username || email, urole:'user', telegram_chat_id: telegram });
+        const u = _upsertLoginUser(data.user || { name, email, wwcode: username, branch_name: branchName, branch: branchName, phone, line_id: lineId, urole:'user', telegram_chat_id: telegram });
         currentUser = u;
         _afterLogin();
         toast('สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ' + u.name + ' 🎉');

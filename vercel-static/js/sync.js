@@ -762,8 +762,9 @@ window.deleteGlobalTagFromPage = async function (idx) {
 };
 
 const _orig_deleteGlobalTag = window.deleteGlobalTag;
-window.deleteGlobalTag = async function (tag) {
-  tag = _cleanTagName(tag);
+window.deleteGlobalTag = async function (tagOrIdx) {
+  const rawTag = (typeof tagOrIdx === 'number') ? (window.allTags || [])[tagOrIdx] : tagOrIdx;
+  const tag = _cleanTagName(rawTag);
   if (!tag) return;
   if (!confirm('ลบประเภทงาน "' + tag + '"?\n\nระบบจะลบประเภทงานนี้ออกจากงานทุกงานที่ใช้อยู่ด้วย')) return;
 
@@ -775,7 +776,7 @@ window.deleteGlobalTag = async function (tag) {
 
   _removeTagEverywhere(tag);
   _refreshTagScreens();
-  toast('✅ ลบประเภทงาน "' + tag + '" แล้ว');
+  toast('✅ ลบประเภทงาน "' + tag + '" แล้ว' + (r.updated_tasks ? ' และอัปเดตงาน ' + r.updated_tasks + ' งาน' : ''));
 };
 
 const _orig_startEditTag = window.startEditTag;
