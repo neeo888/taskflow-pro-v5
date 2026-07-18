@@ -3452,7 +3452,7 @@
         ${myTasks.length ? sortTasksByDue(myTasks).slice(0, 12).map(t => {
           const cfg = COL[t.col] || COL.todo;
           const ov = t.date && new Date(t.date) < new Date() && cfg.g !== 'done';
-          return `<div class="tf-task-row" onclick="openTaskFromNotifList(${t.id})">
+          return `<div class="tf-task-row" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskFromNotifList(${t.id}, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskFromNotifList(${t.id}, event)}">
             <div class="tf-task-dot" style="background:${cfg.c};"></div>
             <div style="flex:1;min-width:0;">
               <div class="tf-task-name">${t.title}</div>
@@ -3484,12 +3484,13 @@
       if (notifDropOpen) { renderNotifDrop(); myNotifs().forEach(n => n.read = true); renderBell(); }
     }
     document.addEventListener('click', e => { if (notifDropOpen && !gi('notif-drop').contains(e.target) && !e.target.closest('.bell-btn')) { notifDropOpen = false; gi('notif-drop').classList.remove('open'); } });
-    function notifClick(nid2) { const n = notifications.find(x => x.id === nid2); if (n?.taskId) { notifDropOpen = false; gi('notif-drop').classList.remove('open'); showDP(n.taskId); } }
-    function openTaskFromNotifList(taskId) {
+    function notifClick(nid2) { const n = notifications.find(x => x.id === nid2); if (n?.taskId) { notifDropOpen = false; gi('notif-drop').classList.remove('open'); openTaskDetail(n.taskId, true); } }
+    function openTaskFromNotifList(taskId, ev) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
       notifDropOpen = false;
       const drop = gi('notif-drop');
       if (drop) drop.classList.remove('open');
-      showDP(taskId, true);
+      return openTaskDetail(taskId, true);
     }
     function clearAllNotifs() { notifications = notifications.filter(n => !n.forUserIds.includes(currentUser.id)); renderNotifDrop(); renderBell(); }
     function ackNotif(nid2) {
@@ -4548,8 +4549,8 @@
         { l: 'รอตรวจ', v: myT.filter(t => t.col === 'review').length, c: '#8B5CF6', sub: 'รอหัวหน้าตรวจ' },
         { l: 'อุปสรรคค้าง', v: allObs.filter(o => !o.resolved).length, c: '#FF4D6D', sub: 'รอแก้ไข' },
       ].map(m => `<div class="metric"><div class="metric-lbl">${m.l}</div><div class="metric-val" style="color:${m.c};">${m.v}</div><div class="metric-sub">${m.sub}</div></div>`).join('');
-      gi('h-mytasks').innerHTML = myWip.slice(0, 4).map(t => { const cfg = COL[t.col]; const ov = t.date && new Date(t.date) < new Date(); return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:.5px solid var(--border);cursor:pointer;" onclick="showDP(${t.id})"><div style="width:7px;height:7px;border-radius:50%;background:${cfg.c};flex-shrink:0;"></div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</div><div style="font-size:10px;color:${ov ? 'var(--danger)' : 'var(--text3)'};">${t.date || ''} · ${cfg.n}</div></div></div>`; }).join('') || `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">ไม่มีงาน</div>`;
-      gi('h-obstacles').innerHTML = tasks.flatMap(t => t.obstacles.filter(o => !o.resolved).map(o => ({ ...o, ttitle: t.title, tid: t.id }))).slice(0, 4).map(o => { const s = SEV[o.level]; return `<div style="display:flex;gap:7px;padding:7px 0;border-bottom:.5px solid var(--border);cursor:pointer;" onclick="showDP(${o.tid})"><div style="width:3px;min-height:28px;background:${s.c};border-radius:2px;flex-shrink:0;"></div><div><div style="font-size:11px;font-weight:600;">${o.title}</div><div style="font-size:10px;color:var(--text3);">${o.ttitle}</div></div></div>`; }).join('') || `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">ไม่มีอุปสรรค</div>`;
+      gi('h-mytasks').innerHTML = myWip.slice(0, 4).map(t => { const cfg = COL[t.col]; const ov = t.date && new Date(t.date) < new Date(); return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:.5px solid var(--border);cursor:pointer;" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}"><div style="width:7px;height:7px;border-radius:50%;background:${cfg.c};flex-shrink:0;"></div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</div><div style="font-size:10px;color:${ov ? 'var(--danger)' : 'var(--text3)'};">${t.date || ''} · ${cfg.n}</div></div></div>`; }).join('') || `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">ไม่มีงาน</div>`;
+      gi('h-obstacles').innerHTML = tasks.flatMap(t => t.obstacles.filter(o => !o.resolved).map(o => ({ ...o, ttitle: t.title, tid: t.id }))).slice(0, 4).map(o => { const s = SEV[o.level]; return `<div style="display:flex;gap:7px;padding:7px 0;border-bottom:.5px solid var(--border);cursor:pointer;" role="button" tabindex="0" data-task-open="detail" data-task-id="${o.tid}" onclick="openTaskDetail(${o.tid}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${o.tid}, true, event)}"><div style="width:3px;min-height:28px;background:${s.c};border-radius:2px;flex-shrink:0;"></div><div><div style="font-size:11px;font-weight:600;">${o.title}</div><div style="font-size:10px;color:var(--text3);">${o.ttitle}</div></div></div>`; }).join('') || `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">ไม่มีอุปสรรค</div>`;
     }
 
     // ══════════════════════════
@@ -4571,7 +4572,7 @@
       const ov = t.date && new Date(t.date) < new Date() && t.col !== 'done' && t.col !== 'verified';
       const openObs = (t.obstacles || []).filter(o => !o.resolved).length;
       const myStepsDone = t.steps ? (t.stepChecks[currentUser.id] ? Object.values(t.stepChecks[currentUser.id]).filter(v => v.done).length : 0) : 0;
-      return `<div class="task-card${ov ? ' overdue' : ''}" onclick="showDP(${t.id})">
+      return `<div class="task-card${ov ? ' overdue' : ''}" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
     <div class="tc-hd">
       <div class="tc-title">${t.title}</div>
       <div class="tc-badges"><span class="badge" style="background:${cfg.c}22;color:${cfg.c};">${cfg.n}</span><span class="badge" style="background:${pr.bg};color:${pr.fg};">${pr.l}</span></div>
@@ -4636,7 +4637,7 @@
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:12px;">ความคืบหน้างานของฉัน</div>
         ${myT.length ? sortTasksByDue(myT, true).map(t => {
-        const cfg = COL[t.col] || COL.todo; return `<div class="dash-task-row" role="button" tabindex="0" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onpointerdown="openTaskDetail(${t.id}, true, event)" ontouchend="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
+        const cfg = COL[t.col] || COL.todo; return `<div class="dash-task-row" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
             <span class="dash-task-title">${t.title}</span>
             <span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:8px;">${t.prog}%</span>
@@ -4655,7 +4656,7 @@
         </div>
         <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px;">งานที่มีขั้นตอนค้าง</div>
         ${sortTasksByDue(myT.filter(t => t.steps?.length)).map(t => {
-        const mySC = t.stepChecks[uid] || {}; const doneC = Object.values(mySC).filter(v => v.done).length; const tot = t.steps.length; const ppct = Math.round(tot ? doneC / tot * 100 : 0); return `<div class="dash-task-row" style="display:flex;align-items:center;gap:8px;margin-bottom:7px;" role="button" tabindex="0" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onpointerdown="openTaskDetail(${t.id}, true, event)" ontouchend="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
+        const mySC = t.stepChecks[uid] || {}; const doneC = Object.values(mySC).filter(v => v.done).length; const tot = t.steps.length; const ppct = Math.round(tot ? doneC / tot * 100 : 0); return `<div class="dash-task-row" style="display:flex;align-items:center;gap:8px;margin-bottom:7px;" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
           <div style="flex:1;min-width:0;"><span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;font-weight:700;">${t.title}</span>
           <div style="height:4px;background:var(--surface);border-radius:2px;overflow:hidden;margin-top:3px;"><div style="width:${ppct}%;height:100%;background:var(--purple);border-radius:2px;"></div></div></div>
           <span style="font-size:10px;font-weight:700;color:var(--purple);">${doneC}/${tot}</span>
@@ -4668,12 +4669,12 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:10px;">คอมเมนต์ที่ได้รับ</div>
-        ${tasks.filter(t => (Array.isArray(t.asgn) ? t.asgn.map(Number) : []).includes(Number(uid)) && t.comments?.length).flatMap(t => t.comments.map(c => ({ ...c, ttitle: t.title, tid: t.id }))).slice(0, 5).map(c => { const u2 = findU(c.authorId); const roleCls = u2?.urole === 'admin' ? 'admin-comment' : u2?.urole === 'manager' ? 'mgr-comment' : ''; return `<div class="comment-item" style="cursor:pointer;" onclick="showDP(${c.tid})"><div class="comment-bubble ${roleCls}"><div class="cb-author">${u2 ? avEl(u2, 18, 6) : ''}<span>${u2?.name || ''}</span><span style="font-size:9px;padding:1px 6px;border-radius:8px;background:${u2?.urole === 'manager' ? '#EEF3FF' : '#E6FBF7'};color:${u2?.urole === 'manager' ? '#3C3489' : '#064E3B'};">${u2?.urole === 'manager' ? 'หัวหน้า' : 'Admin'}</span></div><div class="cb-text">${c.text}</div><div class="cb-at">${c.ttitle} · ${c.at}</div></div></div>`; }).join('') || `<div style="text-align:center;padding:14px;font-size:12px;color:var(--text3);">ยังไม่มีคอมเมนต์</div>`}
+        ${tasks.filter(t => (Array.isArray(t.asgn) ? t.asgn.map(Number) : []).includes(Number(uid)) && t.comments?.length).flatMap(t => t.comments.map(c => ({ ...c, ttitle: t.title, tid: t.id }))).slice(0, 5).map(c => { const u2 = findU(c.authorId); const roleCls = u2?.urole === 'admin' ? 'admin-comment' : u2?.urole === 'manager' ? 'mgr-comment' : ''; return `<div class="comment-item" style="cursor:pointer;" role="button" tabindex="0" data-task-open="detail" data-task-id="${c.tid}" onclick="openTaskDetail(${c.tid}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${c.tid}, true, event)}"><div class="comment-bubble ${roleCls}"><div class="cb-author">${u2 ? avEl(u2, 18, 6) : ''}<span>${u2?.name || ''}</span><span style="font-size:9px;padding:1px 6px;border-radius:8px;background:${u2?.urole === 'manager' ? '#EEF3FF' : '#E6FBF7'};color:${u2?.urole === 'manager' ? '#3C3489' : '#064E3B'};">${u2?.urole === 'manager' ? 'หัวหน้า' : 'Admin'}</span></div><div class="cb-text">${c.text}</div><div class="cb-at">${c.ttitle} · ${c.at}</div></div></div>`; }).join('') || `<div style="text-align:center;padding:14px;font-size:12px;color:var(--text3);">ยังไม่มีคอมเมนต์</div>`}
       </div>
 
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:10px;">อุปสรรคที่บันทึกไว้</div>
-        ${myObs.slice(0, 5).map(o => { const tk = tasks.find(t => t.obstacles.some(x => x.id === o.id)); const s = SEV[o.level]; const stC = o.resolved ? { bg: '#EAF3DE', fg: '#27500A', l: 'แก้แล้ว' } : { bg: '#FFEDEE', fg: '#991B2B', l: 'เปิด' }; return `<div style="display:flex;align-items:flex-start;gap:7px;padding:7px 0;border-bottom:.5px solid var(--border);cursor:pointer;" onclick="showDP(${tk?.id})"><div style="width:3px;min-height:28px;background:${s.c};border-radius:2px;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:11px;font-weight:600;">${o.title}</div><div style="font-size:10px;color:var(--text3);">${tk?.title}</div></div><span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;background:${stC.bg};color:${stC.fg};">${stC.l}</span></div>`; }).join('') || `<div style="text-align:center;padding:14px;font-size:12px;color:var(--text3);">ยังไม่มีอุปสรรค</div>`}
+        ${myObs.slice(0, 5).map(o => { const tk = tasks.find(t => t.obstacles.some(x => x.id === o.id)); const s = SEV[o.level]; const stC = o.resolved ? { bg: '#EAF3DE', fg: '#27500A', l: 'แก้แล้ว' } : { bg: '#FFEDEE', fg: '#991B2B', l: 'เปิด' }; return `<div style="display:flex;align-items:flex-start;gap:7px;padding:7px 0;border-bottom:.5px solid var(--border);cursor:pointer;" role="button" tabindex="0" data-task-open="detail" data-task-id="${tk?.id || ''}" onclick="openTaskDetail(${tk?.id || 0}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${tk?.id || 0}, true, event)}"><div style="width:3px;min-height:28px;background:${s.c};border-radius:2px;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:11px;font-weight:600;">${o.title}</div><div style="font-size:10px;color:var(--text3);">${tk?.title}</div></div><span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;background:${stC.bg};color:${stC.fg};">${stC.l}</span></div>`; }).join('') || `<div style="text-align:center;padding:14px;font-size:12px;color:var(--text3);">ยังไม่มีอุปสรรค</div>`}
       </div>
     </div>`;
 
@@ -4707,7 +4708,7 @@
       const opts = col === 'review' ? `<option value="done">✅ เสร็จสิ้น</option><option value="verified">🔍 ตรวจสอบแล้ว</option><option value="doing">↩️ ส่งกลับ</option>` :
         col === 'todo' ? `<option value="doing">▶ เริ่มทำ</option><option value="review">⏩ ส่งตรวจ</option>` :
           col === 'doing' ? `<option value="todo">↩️ คืน</option><option value="review">✔ ส่งตรวจ</option><option value="done">✅ เสร็จ</option>` : col === 'verified' ? `<option value="done">↩️ ยกเลิกผ่านตรวจ</option>` : '';
-      return `<div class="bcard${ov ? ' overdue' : ''}" onclick="showDP(${t.id})">
+      return `<div class="bcard${ov ? ' overdue' : ''}" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
     <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px;">
       ${(t.tags || []).map(tg => `<span style="font-size:8px;font-weight:700;padding:1px 6px;border-radius:6px;background:#EEF3FF;color:#3C3489;">${tg}</span>`).join('')}
       <span style="font-size:8px;font-weight:700;padding:1px 6px;border-radius:6px;background:${pr.bg};color:${pr.fg};">${pr.l}</span>
@@ -4782,19 +4783,30 @@
       return false;
     }
 
-    // คลิกงานจาก Dashboard: ใช้ event delegation ช่วยอีกชั้น
-    // เพื่อให้คลิกได้ทั้งแถว แม้บาง browser/mobile จะไม่ยิง inline onclick ตามคาด
-    function handleDashTaskPointer(e) {
-      const row = e.target.closest && e.target.closest('.dash-task-row[data-task-id]');
+    // คลิก/แตะรายการงานทุกหน้า: มาตรฐานเดียวกัน
+    // 1 คลิก / 1 แตะ = เปิดรายละเอียดงานเต็มหน้า, และรองรับ Enter/Space สำหรับคีย์บอร์ด
+    function isInteractiveTaskTarget(el) {
+      return !!(el && el.closest && el.closest('button,a,input,select,textarea,label,[contenteditable="true"],.btn-pri,.btn-sec,.act-btn,.calendar-btn,.notif-ack-btn'));
+    }
+    function handleTaskOpenClick(e) {
+      const row = e.target.closest && e.target.closest('[data-task-open="detail"][data-task-id]');
       if (!row) return;
-      if (e.target.closest('button,a,input,select,textarea')) return;
+      if (isInteractiveTaskTarget(e.target)) return;
       const tid = row.getAttribute('data-task-id');
-      if (!tid) return;
+      if (!tid || tid === 'undefined' || tid === 'null' || tid === '0') return;
       openTaskDetail(tid, true, e);
     }
-    document.addEventListener('click', handleDashTaskPointer, true);
-    document.addEventListener('pointerdown', handleDashTaskPointer, true);
-    document.addEventListener('touchend', handleDashTaskPointer, true);
+    function handleTaskOpenKey(e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const row = e.target.closest && e.target.closest('[data-task-open="detail"][data-task-id]');
+      if (!row) return;
+      if (isInteractiveTaskTarget(e.target)) return;
+      const tid = row.getAttribute('data-task-id');
+      if (!tid || tid === 'undefined' || tid === 'null' || tid === '0') return;
+      openTaskDetail(tid, true, e);
+    }
+    document.addEventListener('click', handleTaskOpenClick, true);
+    document.addEventListener('keydown', handleTaskOpenKey, true);
 
     function normalizeDetailTask(t) {
       if (!t) return null;
@@ -5107,7 +5119,7 @@
       // กรองเฉพาะสาขาของ currentUser (admin เห็นทุกสาขา)
       const scopeTasks = isAdmin() ? tasks : tasks.filter(t => canSeeTask(t));
       const all = scopeTasks.flatMap(t => t.obstacles.map(o => ({ ...o, ttitle: t.title, tid: t.id })));
-      gi('global-issues').innerHTML = all.length ? all.map(o => { const s = SEV[o.level]; const st = o.resolved ? { bg: '#EAF3DE', fg: '#27500A', l: 'แก้แล้ว' } : { bg: '#FFEDEE', fg: '#991B2B', l: 'เปิด' }; return `<div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:13px;margin-bottom:9px;border-left:4px solid ${s.c};cursor:pointer;" onclick="showDP(${o.tid})"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:9px;margin-bottom:6px;"><div style="font-size:13px;font-weight:700;">${o.title}</div><div style="display:flex;gap:4px;flex-shrink:0;"><span class="badge" style="background:${s.bg};color:${s.fg};">${s.l}</span><span class="badge" style="background:${st.bg};color:${st.fg};">${st.l}</span></div></div><div style="font-size:11px;color:var(--text3);">งาน: ${o.ttitle}</div>${o.desc ? `<div style="font-size:12px;color:var(--text2);margin-top:4px;">${o.desc}</div>` : ''}<div style="font-size:10px;color:var(--text3);margin-top:6px;">💬 ${o.comments.length} คอมเมนต์</div></div>`; }).join('') : `<div style="text-align:center;padding:40px;font-size:13px;color:var(--text3);">ไม่มีอุปสรรค</div>`;
+      gi('global-issues').innerHTML = all.length ? all.map(o => { const s = SEV[o.level]; const st = o.resolved ? { bg: '#EAF3DE', fg: '#27500A', l: 'แก้แล้ว' } : { bg: '#FFEDEE', fg: '#991B2B', l: 'เปิด' }; return `<div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:13px;margin-bottom:9px;border-left:4px solid ${s.c};cursor:pointer;" role="button" tabindex="0" data-task-open="detail" data-task-id="${o.tid}" onclick="openTaskDetail(${o.tid}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${o.tid}, true, event)}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:9px;margin-bottom:6px;"><div style="font-size:13px;font-weight:700;">${o.title}</div><div style="display:flex;gap:4px;flex-shrink:0;"><span class="badge" style="background:${s.bg};color:${s.fg};">${s.l}</span><span class="badge" style="background:${st.bg};color:${st.fg};">${st.l}</span></div></div><div style="font-size:11px;color:var(--text3);">งาน: ${o.ttitle}</div>${o.desc ? `<div style="font-size:12px;color:var(--text2);margin-top:4px;">${o.desc}</div>` : ''}<div style="font-size:10px;color:var(--text3);margin-top:6px;">💬 ${o.comments.length} คอมเมนต์</div></div>`; }).join('') : `<div style="text-align:center;padding:40px;font-size:13px;color:var(--text3);">ไม่มีอุปสรรค</div>`;
     }
 
     // ══════════════════════════════════════════════════════════
