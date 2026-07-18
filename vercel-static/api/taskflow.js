@@ -537,6 +537,13 @@ async function tagDelete(req) {
   await sb(`/rest/v1/tf_tags?name=eq.${encodeURIComponent(name)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
   return ok({ name, updated_tasks });
 }
+async function tagDeleteAll(req) {
+  const s = await auth(req);
+  if (!['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
+  const updated_tasks = await _rewriteTaskTags(() => []);
+  await sb('/rest/v1/tf_tags?id=gte.0', { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+  return ok({ deleted_all: true, updated_tasks });
+}
 async function tagRename(req) {
   const s = await auth(req);
   if (!['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
@@ -604,6 +611,7 @@ export default async function handler(req) {
     if (action === 'telegram_send' && req.method === 'POST') return telegramSend(req);
     if (action === 'tag_save' && req.method === 'POST') return tagSave(req);
     if (action === 'tag_delete' && req.method === 'POST') return tagDelete(req);
+    if (action === 'tag_delete_all' && req.method === 'POST') return tagDeleteAll(req);
     if (action === 'tag_rename' && req.method === 'POST') return tagRename(req);
     return err(`Unknown: ${action}`, 404);
   } catch (e) {

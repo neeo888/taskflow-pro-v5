@@ -739,6 +739,11 @@ async function _deleteTagPersist(tag) {
   return _api('tag_delete', { name: tag });
 }
 
+async function _deleteAllTagsPersist() {
+  if (!_isPhpSrv()) return { ok: true, _offline: true };
+  return _api('tag_delete_all', {});
+}
+
 async function _renameTagPersist(oldName, newName) {
   if (!_isPhpSrv()) return { ok: true, _offline: true };
   return _api('tag_rename', { old_name: oldName, new_name: newName });
@@ -777,6 +782,30 @@ window.deleteGlobalTagFromPage = async function (tagOrIdx, rowEl) {
     try { await _loadFromServer(); _refreshTagScreens(); } catch (_) {}
   }
   toast('✅ ลบประเภทงาน "' + tag + '" แล้ว' + (r.updated_tasks ? ' และอัปเดตงาน ' + r.updated_tasks + ' งาน' : ''));
+};
+
+window.deleteAllGlobalTagsFromPage = async function () {
+  const count = (window.allTags || []).length;
+  if (!count) {
+    toast('ไม่มีประเภทงานให้ลบ');
+    return;
+  }
+  if (!confirm('ลบประเภทงานทั้งหมด ' + count + ' รายการ?\n\nระบบจะลบประเภทงานออกจากงานทุกงานที่ใช้อยู่ด้วย แต่จะไม่ลบตัวงาน')) return;
+
+  const r = await _deleteAllTagsPersist();
+  if (!r.ok) {
+    toast('ลบประเภทงานทั้งหมดไม่สำเร็จ: ' + (r.error || ''));
+    return;
+  }
+
+  window.allTags = [];
+  window.selTags = [];
+  (window.tasks || []).forEach(task => { task.tags = []; });
+  _refreshTagScreens();
+  if (_isPhpSrv() && typeof _loadFromServer === 'function') {
+    try { await _loadFromServer(); _refreshTagScreens(); } catch (_) {}
+  }
+  toast('✅ ลบประเภทงานทั้งหมดแล้ว' + (r.updated_tasks ? ' และอัปเดตงาน ' + r.updated_tasks + ' งาน' : ''));
 };
 
 const _orig_deleteGlobalTag = window.deleteGlobalTag;

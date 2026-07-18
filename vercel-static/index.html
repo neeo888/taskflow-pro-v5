@@ -3035,10 +3035,14 @@
                 <button class="btn-pri" type="button" onclick="addGlobalTag()">+ เพิ่ม</button>
               </div>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
               <div style="font-size:12px;font-weight:800;color:var(--text);">ประเภทงานทั้งหมด <span
                   id="tags-count" style="color:var(--text3);font-weight:500;font-size:11px;"></span></div>
-              <div style="font-size:10px;color:var(--text3);">แก้ไข / ลบ ได้จากรายการด้านล่าง</div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                <div style="font-size:10px;color:var(--text3);">แก้ไข / ลบ ได้จากรายการด้านล่าง</div>
+                <button class="btn-ghost" type="button" onclick="deleteAllGlobalTagsFromPage()"
+                  style="border-color:var(--danger);color:var(--danger);padding:7px 10px;font-size:11px;">🧹 ลบทั้งหมด</button>
+              </div>
             </div>
             <div id="tags-global-list"></div>
           </div>
@@ -6104,6 +6108,19 @@
         if (rowEl && rowEl.parentNode) rowEl.remove();
         renderTagsPage();
         toast('ลบประเภทงาน "' + tag + '" แล้ว');
+    }
+
+    function deleteAllGlobalTagsFromPage() {
+        const count = allTags.length;
+        if (!count) { toast('ไม่มีประเภทงานให้ลบ'); return; }
+        if (!confirm('ลบประเภทงานทั้งหมด ' + count + ' รายการ?\n\nระบบจะลบประเภทงานออกจากงานทุกงานที่ใช้อยู่ด้วย แต่จะไม่ลบตัวงาน')) return;
+        allTags.splice(0, allTags.length);
+        if (Array.isArray(selTags)) selTags.splice(0, selTags.length);
+        tasks.forEach(t => { t.tags = []; });
+        renderTagsPage();
+        if (typeof buildTagPicker === 'function') buildTagPicker();
+        if (typeof renderAll === 'function') renderAll();
+        toast('ลบประเภทงานทั้งหมดแล้ว');
     }
 
     function startEditTag(tagOrIdx) {
