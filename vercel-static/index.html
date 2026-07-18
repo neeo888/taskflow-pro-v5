@@ -6033,15 +6033,31 @@
             list.innerHTML = '<div style="text-align:center;padding:20px;font-size:13px;color:var(--text3);">ยังไม่มีประเภทงาน</div>';
             return;
         }
-        list.innerHTML = allTags.map((tag, i) => {
-            const usedCount = tasks.filter(t => (t.tags || []).includes(tag)).length;
-            return `<div style="display:flex;align-items:center;gap:10px;padding:10px 13px;border:.5px solid var(--border);border-radius:10px;margin-bottom:7px;background:var(--surface);">
-                <span style="background:#EEF3FF;color:#3C3489;font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px;">${tag}</span>
+        list.innerHTML = allTags.map((tag) => {
+            const tagName = String(tag || '').trim();
+            const tagSafe = safeAttr(tagName);
+            const usedCount = tasks.filter(t => (t.tags || []).includes(tagName)).length;
+            return `<div data-tag-row data-tag="${tagSafe}" style="display:flex;align-items:center;gap:10px;padding:10px 13px;border:.5px solid var(--border);border-radius:10px;margin-bottom:7px;background:var(--surface);">
+                <span style="background:#EEF3FF;color:#3C3489;font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px;">${tagSafe}</span>
                 <span style="font-size:11px;color:var(--text3);flex:1;">ใช้ใน ${usedCount} งาน</span>
-                <button onclick="startEditTag(${i})" style="background:none;border:.5px solid var(--border);border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif;color:var(--text2);">✏️ แก้ไข</button>
-                <button onclick="deleteGlobalTagFromPage(${i})" style="background:none;border:.5px solid var(--danger);border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif;color:var(--danger);">🗑 ลบ</button>
+                <button type="button" class="tag-edit-btn" data-tag="${tagSafe}" style="background:none;border:.5px solid var(--border);border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif;color:var(--text2);">✏️ แก้ไข</button>
+                <button type="button" class="tag-delete-btn" data-tag="${tagSafe}" style="background:none;border:.5px solid var(--danger);border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif;color:var(--danger);">🗑 ลบ</button>
             </div>`;
         }).join('');
+        list.querySelectorAll('.tag-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                startEditTag(ev.currentTarget.dataset.tag || '');
+            });
+        });
+        list.querySelectorAll('.tag-delete-btn').forEach(btn => {
+            btn.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                deleteGlobalTagFromPage(ev.currentTarget.dataset.tag || '', ev.currentTarget.closest('[data-tag-row]'));
+            });
+        });
     }
 
     function addGlobalTag() {
@@ -6073,17 +6089,25 @@
         });
     }
 
-    function deleteGlobalTagFromPage(idx) {
+    function resolveTagIndex(tagOrIdx) {
+        if (typeof tagOrIdx === 'number') return tagOrIdx;
+        return allTags.indexOf(String(tagOrIdx || '').trim());
+    }
+
+    function deleteGlobalTagFromPage(tagOrIdx, rowEl) {
+        const idx = resolveTagIndex(tagOrIdx);
         const tag = allTags[idx];
         if (!tag) return;
         if (!confirm('ลบประเภทงาน "' + tag + '"?')) return;
         allTags.splice(idx, 1);
-        tasks.forEach(t => { t.tags = t.tags.filter(tg => tg !== tag); });
+        tasks.forEach(t => { t.tags = (t.tags || []).filter(tg => tg !== tag); });
+        if (rowEl && rowEl.parentNode) rowEl.remove();
         renderTagsPage();
         toast('ลบประเภทงาน "' + tag + '" แล้ว');
     }
 
-    function startEditTag(idx) {
+    function startEditTag(tagOrIdx) {
+        const idx = resolveTagIndex(tagOrIdx);
         const tag = allTags[idx];
         if (!tag) return;
         const newName = prompt('แก้ไขชื่อประเภทงาน:', tag);

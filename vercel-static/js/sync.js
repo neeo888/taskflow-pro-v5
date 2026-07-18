@@ -744,20 +744,38 @@ async function _renameTagPersist(oldName, newName) {
   return _api('tag_rename', { old_name: oldName, new_name: newName });
 }
 
+function _resolveTagArg(tagOrIdx) {
+  if (typeof tagOrIdx === 'number') return (window.allTags || [])[tagOrIdx] || '';
+  return String(tagOrIdx || '').trim();
+}
+
 const _orig_deleteGlobalTagFromPage = window.deleteGlobalTagFromPage;
-window.deleteGlobalTagFromPage = async function (idx) {
-  const tag = (window.allTags || [])[idx];
+window.deleteGlobalTagFromPage = async function (tagOrIdx, rowEl) {
+  const tag = _cleanTagName(_resolveTagArg(tagOrIdx));
   if (!tag) return;
   if (!confirm('ลบประเภทงาน "' + tag + '"?\n\nระบบจะลบประเภทงานนี้ออกจากงานทุกงานที่ใช้อยู่ด้วย')) return;
 
+  if (rowEl) {
+    rowEl.style.opacity = '0.45';
+    rowEl.style.pointerEvents = 'none';
+  }
+
   const r = await _deleteTagPersist(tag);
   if (!r.ok) {
+    if (rowEl) {
+      rowEl.style.opacity = '';
+      rowEl.style.pointerEvents = '';
+    }
     toast('ลบประเภทงานไม่สำเร็จ: ' + (r.error || ''));
     return;
   }
 
   _removeTagEverywhere(tag);
+  if (rowEl && rowEl.parentNode) rowEl.remove();
   _refreshTagScreens();
+  if (_isPhpSrv() && typeof _loadFromServer === 'function') {
+    try { await _loadFromServer(); _refreshTagScreens(); } catch (_) {}
+  }
   toast('✅ ลบประเภทงาน "' + tag + '" แล้ว' + (r.updated_tasks ? ' และอัปเดตงาน ' + r.updated_tasks + ' งาน' : ''));
 };
 
@@ -780,8 +798,8 @@ window.deleteGlobalTag = async function (tagOrIdx) {
 };
 
 const _orig_startEditTag = window.startEditTag;
-window.startEditTag = async function (idx) {
-  const oldName = (window.allTags || [])[idx];
+window.startEditTag = async function (tagOrIdx) {
+  const oldName = _cleanTagName(_resolveTagArg(tagOrIdx));
   if (!oldName) return;
   const newName = _cleanTagName(prompt('แก้ไขชื่อประเภทงาน:', oldName));
   if (!newName || newName === oldName) return;
