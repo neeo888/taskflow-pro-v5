@@ -1901,6 +1901,76 @@
       margin-bottom: 8px;
     }
 
+    .dp-info-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .dp-info-card {
+      background: var(--surface);
+      border: .5px solid var(--border);
+      border-radius: 13px;
+      padding: 11px 12px;
+      min-height: 72px;
+    }
+
+    .dp-info-lbl {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--text3);
+      margin-bottom: 5px;
+    }
+
+    .dp-info-val {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .dp-info-sub {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 3px;
+      line-height: 1.35;
+    }
+
+    .dp-owner-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .dp-owner-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: .5px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text2);
+    }
+
+    .dp-detail-text {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.75;
+      white-space: pre-wrap;
+      background: var(--surface);
+      border: .5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    @media (max-width: 900px) { .dp-info-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 520px) { .dp-info-grid { grid-template-columns: 1fr; } }
+
     /* FLOW BAR */
     .flow-bar {
       display: flex;
@@ -4868,7 +4938,11 @@
         if (t) {
           const dp = gi('dp');
           gi('dp-title').textContent = t.title || 'รายละเอียดงาน';
-          gi('dp-body').innerHTML = `<div class="dp-sec"><div class="dp-sec-t">รายละเอียดงาน</div><div style="font-size:13px;line-height:1.7;color:var(--text2);white-space:pre-wrap;">${t.desc || 'ไม่มีรายละเอียด'}</div></div><div class="dp-sec"><div class="dp-sec-t">สถานะ</div><span class="badge" style="background:${(COL[t.col] || COL.todo).c}22;color:${(COL[t.col] || COL.todo).c};">${(COL[t.col] || COL.todo).n}</span></div>`;
+          const cfg = COL[t.col] || COL.todo;
+          const pr = PRIO[t.priority] || PRIO.normal;
+          const asgns = users.filter(u => (t.asgn || []).map(Number).includes(Number(u.id)));
+          const ov = t.date && new Date(t.date) < new Date() && t.col !== 'done' && t.col !== 'verified';
+          gi('dp-body').innerHTML = `${detailSummaryHtml(t, cfg, pr, asgns, ov)}<div class="dp-sec"><div class="dp-sec-t">รายละเอียดงาน</div><div class="dp-detail-text">${t.desc || 'ยังไม่มีรายละเอียดงาน'}</div></div>${(t.steps || []).length ? `<div class="dp-sec"><div class="dp-sec-t">ขั้นตอนงาน</div>${t.steps.map((st, i) => `<div style="padding:8px 10px;border:.5px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--surface);font-size:12px;font-weight:700;">${i + 1}. ${st.label || st}</div>`).join('')}</div>` : ''}${(t.attachments || []).length ? `<div class="dp-sec"><div class="dp-sec-t">ไฟล์แนบ</div>${(t.attachments || []).map(f => _atchItemHtml(f, null)).join('')}</div>` : ''}`;
           dp.classList.toggle('full', !!fullPage);
           dp.classList.add('open');
         }
@@ -4919,6 +4993,56 @@
       return t;
     }
 
+
+    function detailDateText(raw) {
+      if (!raw) return { main: 'ไม่มีกำหนดส่ง', sub: 'ยังไม่ระบุวัน/เวลา' };
+      const txt = String(raw);
+      const hasTime = /\d{1,2}:\d{2}/.test(txt);
+      const d = new Date(txt);
+      if (!Number.isNaN(d.getTime())) {
+        const dd = d.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const tt = hasTime ? d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.' : '';
+        return { main: `${dd}${tt ? ' เวลา ' + tt : ''}`, sub: hasTime ? 'ระบุวันและเวลาแล้ว' : 'ระบุเฉพาะวันที่' };
+      }
+      return { main: txt, sub: hasTime ? 'ระบุวันและเวลาแล้ว' : 'กำหนดส่ง' };
+    }
+
+    function detailSummaryHtml(t, cfg, pr, asgns, ov) {
+      t = normalizeDetailTask(t) || {};
+      cfg = cfg || COL[t.col] || COL.todo;
+      pr = pr || PRIO[t.priority] || PRIO.normal;
+      asgns = Array.isArray(asgns) ? asgns : [];
+      const due = detailDateText(t.date);
+      const creator = findU(t.createdBy);
+      const submitter = findU(t.submittedBy);
+      const verifier = findU(t.verifiedBy);
+      const totalSteps = Math.max((t.steps || []).length * Math.max(asgns.length, 1), (t.steps || []).length);
+      const doneSteps = asgns.length
+        ? asgns.reduce((sum, u) => sum + Object.values(t.stepChecks?.[u.id] || {}).filter(v => v && v.done).length, 0)
+        : Object.values(t.stepChecks || {}).reduce((sum, sc) => sum + Object.values(sc || {}).filter(v => v && v.done).length, 0);
+      const openObs = (t.obstacles || []).filter(o => !o.resolved).length;
+      const latestProgress = [...(t.progressLog || [])].sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))[0];
+      const branchText = t.branch_name || t.branch || currentUser?.branch_name || currentUser?.branch || '-';
+      const deptText = t.dept || currentUser?.dept || '-';
+      return `
+        <div class="dp-info-grid">
+          <div class="dp-info-card"><div class="dp-info-lbl">สถานะงาน</div><div class="dp-info-val" style="color:${cfg.c};">${cfg.n}</div><div class="dp-info-sub">ความคืบหน้า ${t.prog || 0}%</div></div>
+          <div class="dp-info-card"><div class="dp-info-lbl">กำหนดแล้วเสร็จ</div><div class="dp-info-val" style="color:${ov ? 'var(--danger)' : 'var(--text)'};">${due.main}${ov ? ' ⚠️' : ''}</div><div class="dp-info-sub">${ov ? 'เกินกำหนดแล้ว' : due.sub}</div></div>
+          <div class="dp-info-card"><div class="dp-info-lbl">ความสำคัญ / ประเภท</div><div class="dp-info-val">${pr.l}</div><div class="dp-info-sub">${(t.tags || []).join(', ') || 'ยังไม่ระบุประเภท'}</div></div>
+          <div class="dp-info-card"><div class="dp-info-lbl">ขั้นตอน / อุปสรรค</div><div class="dp-info-val">${doneSteps}/${totalSteps || 0} ขั้นตอน</div><div class="dp-info-sub">อุปสรรคค้าง ${openObs} รายการ</div></div>
+          <div class="dp-info-card"><div class="dp-info-lbl">ผู้สร้างงาน</div><div class="dp-info-val">${creator?.name || '-'}</div><div class="dp-info-sub">${t.createdAt || 'ไม่มีเวลา'}</div></div>
+          <div class="dp-info-card"><div class="dp-info-lbl">ผู้ส่งงาน</div><div class="dp-info-val">${submitter?.name || '-'}</div><div class="dp-info-sub">${t.submittedAt || 'ยังไม่ส่งงาน'}</div></div>
+          <div class="dp-info-card"><div class="dp-info-lbl">ผู้ตรวจรับ</div><div class="dp-info-val">${verifier?.name || '-'}</div><div class="dp-info-sub">${t.verifiedBy ? 'ตรวจรับแล้ว' : 'ยังไม่ตรวจรับ'}</div></div>
+          <div class="dp-info-card"><div class="dp-info-lbl">สาขา / แผนก</div><div class="dp-info-val">${branchText}</div><div class="dp-info-sub">${deptText}</div></div>
+        </div>
+        <div class="dp-sec">
+          <div class="dp-sec-t">ภาพรวมผู้รับผิดชอบ</div>
+          <div class="dp-owner-strip">${asgns.length ? asgns.map(u => `<div class="dp-owner-chip">${avEl(u, 22, 7)}<span>${u.name}</span></div>`).join('') : '<span style="font-size:12px;color:var(--text3);">ยังไม่ได้มอบหมาย</span>'}</div>
+        </div>
+        ${latestProgress ? `<div class="dp-sec"><div class="dp-sec-t">อัปเดตล่าสุด</div><div style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:10px 12px;">${findU(latestProgress.authorId)?.name || 'ผู้ใช้'} อัปเดตเป็น <b>${latestProgress.prog}%</b> <span style="color:var(--text3);">${latestProgress.at || ''}</span>${latestProgress.note ? `<br>${latestProgress.note}` : ''}</div></div>` : ''}
+      `;
+    }
+
     function showDP(id, fullPage = true) {
       const tid = Number(id);
       const t = normalizeDetailTask(tasks.find(t => Number(t.id) === tid || String(t.id) === String(id)));
@@ -4932,6 +5056,7 @@
       const si = steps.indexOf(t.col);
       const sLabels = { todo: 'รอดำเนินการ', doing: 'กำลังทำ', review: 'รอตรวจ', done: 'แล้วเสร็จ', verified: 'ตรวจสอบแล้ว' };
       const canEditText = !!(currentUser && (canAssign() || t.createdBy === currentUser.id));
+      const detailSummary = detailSummaryHtml(t, cfg, pr, asgns, ov);
 
       gi('dp-title').textContent = t.title;
       const dpEditBtn = gi('dp-edit-btn');
@@ -4974,6 +5099,8 @@
       ${(t.tags || []).map(tg => `<span class="badge" style="background:#EEF3FF;color:#3C3489;">${tg}</span>`).join('')}
     </div>
 
+    ${detailSummary}
+
     <!-- flow -->
     <div class="dp-sec">
       <div class="dp-sec-t">เส้นทางงาน</div>
@@ -4990,7 +5117,7 @@
       ${t.date ? `<div style="font-size:11px;color:${ov ? 'var(--danger)' : 'var(--text3)'};">📅 ${t.date}${ov ? ' ⚠️ เกินกำหนด' : ''}</div>` : ''}
     </div>
 
-    ${t.desc ? `<div class="dp-sec"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="dp-sec-t" style="margin-bottom:0;">รายละเอียด</div>${canEditText ? `<button class="dp-inline-edit" onclick="openTaskModalEdit(${t.id})">✏️ แก้ไขข้อความ</button>` : ''}</div><div style="font-size:12px;color:var(--text2);line-height:1.6;white-space:pre-wrap;">${t.desc}</div></div>` : (canEditText ? `<div class="dp-sec"><button class="dp-inline-edit" style="margin-left:0;" onclick="openTaskModalEdit(${t.id})">✏️ เพิ่ม/แก้ไขรายละเอียด</button></div>` : '')}
+    ${t.desc ? `<div class="dp-sec"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="dp-sec-t" style="margin-bottom:0;">รายละเอียดงาน</div>${canEditText ? `<button class="dp-inline-edit" onclick="openTaskModalEdit(${t.id})">✏️ แก้ไขข้อความ</button>` : ''}</div><div class="dp-detail-text">${t.desc}</div></div>` : `<div class="dp-sec"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="dp-sec-t" style="margin-bottom:0;">รายละเอียดงาน</div>${canEditText ? `<button class="dp-inline-edit" onclick="openTaskModalEdit(${t.id})">✏️ เพิ่ม/แก้ไขรายละเอียด</button>` : ''}</div><div class="dp-detail-text" style="color:var(--text3);">ยังไม่มีรายละเอียดงาน</div></div>`}
 
     <div class="dp-sec">
       <div class="dp-sec-t">📅 ส่งเข้าปฏิทิน</div>
