@@ -96,6 +96,66 @@ async function localLogin(req) {
   await sb(`/rest/v1/tf_users?id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ last_login: new Date().toISOString() }) });
   return ok({ token, user: { id: Number(u.id), wwcode: u.wwcode, name: u.name, role: u.role, dept: u.dept, dept_key: u.dept_key, branch: u.branch, branch_name: u.branch_name, email: u.email, urole: u.urole, color: Number(u.color || 0), avatar_url: u.avatar_url || '', telegram_chat_id: u.telegram_chat_id || '' } });
 }
+
+async function registerUser(req) {
+  const b = await bodyJson(req);
+  const name = String(b.name || '').trim();
+  const email = String(b.email || '').trim().toLowerCase();
+  const usernameRaw = String(b.username || b.wwcode || '').trim().toLowerCase();
+  const password = String(b.password || b.new_password || '');
+  const telegramChatId = String(b.telegram_chat_id || b.telegramChatId || '').trim();
+
+  if (!name) return err('กรุณากรอกชื่อ-สกุล');
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) return err('กรุณากรอกอีเมลให้ถูกต้อง');
+  if (!password || password.length < 6) return err('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+
+  const wwcode = (usernameRaw || makeWwcode(email, name)).replace(/[^a-z0-9._-]/g, '').slice(0, 20) || makeWwcode(email, name);
+
+  const byEmail = await sb(`/rest/v1/tf_users?email=eq.${encodeURIComponent(email)}&select=id,email,wwcode&limit=1`, { method: 'GET' });
+  if (byEmail?.length) return err('อีเมลนี้ถูกใช้สมัครแล้ว', 409);
+  const byCode = await sb(`/rest/v1/tf_users?wwcode=eq.${encodeURIComponent(wwcode)}&select=id,email,wwcode&limit=1`, { method: 'GET' });
+  if (byCode?.length) return err('Username นี้ถูกใช้แล้ว กรุณาเลือกชื่ออื่น', 409);
+
+  const payload = {
+    p_id: null,
+    p_wwcode: wwcode,
+    p_name: name,
+    p_role: 'ผู้ใช้',
+    p_dept: String(b.dept || 'บริการ'),
+    p_dept_key: String(b.dept_key || 'บริการ'),
+    p_branch: String(b.branch || '5512027'),
+    p_branch_name: String(b.branch_name || 'พิษณุโลก'),
+    p_email: email,
+    p_urole: 'user',
+    p_color: 0,
+    p_telegram_chat_id: telegramChatId,
+    p_new_password: password,
+  };
+
+  let user = null;
+  try {
+    const rows = await sb('/rest/v1/rpc/tf_member_save', { method: 'POST', body: JSON.stringify(payload) });
+    user = rows?.[0] || null;
+  } catch (e) {
+    return err('สมัครสมาชิกไม่สำเร็จ: กรุณารัน supabase/schema.sql ล่าสุดก่อน (' + e.message + ')', 500);
+  }
+  if (!user?.id) return err('สมัครสมาชิกไม่สำเร็จ: ไม่ได้รับข้อมูลผู้ใช้จาก Supabase', 500);
+
+  const token = token64();
+  const expires = new Date(Date.now() + SESSION_HOURS * 3600 * 1000).toISOString();
+  await sb('/rest/v1/tf_sessions', { method: 'POST', body: JSON.stringify({ token, user_id: user.id, expires_at: expires }) });
+  return ok({
+    token,
+    user: {
+      id: Number(user.id), wwcode: user.wwcode || wwcode, name: user.name || name,
+      role: user.role || 'ผู้ใช้', dept: user.dept || payload.p_dept, dept_key: user.dept_key || payload.p_dept_key,
+      branch: user.branch || payload.p_branch, branch_name: user.branch_name || payload.p_branch_name,
+      email: user.email || email, urole: user.urole || 'user', color: Number(user.color || 0),
+      avatar_url: user.avatar_url || '', telegram_chat_id: user.telegram_chat_id || telegramChatId,
+    },
+  }, 201);
+}
+
 async function getUsers(req) {
   const s = await auth(req);
   const q = s.urole === 'admin' ? '' : `&branch=eq.${encodeURIComponent(s.branch || '')}`;
@@ -516,6 +576,7 @@ export default async function handler(req) {
   const action = url.searchParams.get('action') || '';
   try {
     if (action === 'local_login' && req.method === 'POST') return localLogin(req);
+    if ((action === 'register' || action === 'signup') && req.method === 'POST') return registerUser(req);
     if (action === 'logout' && req.method === 'POST') return ok();
     if (action === 'users' && req.method === 'GET') return getUsers(req);
     if (action === 'profile_save' && req.method === 'POST') return profileSave(req);

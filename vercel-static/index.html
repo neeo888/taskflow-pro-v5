@@ -2695,15 +2695,15 @@
         </div>
     </div>
 
-      <!-- Login mode tabs -->
+      <!-- Login / Register tabs (Local Account only) -->
       <div style="display:flex;gap:0;margin-bottom:18px;background:rgba(255,255,255,.06);border-radius:10px;padding:3px;">
-        <button id="tab-pwa" onclick="setLoginMode('pwa')"
-          style="flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;background:var(--accent);color:#0B1E3D;">
-          🏢 กปภ. (SSO)
+        <button id="tab-local" type="button" onclick="setLoginMode('local')"
+          style="flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--accent);color:#0B1E3D;">
+          🔑 เข้าสู่ระบบ
         </button>
-        <button id="tab-local" onclick="setLoginMode('local')"
-          style="flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:rgba(255,255,255,.5);">
-          🔑 Local Account
+        <button id="tab-register" type="button" onclick="setLoginMode('register')"
+          style="flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:rgba(255,255,255,.55);">
+          ✨ สมัครสมาชิก
         </button>
       </div>
 
@@ -2716,38 +2716,11 @@
       <div id="login-form">
         <div class="lerr" id="lerr" style="display:none;"></div>
 
-        <!-- ── PWA SSO mode ─────────────────────── -->
-        <div id="form-pwa">
-<form id="pwaLoginForm" onsubmit="doLogin(); return false;">          <div class="lfl">
-            <label>รหัสพนักงาน (EMP ID)</label>
-            <input id="l-user" placeholder="เช่น 9235" autocomplete="username"
-              onkeydown="if(event.key==='Enter')gi('l-pass').focus()" />
-          </div>
+        <!-- ── Local Account login ───────────────── -->
+        <div id="form-local">
           <div class="lfl">
-            <label>รหัสผ่าน กปภ.</label>
-            <div style="position:relative;">
-              <input id="l-pass" type="password" placeholder="รหัสผ่านระบบ intranet กปภ." style="padding-right:42px;"
-                autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" />
-              <button type="button" onclick="togglePass()" id="btn-show-pass"
-                style="position:absolute;right:0;top:0;bottom:0;width:42px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;">
-                <svg id="eye-icon" width="18" height="18" viewBox="0 0 20 20" fill="none">
-                  <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z" stroke="currentColor" stroke-width="1.5" />
-                  <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.5" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <button type="submit" class="lbtn">เข้าสู่ระบบ กปภ.</button>
-          <div style="text-align:center;margin-top:10px;font-size:10px;color:rgba(255,255,255,.3);">
-            ใช้รหัสเดียวกับระบบ intranet.pwa.co.th
-          </div>
-        </div>
-
-        <!-- ── Local Account mode ───────────────── -->
-        <div id="form-local" style="display:none;">
-          <div class="lfl">
-            <label>ชื่อผู้ใช้ (Username)</label>
-            <input id="l-local-user" placeholder="username" autocomplete="username"
+            <label>ชื่อผู้ใช้ หรือ อีเมล</label>
+            <input id="l-local-user" placeholder="username หรือ email" autocomplete="username"
               onkeydown="if(event.key==='Enter')gi('l-local-pass').focus()" />
           </div>
           <div class="lfl">
@@ -2756,7 +2729,7 @@
               <input id="l-local-pass" type="password" placeholder="รหัสผ่าน" style="padding-right:42px;"
                 autocomplete="current-password" onkeydown="if(event.key==='Enter')doLocalLogin()" />
               <button type="button" onclick="toggleLocalPass()"
-                style="position:absolute;right:0;top:0;bottom:0;width:42px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;">
+                style="position:absolute;right:0;top:0;bottom:0;width:42px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;" aria-label="แสดงหรือซ่อนรหัสผ่าน">
                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
                   <path d="M1 10s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z" stroke="currentColor" stroke-width="1.5" />
                   <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.5" />
@@ -2764,31 +2737,76 @@
               </button>
             </div>
           </div>
-          <button class="lbtn" onclick="doLocalLogin()">เข้าสู่ระบบ</button>
-</form>
+          <button type="button" class="lbtn" onclick="doLocalLogin()">เข้าสู่ระบบ</button>
+
+          <div style="text-align:center;margin-top:12px;font-size:11px;color:rgba(255,255,255,.55);">
+            ยังไม่มีบัญชี? <button type="button" onclick="setLoginMode('register')" style="background:none;border:none;color:var(--accent);font-weight:800;cursor:pointer;">สมัครสมาชิกใหม่</button>
+          </div>
+
           <!-- Account hint -->
           <div style="margin-top:14px;background:rgba(255,255,255,.06);border-radius:9px;padding:10px 12px;">
             <div style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:7px;font-weight:600;letter-spacing:.04em;">
-              🔑 ACCOUNTS เริ่มต้น (รหัสผ่าน: Pwa@12345)
+              🔑 บัญชีเริ่มต้นสำหรับทดสอบ (รหัสผ่าน: Pwa@12345)
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-              <button onclick="quickFill('admin')"
+              <button type="button" onclick="quickFill('admin')"
                 style="background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.25);border-radius:6px;padding:5px 8px;font-size:10px;color:rgba(0,212,170,.9);cursor:pointer;text-align:left;">
                 👑 admin
               </button>
-              <button onclick="quickFill('manager')"
+              <button type="button" onclick="quickFill('manager')"
                 style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:6px;padding:5px 8px;font-size:10px;color:rgba(100,160,255,.9);cursor:pointer;text-align:left;">
                 🧑‍💼 manager
               </button>
-              <button onclick="quickFill('assist')"
+              <button type="button" onclick="quickFill('assist')"
                 style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);border-radius:6px;padding:5px 8px;font-size:10px;color:rgba(200,150,255,.9);cursor:pointer;text-align:left;">
                 👤 assist
               </button>
-              <button onclick="quickFill('user1')"
+              <button type="button" onclick="quickFill('user1')"
                 style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:5px 8px;font-size:10px;color:rgba(255,255,255,.5);cursor:pointer;text-align:left;">
                 👤 user1–3
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- ── New member registration ───────────── -->
+        <div id="form-register" style="display:none;">
+          <div class="lfl">
+            <label>ชื่อ-สกุล *</label>
+            <input id="r-name" placeholder="เช่น สมชาย ใจดี" autocomplete="name"
+              onkeydown="if(event.key==='Enter')gi('r-email').focus()" />
+          </div>
+          <div class="lfl">
+            <label>อีเมล *</label>
+            <input id="r-email" type="email" placeholder="name@example.com" autocomplete="email"
+              onkeydown="if(event.key==='Enter')gi('r-user').focus()" />
+          </div>
+          <div class="lfl">
+            <label>Username (ไม่กรอกได้)</label>
+            <input id="r-user" placeholder="ถ้าไม่กรอก ระบบจะใช้อีเมลเป็นชื่อเข้าใช้"
+              onkeydown="if(event.key==='Enter')gi('r-telegram').focus()" />
+          </div>
+          <div class="lfl">
+            <label>Telegram ID / Chat ID (ไม่กรอกได้)</label>
+            <input id="r-telegram" placeholder="ใช้สำหรับรับแจ้งเตือน Telegram"
+              onkeydown="if(event.key==='Enter')gi('r-pass').focus()" />
+          </div>
+          <div class="lfl">
+            <label>รหัสผ่าน *</label>
+            <input id="r-pass" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="new-password"
+              onkeydown="if(event.key==='Enter')gi('r-pass2').focus()" />
+          </div>
+          <div class="lfl">
+            <label>ยืนยันรหัสผ่าน *</label>
+            <input id="r-pass2" type="password" placeholder="พิมพ์รหัสผ่านอีกครั้ง" autocomplete="new-password"
+              onkeydown="if(event.key==='Enter')doRegister()" />
+          </div>
+          <button type="button" class="lbtn" onclick="doRegister()">สมัครสมาชิกและเข้าสู่ระบบ</button>
+          <div style="text-align:center;margin-top:12px;font-size:11px;color:rgba(255,255,255,.55);">
+            มีบัญชีแล้ว? <button type="button" onclick="setLoginMode('local')" style="background:none;border:none;color:var(--accent);font-weight:800;cursor:pointer;">กลับไปเข้าสู่ระบบ</button>
+          </div>
+          <div style="margin-top:12px;background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.22);border-radius:10px;padding:10px 12px;font-size:10px;line-height:1.55;color:rgba(255,255,255,.68);">
+            สมาชิกใหม่จะเป็นสิทธิ์ “ผู้ใช้” โดยอัตโนมัติ และบันทึกจริงใน Supabase เพื่อให้เปิดจากเครื่องอื่นได้
           </div>
         </div>
 
@@ -4348,28 +4366,36 @@
       if (e.key==='Escape' && gi('login-screen').style.display!=='none') offlineLogin();
     });
 
-    // ── Login mode switch ─────────────────────────────────────
-    let _loginMode = 'pwa';
+    // ── Login / Register mode switch ─────────────────────────
+    let _loginMode = 'local';
 
     // กรอก username + รหัสผ่านให้อัตโนมัติ (จากปุ่ม hint)
     function quickFill(username) {
+      setLoginMode('local');
       gi('l-local-user').value = username;
       gi('l-local-pass').value = 'Pwa@12345';
       gi('lerr').style.display = 'none';
-      // focus ปุ่ม login
       setTimeout(() => gi('l-local-pass').focus(), 50);
     }
+
+    function _loginTabStyle(active) {
+      return active
+        ? 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;background:var(--accent);color:#0B1E3D;transition:all .15s;'
+        : 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;background:transparent;color:rgba(255,255,255,.55);transition:all .15s;';
+    }
+
     function setLoginMode(m) {
-      _loginMode = m;
-      gi('form-pwa').style.display   = m==='pwa'   ? '' : 'none';
-      gi('form-local').style.display = m==='local' ? '' : 'none';
-      gi('tab-pwa').style.cssText   = m==='pwa'
-        ? 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:var(--accent);color:#0B1E3D;transition:all .15s;'
-        : 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,.5);transition:all .15s;';
-      gi('tab-local').style.cssText = m==='local'
-        ? 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:var(--accent);color:#0B1E3D;transition:all .15s;'
-        : 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,.5);transition:all .15s;';
+      _loginMode = (m === 'register') ? 'register' : 'local';
+      const isRegister = _loginMode === 'register';
+      if (gi('form-local')) gi('form-local').style.display = isRegister ? 'none' : '';
+      if (gi('form-register')) gi('form-register').style.display = isRegister ? '' : 'none';
+      if (gi('tab-local')) gi('tab-local').style.cssText = _loginTabStyle(!isRegister);
+      if (gi('tab-register')) gi('tab-register').style.cssText = _loginTabStyle(isRegister);
       gi('lerr').style.display = 'none';
+      setTimeout(() => {
+        const first = isRegister ? gi('r-name') : gi('l-local-user');
+        if (first) first.focus();
+      }, 50);
     }
 
     function showLoginErr(msg) {
@@ -4382,99 +4408,81 @@
       inp.type = inp.type==='password' ? 'text' : 'password';
     }
 
-    // ════════════════════════════════════════════════════════
-    // MODE 1: PWA SSO Login (ผ่าน intranet.pwa.co.th)
-    // ════════════════════════════════════════════════════════
-    async function doLogin() {
-      const username = gi('l-user').value.trim();
-      const password = gi('l-pass').value;
-      gi('lerr').style.display = 'none';
-      if (!username || !password) { showLoginErr('กรุณากรอกรหัสพนักงานและรหัสผ่าน'); return; }
-
-      gi('login-form').style.display = 'none';
-      gi('login-loading').style.display = 'block';
-      gi('login-loading-txt').textContent = 'กำลังตรวจสอบกับระบบ กปภ...';
-
-      try {
-        const res = await fetch('pwa_login.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-        gi('login-loading').style.display = 'none';
-        gi('login-form').style.display = 'block';
-
-        if (!data.success) {
-          showLoginErr(data.message || 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง');
-          return;
-        }
-
-        const urole   = ROLE_MAP[data.user] || 'user';
-        const fullName = (data.prefix_name||'') + data.name + ' ' + data.surname;
-        let u = users.find(x => x.wwcode===data.user || x.email===data.user+'@pwa.th');
-        if (!u) {
-          const deptKey   = mapDept(data.div_name, data.dep_name);
-          const branchCode= data.costcenter || data.ba || '';
-          const branchName= BRANCH_MAP[branchCode] || data.area || '';
-          u = { id:nid++, name:fullName.trim(), role:data.position_name||data.job_name||'',
-                dept:data.div_name||data.dep_name||'', dept_key:deptKey,
-                branch:branchCode, branch_name:branchName,
-                email:data.user+'@pwa.th', pass:'', urole, color:strToColor(data.user),
-                avatar:'', wwcode:data.user };
-          users.push(u);
-        } else {
-          u.name=fullName.trim(); u.role=data.position_name||data.job_name||u.role;
-          u.dept=data.div_name||data.dep_name||u.dept; u.urole=urole;
-          u.dept_key=mapDept(data.div_name,data.dep_name);
-          u.branch=data.costcenter||data.ba||u.branch||'';
-          u.branch_name=BRANCH_MAP[u.branch]||data.area||u.branch_name||'';
-        }
-
-        // โหลด avatar จาก localStorage
-        _loadAvatarFromLS(u);
-
-        currentUser = u;
-        _afterLogin();
-        toast('ยินดีต้อนรับ ' + data.name + ' ' + data.surname);
-
-        const pending = myNotifs().filter(n => !n.read && !n.ackBy.includes(currentUser.id));
-        if (pending.length) {
-          setTimeout(()=>{ playNotifSound(); const n=pending[0]; showNotifPopup(n.title,n.body,n.taskId,n.type==='new_task'); }, 800);
-        }
-      } catch(err) {
-        gi('login-loading').style.display = 'none';
-        gi('login-form').style.display = 'block';
-        showLoginErr('ไม่สามารถเชื่อมต่อระบบ กปภ. ได้ — กรุณาใช้ 🔑 Local Account');
-        // suppress 405 console noise บน Live Server
-        if (!String(err).includes('405') && !String(err).includes('Method')) {
-          console.warn('PWA login:', err);
-        }
-      }
+    function _setLoginBusy(isBusy, text='กำลังตรวจสอบ...') {
+      gi('login-form').style.display = isBusy ? 'none' : 'block';
+      gi('login-loading').style.display = isBusy ? 'block' : 'none';
+      gi('login-loading-txt').textContent = text;
     }
 
+    function _upsertLoginUser(raw) {
+      if (!raw) return null;
+      const uid = Number(raw.id || 0);
+      let u = users.find(x => (uid && Number(x.id) === uid) || (raw.wwcode && x.wwcode === raw.wwcode) || (raw.email && String(x.email||'').toLowerCase() === String(raw.email).toLowerCase()));
+      const payload = {
+        id: uid || (u?.id || nid++),
+        wwcode: raw.wwcode || raw.username || u?.wwcode || '',
+        name: raw.name || u?.name || raw.email || 'ผู้ใช้ใหม่',
+        role: raw.role || u?.role || 'ผู้ใช้',
+        dept: raw.dept || u?.dept || 'บริการ',
+        dept_key: raw.dept_key || u?.dept_key || 'บริการ',
+        branch: raw.branch || u?.branch || '5512027',
+        branch_name: raw.branch_name || u?.branch_name || 'พิษณุโลก',
+        email: raw.email || u?.email || '',
+        pass: u?.pass || '',
+        urole: raw.urole || u?.urole || 'user',
+        color: Number(raw.color ?? u?.color ?? strToColor(raw.email || raw.wwcode || raw.name || 'user')),
+        avatar: raw.avatar_url || raw.avatar || u?.avatar || '',
+        avatar_url: raw.avatar_url || raw.avatar || u?.avatar_url || '',
+        telegram_chat_id: raw.telegram_chat_id || u?.telegram_chat_id || '',
+      };
+      if (u) Object.assign(u, payload); else { u = payload; users.push(u); }
+      return u;
+    }
+
+    // SSO ถูกยกเลิกแล้ว: ฟังก์ชันนี้คงไว้เพื่อ compatibility กับโค้ดเดิม
+    async function doLogin() { return doLocalLogin(); }
+
     // ════════════════════════════════════════════════════════
-    // MODE 2: Local Account Login (ผ่าน api.php → MySQL)
-    // ════════════════════════════════════════════════════════
-    // ════════════════════════════════════════════════════════
-    // MODE 2: Local Account — Pure JS, ไม่ต้อง PHP/server เลย
-    // ใช้ users array + localStorage (ทำงานบน Live Server ได้)
+    // Local Account Login (Supabase API ก่อน, fallback demo/localStorage)
     // ════════════════════════════════════════════════════════
     async function doLocalLogin() {
       const input = gi('l-local-user').value.trim();
       const pass  = gi('l-local-pass').value;
       gi('lerr').style.display = 'none';
-      if (!input || !pass) { showLoginErr('กรุณากรอก username และรหัสผ่าน'); return; }
+      if (!input || !pass) { showLoginErr('กรุณากรอก username/email และรหัสผ่าน'); return; }
 
-      gi('login-form').style.display = 'none';
-      gi('login-loading').style.display = 'block';
-      gi('login-loading-txt').textContent = 'กำลังตรวจสอบ...';
+      _setLoginBusy(true, 'กำลังตรวจสอบบัญชี...');
+      const isApiServer = window.location.protocol !== 'file:' && !window.location.port.match(/^5[0-9]{3}$|^3000$|^8080$|^4200$/);
+      let apiError = '';
 
-      // จำลอง async เล็กน้อยเพื่อ UX
-      await new Promise(r => setTimeout(r, 400));
+      if (isApiServer) {
+        try {
+          const apiRes = await fetch('php/api.php?action=local_login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: input, password: pass }),
+            signal: AbortSignal.timeout(6000),
+          });
+          const apiData = await apiRes.json().catch(() => null);
+          if (apiRes.ok && apiData?.ok && apiData.user) {
+            if (apiData.token) localStorage.setItem('tf_tok', apiData.token);
+            const u = _upsertLoginUser(apiData.user);
+            _loadAvatarFromLS(u);
+            currentUser = u;
+            _setLoginBusy(false);
+            _afterLogin();
+            toast('ยินดีต้อนรับ ' + u.name + ' 👋');
+            return;
+          }
+          apiError = apiData?.error || '';
+        } catch (e) {
+          apiError = String(e?.message || e || '');
+        }
+      }
 
-      gi('login-loading').style.display = 'none';
-      gi('login-form').style.display = 'block';
+      // จำลอง async เล็กน้อยเพื่อ UX ก่อน fallback
+      await new Promise(r => setTimeout(r, 250));
+      _setLoginBusy(false);
 
       // ── ค้นหา user จาก: wwcode, email, หรือชื่อ ─────────────
       let u = users.find(x =>
@@ -4502,12 +4510,10 @@
       }
 
       if (!u) {
-        showLoginErr('ไม่พบ username "' + input + '" — ตรวจสอบชื่อผู้ใช้อีกครั้ง');
+        showLoginErr(apiError || 'ไม่พบ username/email "' + input + '" — ตรวจสอบชื่อผู้ใช้อีกครั้ง');
         return;
       }
 
-      // ── ตรวจสอบรหัสผ่าน ──────────────────────────────────────
-      // รองรับ: pass ตรง, หรือรหัสเริ่มต้น Pwa@12345
       const correctPass = u.pass || '';
       const defaultPass = 'Pwa@12345';
       const isDefault   = (pass === defaultPass && !correctPass);
@@ -4518,37 +4524,6 @@
         return;
       }
 
-      // ── ลอง sync กับ PHP API เฉพาะเมื่อรันบน PHP server จริง ──
-      // ตรวจสอบก่อน: ถ้า URL เป็น file:// หรือ Live Server → ข้ามไป
-      const _isPhpServer = window.location.protocol !== 'file:'
-        && !window.location.port.match(/^5[0-9]{3}$|^3000$|^8080$|^4200$/);
-
-      if (_isPhpServer) {
-        try {
-          const apiRes = await fetch('php/api.php?action=local_login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: input, password: pass }),
-            signal: AbortSignal.timeout(2500),
-          });
-          // ตรวจ status ก่อน parse JSON
-          if (apiRes.ok) {
-            const apiData = await apiRes.json().catch(() => null);
-            if (apiData?.ok && apiData.user) {
-              u.name   = apiData.user.name       || u.name;
-              u.urole  = apiData.user.urole      || u.urole;
-              u.avatar = apiData.user.avatar_url || u.avatar;
-              if (apiData.token) {
-                try { localStorage.setItem('tf_tok', apiData.token); } catch(_) {}
-              }
-            }
-          }
-          // ถ้า 405/404/500 → ข้ามไปเงียบๆ ไม่ throw
-        } catch(_) {
-          // timeout หรือ network error → ใช้ข้อมูล local ต่อ
-        }
-      }
-
       _loadAvatarFromLS(u);
       currentUser = u;
       _afterLogin();
@@ -4556,10 +4531,53 @@
     }
 
     // ════════════════════════════════════════════════════════
+    // Register new Local Account (บันทึกจริงผ่าน Supabase API)
+    // ════════════════════════════════════════════════════════
+    async function doRegister() {
+      const name = gi('r-name').value.trim();
+      const email = gi('r-email').value.trim();
+      const username = gi('r-user').value.trim();
+      const telegram = gi('r-telegram').value.trim();
+      const password = gi('r-pass').value;
+      const password2 = gi('r-pass2').value;
+      gi('lerr').style.display = 'none';
+
+      if (!name) return showLoginErr('กรุณากรอกชื่อ-สกุล');
+      if (!email || !/^\S+@\S+\.\S+$/.test(email)) return showLoginErr('กรุณากรอกอีเมลให้ถูกต้อง');
+      if (!password || password.length < 6) return showLoginErr('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+      if (password !== password2) return showLoginErr('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
+      if (window.location.protocol === 'file:') return showLoginErr('สมัครสมาชิกต้องเปิดผ่าน Vercel/Server เพื่อบันทึก Supabase จริง');
+
+      _setLoginBusy(true, 'กำลังสมัครสมาชิก...');
+      try {
+        const res = await fetch('php/api.php?action=register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, username, password, telegram_chat_id: telegram }),
+          signal: AbortSignal.timeout(10000),
+        });
+        const data = await res.json().catch(() => null);
+        _setLoginBusy(false);
+        if (!res.ok || !data?.ok) {
+          showLoginErr(data?.error || 'สมัครสมาชิกไม่สำเร็จ กรุณาตรวจ Supabase/Environment Variables');
+          return;
+        }
+        if (data.token) localStorage.setItem('tf_tok', data.token);
+        const u = _upsertLoginUser(data.user || { name, email, wwcode: username || email, urole:'user', telegram_chat_id: telegram });
+        currentUser = u;
+        _afterLogin();
+        toast('สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ' + u.name + ' 🎉');
+      } catch (e) {
+        _setLoginBusy(false);
+        showLoginErr('เชื่อมต่อ API สมัครสมาชิกไม่ได้: ' + (e?.message || e));
+      }
+    }
+
+    // ════════════════════════════════════════════════════════
     // MODE 3: Offline (Escape key) — ไม่ต้อง server เลย
     // ════════════════════════════════════════════════════════
     function offlineLogin() {
-      const username = (gi('l-user').value || gi('l-local-user').value || '').trim();
+      const username = ((gi('l-local-user')?.value) || '').trim();
       const builtIn = {
         'admin':   { urole:'admin',     name:'Admin กปภ.ข.10',   role:'ผู้ดูแลระบบ' },
         'manager': { urole:'manager',   name:'หัวหน้า กปภ.ข.10', role:'ผู้จัดการ' },
