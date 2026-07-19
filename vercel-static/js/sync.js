@@ -336,7 +336,9 @@ window.submitTask = function () {
     .then(async r => {
     if (!r.ok) {
       if (typeof toast === 'function') toast(r.error || 'บันทึกงานขึ้น Supabase ไม่สำเร็จ');
-      _loadFromServer(true).then(() => renderAll());
+      _loadFromServer(true).then(() => {
+        if (typeof renderAll === 'function') renderAll();
+      });
       return;
     }
     const savedId = Number(r.task_id || payload.id || idVal || 0);
@@ -391,26 +393,27 @@ window.submitProg = async function () {
   const progressFiles = gi('prog-files') ? Array.from(gi('prog-files').files || []) : [];
   _orig_submitProg.call(this);
   if (!_isPhpSrv()) return;
+  const progressIsFinal = prog >= 100;
   await _api('task_progress', { task_id: tid, prog, note });
 
   // แนบรูป/ไฟล์ประกอบการอัปเดตความคืบหน้า เก็บใน Supabase Storage + tf_attachments
+  // ถ้าความคืบหน้าเป็น 100% ให้ถือเป็นหลักฐานส่งงานด้วย
   for (const file of progressFiles) {
     try {
       const fd = new FormData();
       fd.append('task_id', tid);
-      fd.append('is_submitted', '0');
-      fd.append('file', file, file.name || 'progress-image');
+      fd.append('is_submitted', progressIsFinal ? '1' : '0');
+      fd.append('file', file, file.name || 'progress-file');
       await _api('file_upload', fd);
     } catch (e) {
       console.warn('[sync.js] progress file upload failed', e);
       if (typeof toast === 'function') toast('อัปโหลดไฟล์บางรายการไม่สำเร็จ');
     }
   }
-  if (progressFiles.length) {
-    await _loadFromServer(true);
-    if (typeof renderAll === 'function') renderAll();
-    setTimeout(() => { if (typeof showDP === 'function') showDP(tid); }, 120);
-  }
+  await _loadFromServer(true);
+  if (typeof renderAll === 'function') renderAll();
+  setTimeout(() => { if (typeof showDP === 'function') showDP(tid); }, 120);
+  if (progressFiles.length && typeof toast === 'function') toast(`อัปโหลดไฟล์แนบ ${progressFiles.length} รายการแล้ว`);
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -442,7 +445,10 @@ window.submitWork = async function () {
     if (blob) fd.append('file', blob, f.name || 'file');
     await _api('file_upload', fd);
   }
-  _loadFromServer(true).then(() => renderAll());
+  _loadFromServer(true).then(() => {
+    if (typeof renderAll === 'function') renderAll();
+    setTimeout(() => { if (typeof showDP === 'function') showDP(tid); }, 120);
+  });
 };
 
 // ══════════════════════════════════════════════════════════════

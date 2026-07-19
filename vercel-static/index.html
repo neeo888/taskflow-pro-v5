@@ -1583,6 +1583,45 @@
       font-size: 13px;
     }
 
+    .prog-file-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .prog-file-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: .5px solid var(--border);
+      border-radius: 9px;
+      padding: 7px 9px;
+      color: var(--text2);
+      font-size: 11px;
+    }
+
+    .prog-file-chip img {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: .5px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .prog-file-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: #EEF2FF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
     /* DETAIL PANEL */
     .dp {
       display: none;
@@ -3580,8 +3619,18 @@
         <div class="mfl"><label>หมายเหตุ</label><textarea id="prog-note"
             placeholder="บันทึกสิ่งที่ทำไปแล้ว..."></textarea></div>
         <div class="mfl progress-upload-field">
-          <label>แนบรูปอัปเดต / ไฟล์ประกอบ</label>
-          <input type="file" id="prog-files" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="renderProgFilePreview(this.files)" />
+          <label>📎 แนบรูปอัปเดต / ไฟล์ประกอบ</label>
+          <div class="upload-zone" id="prog-upload-zone" role="button" tabindex="0" data-key-click="true" aria-label="เลือกไฟล์อัปเดตความคืบหน้า" onclick="document.getElementById('prog-files').click()"
+            ondragover="dragOver(event,'prog-upload-zone')" ondragleave="dragLeave(event,'prog-upload-zone')"
+            ondrop="dropFile(event,'prog-files')">
+            <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">ลากรูป/ไฟล์มาวาง หรือเลือกไฟล์แนบหลักฐานความก้าวหน้า</div>
+            <div class="upload-btns" onclick="event.stopPropagation()">
+              <button class="upload-btn-sm" type="button" onclick="document.getElementById('prog-camera-input').click()">📷 ถ่ายรูป</button>
+              <button class="upload-btn-sm" type="button" onclick="document.getElementById('prog-files').click()">📂 เลือกไฟล์</button>
+            </div>
+          </div>
+          <input type="file" id="prog-files" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style="display:none;" onchange="renderProgFilePreview(this.files)" />
+          <input type="file" id="prog-camera-input" multiple accept="image/*" capture="environment" style="display:none;" onchange="appendProgFiles(this.files);this.value=''" />
           <div class="muted" style="font-size:11px;margin-top:6px;">รองรับรูปภาพ JPG/PNG/WebP และเอกสารประกอบ ระบบจะเก็บไว้ใน Supabase Storage bucket: task-attachments</div>
           <div id="prog-file-preview" class="prog-file-preview"></div>
         </div>
@@ -4020,6 +4069,7 @@
       e.preventDefault(); e.currentTarget?.classList.remove('drag');
       const files = e.dataTransfer?.files; if (!files?.length) return;
       if (inputId.includes('sw')) processSwFiles(files);
+      else if (inputId.includes('prog')) appendProgFiles(files);
       else processTaskFiles(files);
     }
 
@@ -6085,17 +6135,43 @@
       closeModal('modal-member'); renderMembers();
     }
 
+    function _setFileInputFiles(input, files) {
+      if (!input) return false;
+      try {
+        const dt = new DataTransfer();
+        Array.from(files || []).forEach(f => dt.items.add(f));
+        input.files = dt.files;
+        return true;
+      } catch (e) {
+        console.warn('Cannot update file input programmatically', e);
+        return false;
+      }
+    }
+    function appendProgFiles(files) {
+      const input = gi('prog-files'); if (!input) return;
+      const merged = Array.from(input.files || []).concat(Array.from(files || []));
+      if (_setFileInputFiles(input, merged)) renderProgFilePreview(input.files);
+      else renderProgFilePreview(merged);
+    }
+    function removeProgFileAt(idx) {
+      const input = gi('prog-files'); if (!input) return;
+      const kept = Array.from(input.files || []).filter((_, i) => i !== idx);
+      _setFileInputFiles(input, kept);
+      renderProgFilePreview(input.files);
+    }
     function renderProgFilePreview(files) {
       const box = gi('prog-file-preview'); if (!box) return;
       const arr = Array.from(files || []);
       if (!arr.length) { box.innerHTML = ''; return; }
-      box.innerHTML = arr.map(f => {
+      box.innerHTML = `<div class="muted" style="font-size:11px;margin:8px 0 5px;">เลือกแล้ว ${arr.length} ไฟล์ — จะอัปโหลดพร้อมการบันทึกความก้าวหน้า</div>` + arr.map((f, i) => {
         const isImg = (f.type || '').startsWith('image/');
         const url = isImg ? URL.createObjectURL(f) : '';
-        return `<div class="prog-file-chip">${isImg ? `<img src="${url}" alt="${f.name}">` : '<span class="prog-file-icon">📎</span>'}<span>${f.name}</span></div>`;
+        const nm = (typeof safeAttr === 'function') ? safeAttr(f.name || 'file') : String(f.name || 'file').replace(/[&<>"]/g, '');
+        const size = f.size ? `${Math.round(f.size / 1024).toLocaleString()}KB` : '';
+        return `<div class="prog-file-chip">${isImg ? `<img src="${url}" alt="${nm}">` : '<span class="prog-file-icon">📎</span>'}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nm}<small style="display:block;color:var(--text3);font-size:9px;">${size}</small></span><button type="button" class="atch-del" title="เอาไฟล์นี้ออก" onclick="removeProgFileAt(${i})">✕</button></div>`;
       }).join('');
     }
-    function openProgModal(tid) { const t = tasks.find(t => t.id === tid); if (!t) return; gi('prog-task-id').value = tid; gi('prog-slider').value = t.prog; gi('prog-val').textContent = t.prog + '%'; gi('prog-note').value = ''; if (gi('prog-files')) gi('prog-files').value = ''; if (gi('prog-file-preview')) gi('prog-file-preview').innerHTML = ''; gi('prog-hint').style.display = t.prog >= 95 ? 'block' : 'none'; gi('prog-slider').oninput = function () { gi('prog-val').textContent = this.value + '%'; gi('prog-hint').style.display = this.value >= 100 ? 'block' : 'none'; }; openModal('modal-prog'); }
+    function openProgModal(tid) { const t = tasks.find(t => t.id === tid); if (!t) return; gi('prog-task-id').value = tid; gi('prog-slider').value = t.prog; gi('prog-val').textContent = t.prog + '%'; gi('prog-note').value = ''; if (gi('prog-files')) gi('prog-files').value = ''; if (gi('prog-camera-input')) gi('prog-camera-input').value = ''; if (gi('prog-file-preview')) gi('prog-file-preview').innerHTML = ''; gi('prog-hint').style.display = t.prog >= 95 ? 'block' : 'none'; gi('prog-slider').oninput = function () { gi('prog-val').textContent = this.value + '%'; gi('prog-hint').style.display = this.value >= 100 ? 'block' : 'none'; }; openModal('modal-prog'); }
     function submitProg() {
       const tid = parseInt(gi('prog-task-id').value); const t = tasks.find(t => t.id === tid); if (!t) return;
       const prog = parseInt(gi('prog-slider').value); const note = gi('prog-note').value.trim();

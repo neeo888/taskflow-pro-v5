@@ -511,10 +511,37 @@ async function taskProgress(req) {
   const s = await auth(req);
   const b = await bodyJson(req);
   const id = Number(b.task_id || 0);
+  if (!id) return err('Missing task_id');
   const prog = Math.max(0, Math.min(100, Number(b.prog || 0)));
-  await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ prog }) });
+  const task = (await sb(`/rest/v1/tf_tasks?id=eq.${id}&select=id,title,col,branch`, { method: 'GET' }))[0];
+  if (!task) return err('Task not found', 404);
+
+  const patch = { prog };
+  if (prog >= 100 && ['todo', 'doing'].includes(task.col)) patch.col = 'review';
+  else if (prog > 0 && task.col === 'todo') patch.col = 'doing';
+
+  await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
   await sb('/rest/v1/tf_progress_log', { method: 'POST', body: JSON.stringify({ task_id: id, user_id: s.id, prog, note: b.note || '' }) });
-  return ok();
+
+  // เมื่ออัปเดตครบ 100% ให้แจ้งผู้มีสิทธิ์ตรวจรับในสาขาเดียวกัน
+  if (patch.col === 'review') {
+    const mgrs = await sb('/rest/v1/tf_users?urole=in.(admin,manager)&select=id,branch', { method: 'GET' });
+    const targets = (mgrs || []).filter(m => !task.branch || !m.branch || String(m.branch) === String(task.branch));
+    if (targets.length) {
+      await sb('/rest/v1/tf_notifications', {
+        method: 'POST',
+        body: JSON.stringify(targets.map(m => ({
+          type: 'work_submitted',
+          title: '📤 งานพร้อมตรวจสอบ',
+          body: `"${task.title || ''}" อัปเดตครบ 100% โดย ${s.name}`,
+          task_id: id,
+          for_user_id: m.id
+        })))
+      });
+    }
+  }
+
+  return ok({ prog, col: patch.col || task.col });
 }
 async function taskSubmit(req) {
   const s = await auth(req);
