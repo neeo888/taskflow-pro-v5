@@ -4306,9 +4306,11 @@
     function avEl(u, sz = 28, r = 9) { if (!u) return ''; const c = AVC[(u.color || 0) % 8]; const base = `width:${sz}px;height:${sz}px;border-radius:${r}px;display:flex;align-items:center;justify-content:center;font-size:${Math.floor(sz * .32)}px;font-weight:700;flex-shrink:0;overflow:hidden;`; return u.avatar ? `<div style="${base}background:#e2e8f0;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"/></div>` : `<div style="${base}background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; }
     function miniAv(u) { if (!u) return ''; const c = AVC[(u.color || 0) % 8]; return u.avatar ? `<div class="bc-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"/></div>` : `<div class="bc-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; }
     function toast(msg, dur = 2400) { const t = gi('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), dur); }
-    const isAM = () => currentUser && (currentUser.urole === 'admin' || currentUser.urole === 'manager');
+    const isAM = () => currentUser && ['admin', 'manager', 'assistant'].includes(currentUser.urole);
     const isAdmin = () => currentUser?.urole === 'admin';
-    const canAssign = () => currentUser && ['admin', 'manager', 'assistant'].includes(currentUser.urole);
+    const isDeptHead = () => currentUser && /^หัวหน้างาน/.test(String(currentUser.role || ''));
+    const isManagerScope = () => currentUser && ['admin', 'manager', 'assistant'].includes(currentUser.urole);
+    const canAssign = () => currentUser && (isManagerScope() || isDeptHead());
     function fmtSz(b) { if (b < 1024) return b + 'B'; if (b < 1048576) return Math.round(b / 1024) + 'KB'; return (b / 1048576).toFixed(1) + 'MB'; }
     function ficon(t) { return FICON[t] || { bg: '#F1EFE8', fg: '#444441', t: 'FILE' }; }
     function now2() { return new Date().toISOString().split('T')[0]; }
@@ -4613,29 +4615,34 @@
       return 'อำนวยการ'; // default
     }
 
-    // ── ตรวจสอบว่า currentUser มีสิทธิ์เห็นงานนี้ไหม ────────────────────
+    // ── สิทธิ์การเห็นงาน / มอบหมายตามสาขาและแผนก ────────────────────
     // admin                 → เห็นทุกงาน ทุกสาขา
-    // manager / assistant   → เห็นทุกงานในสาขาตัวเอง (ทุก dept)
-    // user (ผู้ปฏิบัติงาน)  → เห็นเฉพาะงานที่ถูก assign เท่านั้น
+    // manager / assistant   → เห็นทุกงานในสาขาตัวเอง และเลือกงาน/แผนกได้
+    // หัวหน้างาน...        → เห็นงานของแผนกตัวเอง และมอบหมายได้เฉพาะลูกน้องแผนกตัวเอง
+    // user                  → เห็นเฉพาะงานที่ถูก assign เท่านั้น
+    function normDeptKey(v = '') {
+      const s = String(v || '').trim();
+      if (!s) return '';
+      if (DEPT_KEYS[s]) return s;
+      return mapDept(s, s);
+    }
+    function userDeptKey(u = currentUser) { return normDeptKey(u?.dept_key || u?.dept || ''); }
+    function taskDeptKey(t = {}) { return normDeptKey(t?.dept_key || t?.dept || ''); }
+    function canChooseDept(u = currentUser) { return !!u && ['admin', 'manager', 'assistant'].includes(u.urole); }
+    function sameBranchEntity(item, u = currentUser) { return !u?.branch || !item?.branch || String(item.branch) === String(u.branch); }
+    function sameDeptEntity(item, u = currentUser) {
+      const a = taskDeptKey(item), b = userDeptKey(u);
+      return !b || !a || a === b;
+    }
     function canSeeTask(t) {
       if (!currentUser) return false;
-
-      // Admin — เห็นทุกงาน ทุกสาขา
       if (isAdmin()) return true;
-
-      // ถูก assign โดยตรง — ทุก role เห็นเสมอ
-      if ((Array.isArray(t.asgn) ? t.asgn.map(Number) : []).includes(Number(currentUser.id))) return true;
-
-      // ผู้ปฏิบัติงาน (user) — เห็นเฉพาะงานที่ assign ให้ตัวเองเท่านั้น
-      if (currentUser.urole === 'user') return false;
-
-      // manager / assistant — ตรวจสาขา
-      const sameBranch = !t.branch || !currentUser.branch
-        || t.branch === currentUser.branch;
-      if (!sameBranch) return false;
-
-      // manager/assistant ในสาขาเดียวกัน → เห็น
-      return true;
+      const assigned = Array.isArray(t.asgn) ? t.asgn.map(Number) : [];
+      if (assigned.includes(Number(currentUser.id))) return true;
+      if (!sameBranchEntity(t, currentUser)) return false;
+      if (['manager', 'assistant'].includes(currentUser.urole)) return true;
+      if (isDeptHead()) return sameDeptEntity(t, currentUser);
+      return false;
     }
 
 
@@ -5694,15 +5701,15 @@
     // manager/assistant → เห็นเฉพาะสาขาตัวเอง
     // ══════════════════════════════════════════════════════════
     function scopedTasks() {
-      if (isAdmin()) return tasks;
-      const myBranch = currentUser?.branch || '';
-      return tasks.filter(t => !myBranch || !t.branch || t.branch === myBranch);
+      return (tasks || []).filter(t => canSeeTask(t));
     }
     function scopedUsers() {
+      if (!currentUser) return [];
       if (isAdmin()) return users;
-      const myBranch = currentUser?.branch || '';
-      // คืนสมาชิกที่มีสาขาตรงกัน หรือไม่ได้ระบุสาขา
-      return users.filter(u => !myBranch || !u.branch || u.branch === myBranch);
+      const sameB = u => sameBranchEntity(u, currentUser);
+      if (['manager', 'assistant'].includes(currentUser.urole)) return users.filter(sameB);
+      if (isDeptHead()) return users.filter(u => sameB(u) && sameDeptEntity(u, currentUser));
+      return users.filter(u => Number(u.id) === Number(currentUser.id));
     }
 
     // ══════════════════════════
@@ -5863,8 +5870,45 @@
       toast('เพิ่มประเภทงาน "' + v + '" แล้ว');
     }
     gi('ntag')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag(); } });
-    function buildAsgnPicker() { gi('asgn-picker').innerHTML = users.filter(u => u.urole !== 'admin' || isAdmin()).map(u => { const c = AVC[(u.color || 0) % 8]; const on = selAsgn.includes(u.id); const nm = safeAttr((u.name || '').split(' ')[0] || u.name || ''); const pos = safeAttr(u.role || 'ไม่ระบุตำแหน่ง'); const av = u.avatar ? `<div class="apick-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"></div>` : `<div class="apick-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; return `<div class="apick${on ? ' on' : ''}" title="${safeAttr(u.name || '')} • ${pos}" onclick="togAsgn(this,${u.id})">${av}<span class="apick-nm">${nm}</span><span class="apick-role">${pos}</span></div>`; }).join(''); }
+    function assignableUsersForDept(deptKey = gi('t-dept')?.value) {
+      if (!currentUser) return [];
+      const dept = normDeptKey(deptKey || userDeptKey(currentUser));
+      return (users || []).filter(u => {
+        if (u.urole === 'admin' && !isAdmin()) return false;
+        if (!isAdmin() && !sameBranchEntity(u, currentUser)) return false;
+        if (isAdmin()) return true;
+        if (['manager', 'assistant'].includes(currentUser.urole)) return true;
+        if (isDeptHead()) return userDeptKey(u) === dept && String(u.urole || 'user') === 'user';
+        return Number(u.id) === Number(currentUser.id);
+      });
+    }
+    function enforceAssigneeScope() {
+      const allowed = new Set(assignableUsersForDept(gi('t-dept')?.value).map(u => Number(u.id)));
+      const before = selAsgn.length;
+      selAsgn = selAsgn.filter(id => allowed.has(Number(id)));
+      return before !== selAsgn.length;
+    }
+    function setTaskDeptControl() {
+      const td = gi('t-dept');
+      if (!td || !currentUser) return;
+      if (canChooseDept()) {
+        td.disabled = false;
+        td.title = 'ผู้จัดการ/ผู้ช่วยผู้จัดการเลือกงานได้ทุกแผนกในสาขา';
+        if (!td.value) td.value = userDeptKey(currentUser) || 'บริการ';
+      } else {
+        td.value = userDeptKey(currentUser) || td.value || 'บริการ';
+        td.disabled = true;
+        td.title = 'หัวหน้างานมอบหมายได้เฉพาะงานของตนเอง';
+      }
+    }
+    function buildAsgnPicker() {
+      const box = gi('asgn-picker'); if (!box) return;
+      enforceAssigneeScope();
+      const list = assignableUsersForDept(gi('t-dept')?.value);
+      box.innerHTML = list.length ? list.map(u => { const c = AVC[(u.color || 0) % 8]; const on = selAsgn.includes(u.id); const nm = safeAttr((u.name || '').split(' ')[0] || u.name || ''); const pos = safeAttr(u.role || 'ไม่ระบุตำแหน่ง'); const av = u.avatar ? `<div class="apick-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"></div>` : `<div class="apick-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; return `<div class="apick${on ? ' on' : ''}" title="${safeAttr(u.name || '')} • ${pos}" onclick="togAsgn(this,${u.id})">${av}<span class="apick-nm">${nm}</span><span class="apick-role">${pos}</span></div>`; }).join('') : `<div style="font-size:12px;color:var(--text3);padding:10px 4px;">ไม่มีสมาชิกในงานนี้ให้มอบหมาย</div>`;
+    }
     function togAsgn(el, id) { selAsgn.includes(id) ? (selAsgn = selAsgn.filter(x => x !== id), el.classList.remove('on')) : (selAsgn.push(id), el.classList.add('on')); }
+    gi('t-dept')?.addEventListener('change', () => { if (!canChooseDept()) setTaskDeptControl(); if (enforceAssigneeScope()) toast('ปรับผู้รับมอบหมายให้ตรงตามสิทธิ์ของงานนี้'); buildAsgnPicker(); });
     function renderStepList() {
       const box = gi('step-list'); if (!box) return;
       box.innerHTML = pendingStepsList.map((s, i) => {
@@ -5952,7 +5996,7 @@
 
     let _defaultCol = 'todo';
     function openTaskModalNew(col) {
-      if (!canAssign()) { toast('เฉพาะ Admin, หัวหน้า และผู้ช่วยเท่านั้น'); return; }
+      if (!canAssign()) { toast('เฉพาะ Admin, ผู้จัดการ, ผู้ช่วยผู้จัดการ และหัวหน้างานเท่านั้น'); return; }
       gi('t-id').value = '';
       gi('modal-task-t').textContent = 'มอบหมายงานใหม่';
       gi('t-title').value = ''; gi('t-desc').value = ''; gi('t-date').value = ''; gi('t-priority').value = 'normal';
@@ -5960,14 +6004,17 @@
       const tb = gi('t-branch'), td = gi('t-dept');
       if (tb && currentUser?.branch) tb.value = currentUser.branch;
       if (td && currentUser?.dept_key) td.value = currentUser.dept_key;
+      setTaskDeptControl();
       selTags = []; selAsgn = []; taskPendingFiles = []; pendingStepsList = []; editingStepIndex = -1;
       _defaultCol = col || 'todo';
       buildTagPicker(); buildAsgnPicker(); renderTaskAttachList(); renderStepList();
       openModal('modal-task');
     }
     function openTaskModalEdit(id) {
-      if (!canAssign()) return;
+      if (!canAssign()) { toast('ไม่มีสิทธิ์แก้ไขงาน'); return; }
       const t = tasks.find(t => t.id === id); if (!t) return;
+      if (!canSeeTask(t)) { toast('ไม่มีสิทธิ์ดู/แก้ไขงานนี้'); return; }
+      if (isDeptHead() && !sameDeptEntity(t, currentUser)) { toast('หัวหน้างานแก้ไขได้เฉพาะงานของตนเอง'); return; }
       gi('t-id').value = t.id; gi('modal-task-t').textContent = 'แก้ไขงาน';
       gi('t-title').value = t.title; gi('t-desc').value = t.desc || '';
       gi('t-date').value = t.date || ''; gi('t-priority').value = t.priority;
@@ -5975,12 +6022,18 @@
       const tbE = gi('t-branch'), tdE = gi('t-dept');
       if (tbE) tbE.value = t.branch || '';
       if (tdE) tdE.value = t.dept_key || '';
+      setTaskDeptControl();
       pendingStepsList = t.steps ? t.steps.map(s => s.label) : []; editingStepIndex = -1;
       buildTagPicker(); buildAsgnPicker(); renderTaskAttachList(); renderStepList();
       openModal('modal-task');
     }
     function submitTask() {
       const title = gi('t-title').value.trim(); if (!title) { toast('กรุณาระบุชื่องาน'); return; }
+      setTaskDeptControl();
+      const branchKey = isAdmin() ? (gi('t-branch')?.value || currentUser?.branch || '') : (currentUser?.branch || gi('t-branch')?.value || '');
+      const deptKey = canChooseDept() ? normDeptKey(gi('t-dept')?.value || userDeptKey(currentUser)) : userDeptKey(currentUser);
+      if (!deptKey) { toast('กรุณาเลือกงาน/แผนก'); return; }
+      if (enforceAssigneeScope()) { buildAsgnPicker(); toast('ผู้รับมอบหมายบางคนไม่อยู่ในสิทธิ์ของงานนี้'); return; }
       if (!selAsgn.length) { toast('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน'); return; }
       selTags = normalizeTagList(selTags);
       ensureTagsInGlobalList(selTags, { refresh: false });
@@ -5988,13 +6041,13 @@
       const newSteps = pendingStepsList.map((label, i) => ({ id: nid++, label }));
       if (id) {
         const t = tasks.find(t => t.id == id);
-        if (t) { Object.assign(t, { title, desc: gi('t-desc').value, date: gi('t-date').value, priority: gi('t-priority').value, tags: [...selTags], asgn: [...selAsgn], attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), steps: newSteps, branch: gi('t-branch')?.value || t.branch || '', dept_key: gi('t-dept')?.value || t.dept_key || '' }); }
+        if (t) { Object.assign(t, { title, desc: gi('t-desc').value, date: gi('t-date').value, priority: gi('t-priority').value, tags: [...selTags], asgn: [...selAsgn], attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), steps: newSteps, branch: branchKey || t.branch || '', dept_key: deptKey || t.dept_key || '' }); }
         toast('แก้ไขงานแล้ว');
       } else {
         tasks.push({
           id: nid++, title, desc: gi('t-desc').value, col: _defaultCol || 'todo',
-          branch: gi('t-branch').value || currentUser?.branch || '',
-          dept_key: gi('t-dept').value || '',
+          branch: branchKey,
+          dept_key: deptKey,
           ackBy: [], tags: [...selTags], asgn: [...selAsgn], date: gi('t-date').value, prog: 0, priority: gi('t-priority').value, steps: newSteps, stepChecks: {}, attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), submittedFiles: [], submitNote: '', obstacles: [], comments: [], progressLog: [], createdBy: currentUser.id
         });
         // add notification + sound

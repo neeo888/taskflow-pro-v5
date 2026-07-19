@@ -100,11 +100,24 @@ function getToken(req) {
 async function auth(req) {
   const token = getToken(req);
   if (!token) throw Object.assign(new Error('Unauthorized — กรุณาเข้าสู่ระบบ'), { status: 401 });
-  const rows = await sb(`/rest/v1/tf_sessions?token=eq.${encodeURIComponent(token)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=token,user:tf_users(id,name,urole,branch,dept_key)`, { method: 'GET' });
+  const rows = await sb(`/rest/v1/tf_sessions?token=eq.${encodeURIComponent(token)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=token,user:tf_users(id,name,role,dept,urole,branch,dept_key)`, { method: 'GET' });
   const row = rows?.[0];
   if (!row?.user) throw Object.assign(new Error('Session หมดอายุ — กรุณา login ใหม่'), { status: 401 });
-  return { token, id: Number(row.user.id), name: row.user.name, urole: row.user.urole, branch: row.user.branch, dept_key: row.user.dept_key };
+  return { token, id: Number(row.user.id), name: row.user.name, role: row.user.role || '', dept: row.user.dept || '', urole: row.user.urole, branch: row.user.branch, dept_key: row.user.dept_key };
 }
+
+function apiIsManagerScope(s) { return ['admin', 'manager', 'assistant'].includes(s?.urole); }
+function apiIsDeptHead(s) { return /^หัวหน้างาน/.test(String(s?.role || '')); }
+function apiSameBranch(row, s) {
+  return !s?.branch || !row?.branch || String(row.branch) === String(s.branch);
+}
+function apiSameDept(row, s) {
+  return !s?.dept_key || !row?.dept_key || String(row.dept_key) === String(s.dept_key);
+}
+function apiAssignedTo(task, s) {
+  return (task.asgn || []).map(Number).includes(Number(s?.id));
+}
+
 async function localLogin(req) {
   const b = await bodyJson(req);
   const username = String(b.username || '').trim();
@@ -185,7 +198,11 @@ async function registerUser(req) {
 
 async function getUsers(req) {
   const s = await auth(req);
-  const q = s.urole === 'admin' ? '' : `&branch=eq.${encodeURIComponent(s.branch || '')}`;
+  let q = '';
+  if (s.urole === 'admin') q = '';
+  else if (['manager', 'assistant'].includes(s.urole)) q = `&branch=eq.${encodeURIComponent(s.branch || '')}`;
+  else if (apiIsDeptHead(s)) q = `&branch=eq.${encodeURIComponent(s.branch || '')}&dept_key=eq.${encodeURIComponent(s.dept_key || '')}`;
+  else q = `&id=eq.${encodeURIComponent(s.id)}`;
   try {
     const rows = await sb(`/rest/v1/tf_users?select=id,wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,avatar_url,telegram_chat_id,line_id${q}&order=id.asc`, { method: 'GET' });
     return ok({ users: rows });
@@ -383,32 +400,63 @@ async function getTasks(req) {
       ackBy: t.ack_by || [],
     };
   });
-  const visible = s.urole === 'user' ? out.filter(t => (t.asgn || []).includes(Number(s.id))) : out;
+  let visible = out;
+  if (s.urole === 'admin') visible = out;
+  else if (['manager', 'assistant'].includes(s.urole)) visible = out.filter(t => apiSameBranch(t, s));
+  else if (apiIsDeptHead(s)) visible = out.filter(t => apiAssignedTo(t, s) || (apiSameBranch(t, s) && apiSameDept(t, s)));
+  else visible = out.filter(t => apiAssignedTo(t, s));
   return ok({ tasks: visible });
 }
 async function taskSave(req) {
   const s = await auth(req);
-  if (!['admin', 'manager', 'assistant'].includes(s.urole)) return err('Forbidden', 403);
+  const managerScope = apiIsManagerScope(s);
+  const deptHead = apiIsDeptHead(s);
+  if (!managerScope && !deptHead) return err('Forbidden', 403);
+
   const b = await bodyJson(req);
   if (!b.title) return err('Missing title');
   const assignedIds = [...new Set((Array.isArray(b.asgn) ? b.asgn : []).map(uid => Number(uid)).filter(Boolean))];
   if (!assignedIds.length) return err('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน');
 
+  const desiredDept = String(b.dept_key || s.dept_key || '').trim();
+  if (!desiredDept) return err('กรุณาเลือกงาน/แผนก');
+
   let id = Number(b.id || 0);
   let previousAssignedIds = [];
   if (id) {
+    const prevTask = (await sb(`/rest/v1/tf_tasks?id=eq.${id}&select=id,branch,dept_key`, { method: 'GET' }))?.[0];
+    if (!prevTask) return err('ไม่พบงาน', 404);
+    if (deptHead && (!apiSameBranch(prevTask, s) || !apiSameDept(prevTask, s))) return err('หัวหน้างานแก้ไขได้เฉพาะงานของตนเอง', 403);
     const prev = await sb(`/rest/v1/tf_task_assignees?task_id=eq.${id}&select=user_id`, { method: 'GET' });
     previousAssignedIds = prev.map(x => Number(x.user_id));
   }
 
   if (s.urole !== 'admin') {
     const inUsers = `in.(${assignedIds.join(',')})`;
-    const targetUsers = await sb(`/rest/v1/tf_users?id=${inUsers}&select=id,branch`, { method: 'GET' });
+    const targetUsers = await sb(`/rest/v1/tf_users?id=${inUsers}&select=id,branch,dept_key,urole,role`, { method: 'GET' });
+    if (targetUsers.length !== assignedIds.length) return err('ไม่พบผู้รับมอบหมายบางรายการ', 400);
     const outsideBranch = targetUsers.some(u => String(u.branch || '') !== String(s.branch || ''));
     if (outsideBranch) return err('มอบหมายได้เฉพาะสมาชิกในสาขาของคุณ', 403);
+    if (deptHead) {
+      if (String(desiredDept) !== String(s.dept_key || '')) return err('หัวหน้างานมอบหมายได้เฉพาะงานของตนเอง', 403);
+      const outsideDept = targetUsers.some(u => String(u.dept_key || '') !== String(s.dept_key || ''));
+      if (outsideDept) return err('หัวหน้างานมอบหมายได้เฉพาะทีมงานของตนเอง', 403);
+      const hasPrivileged = targetUsers.some(u => ['admin', 'manager', 'assistant'].includes(u.urole));
+      if (hasPrivileged) return err('หัวหน้างานมอบหมายได้เฉพาะผู้ปฏิบัติงานในทีม', 403);
+    }
   }
 
-  const payload = { title: b.title, description: b.desc || '', col: b.col || 'todo', priority: b.priority || 'normal', due_date: b.date || null, branch: b.branch || s.branch || '', dept_key: b.dept_key || '', tags: b.tags || [], ack_by: b.ackBy || [] };
+  const payload = {
+    title: b.title,
+    description: b.desc || '',
+    col: b.col || 'todo',
+    priority: b.priority || 'normal',
+    due_date: b.date || null,
+    branch: s.urole === 'admin' ? (b.branch || s.branch || '') : (s.branch || b.branch || ''),
+    dept_key: deptHead ? (s.dept_key || desiredDept) : desiredDept,
+    tags: b.tags || [],
+    ack_by: b.ackBy || [],
+  };
   if (id) {
     await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
     await sb(`/rest/v1/tf_task_assignees?task_id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
@@ -431,7 +479,11 @@ async function taskSave(req) {
     assignmentEmails = recipients.map(u => u.email).filter(Boolean);
     const notifs = notifyIds.map(uid => ({ type: 'new_task', title: '🔔 งานใหม่ถูกมอบหมาย', body: `"${b.title}" โดย ${s.name}`, task_id: id, for_user_id: Number(uid) }));
     if (notifs.length) await sb('/rest/v1/tf_notifications', { method: 'POST', body: JSON.stringify(notifs) });
-    const tgText = `🔔 TaskFlow Pro v5\nคุณได้รับมอบหมายงาน: ${b.title}\nโดย: ${s.name}${b.date ? `\nกำหนดส่ง: ${b.date}` : ''}\nกรุณาเข้าสู่ระบบเพื่อตรวจสอบรายละเอียด`;
+    const tgText = `🔔 TaskFlow Pro v5
+คุณได้รับมอบหมายงาน: ${b.title}
+โดย: ${s.name}${b.date ? `
+กำหนดส่ง: ${b.date}` : ''}
+กรุณาเข้าสู่ระบบเพื่อตรวจสอบรายละเอียด`;
     const tg = await sendTelegramMessages(recipients.map(u => u.telegram_chat_id), tgText);
     telegramSent = tg.sent || 0;
     const ln = await sendLineMessages(recipients.map(u => u.line_id), tgText);
