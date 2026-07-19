@@ -2448,15 +2448,51 @@
     }
 
     .workload-avatar-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      width: 100%;
       color: var(--text3);
       font-size: 9px;
-      font-weight: 700;
+      font-weight: 800;
       line-height: 1.15;
       text-align: center;
     }
 
+    .workload-stat-pill {
+      padding: 4px 3px;
+      border-radius: 8px;
+      background: #fff;
+      border: .5px solid var(--border);
+    }
+
+    .workload-stat-pill strong {
+      display: block;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .workload-mini-progress {
+      grid-column: 1 / -1;
+      height: 6px;
+      background: #EAF0F8;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+
+    .workload-mini-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #6366F1, #10B981);
+      min-width: 0;
+    }
+
     .workload-avatar-stats .overdue {
+      grid-column: 1 / -1;
       color: #FF4D6D;
+      font-size: 9px;
     }
 
     @media (max-width: 520px) {
@@ -5562,7 +5598,13 @@
           <div class="workload-avatar-item" title="${safeAttr(u.name || shortName)}: ทั้งหมด ${assigned.length} งาน / เสร็จ ${done} งาน">
             ${avatar}
             <div class="workload-avatar-name">${safeAttr(shortName)}</div>
-            <div class="workload-avatar-stats">${assigned.length} งาน · เสร็จ ${done}<br>${pct}%${overdue ? ` · <span class="overdue">เกิน ${overdue}</span>` : ''}</div>
+            <div class="workload-avatar-stats">
+              <span class="workload-stat-pill"><strong>${assigned.length}</strong>ทั้งหมด</span>
+              <span class="workload-stat-pill"><strong>${done}</strong>เสร็จ</span>
+              <div class="workload-mini-progress" title="เสร็จ ${pct}%"><div class="workload-mini-fill" style="width:${pct}%;"></div></div>
+              <span style="grid-column:1/-1;color:${pct >= 80 ? '#10B981' : pct >= 40 ? '#6366F1' : '#F59E0B'};">สำเร็จ ${pct}%</span>
+              ${overdue ? `<span class="overdue">⚠ เกินกำหนด ${overdue} งาน</span>` : ''}
+            </div>
           </div>`;
       }).join('');
     }
