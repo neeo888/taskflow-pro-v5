@@ -4053,7 +4053,7 @@
       { id: 5,  wwcode: 'user2',   name: 'สุธีรา วงศ์กล้า', role: 'นักบัญชี',           dept: 'งานการเงิน',   dept_key: 'จัดเก็บ',   branch: '5512027', branch_name: "หน่วยงาน", email: 'user2@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 2, avatar: '', telegram_chat_id: '' },
       { id: 6,  wwcode: 'user3',   name: 'ธนภัทร วงศ์ดี',   role: 'วิศวกร',             dept: 'งานผลิต',      dept_key: 'ผลิต',      branch: '5512027', branch_name: "หน่วยงาน", email: 'user3@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 4, avatar: '', telegram_chat_id: '' },
     ];
-    let allTags = ['ออกแบบ', 'พัฒนา', 'ด่วน', 'การตลาด', 'ข้อมูล', 'วิจัย', 'QA', 'DevOps'];
+    var allTags = ['ออกแบบ', 'พัฒนา', 'ด่วน', 'การตลาด', 'ข้อมูล', 'วิจัย', 'QA', 'DevOps'];
 
     // steps: [{id,label}]  stepChecks: {taskId: {userId: {stepId: {done,at}}}}
     // comments: [{id,authorId,text,at,role}]  obstacles: [{id,title,desc,level,authorId,resolved,comments,at}]
@@ -5639,7 +5639,32 @@
 
     var pendingStepsList = [];
     var editingStepIndex = -1;
+
+    function cleanTagName(v) { return String(v || '').trim(); }
+    function normalizeTagList(list) {
+      return [...new Set((Array.isArray(list) ? list : [])
+        .map(cleanTagName)
+        .filter(Boolean))];
+    }
+    function ensureTagsInGlobalList(list, opts = {}) {
+      let added = 0;
+      normalizeTagList(list).forEach(tag => {
+        if (!allTags.includes(tag)) { allTags.push(tag); added++; }
+      });
+      if (added && opts.refresh !== false) {
+        if (gi('tag-picker')) buildTagPicker();
+        if (gi('tags-global-list')) renderTagsPage();
+      }
+      return added;
+    }
+    function syncTagsFromTasks() {
+      const usedTags = [];
+      (tasks || []).forEach(t => (t.tags || []).forEach(tag => usedTags.push(tag)));
+      return ensureTagsInGlobalList(usedTags, { refresh: false });
+    }
+
     function buildTagPicker() {
+      syncTagsFromTasks();
       gi('tag-picker').innerHTML = allTags.map((t, i) => `
     <div class="tpick${selTags.includes(t) ? ' on' : ''}" onclick="togTag(this,'${t}')">
       ${t}
@@ -5747,6 +5772,8 @@
     function submitTask() {
       const title = gi('t-title').value.trim(); if (!title) { toast('กรุณาระบุชื่องาน'); return; }
       if (!selAsgn.length) { toast('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน'); return; }
+      selTags = normalizeTagList(selTags);
+      ensureTagsInGlobalList(selTags, { refresh: false });
       const id = gi('t-id').value;
       const newSteps = pendingStepsList.map((label, i) => ({ id: nid++, label }));
       if (id) {
@@ -6163,6 +6190,7 @@
     // TAGS MANAGEMENT (จัดการประเภทงานผ่านฐานข้อมูล MySQL)
     // ══════════════════════════════════════════════════════════
     function renderTagsPage() {
+        syncTagsFromTasks();
         const cnt = gi('tags-count');
         if (cnt) cnt.textContent = '(' + allTags.length + ' รายการ)';
         const list = gi('tags-global-list');

@@ -302,6 +302,15 @@ window.submitTask = function () {
   // เรียก original ก่อน (อัปเดต local state + UI)
   _orig_submitTask.call(this);
 
+  const taskTags = [...new Set((window.selTags || []).map(t => String(t || '').trim()).filter(Boolean))];
+  if (Array.isArray(window.allTags)) {
+    let addedTag = false;
+    taskTags.forEach(tag => {
+      if (!window.allTags.includes(tag)) { window.allTags.push(tag); addedTag = true; }
+    });
+    if (addedTag && typeof renderTagsPage === 'function') renderTagsPage();
+  }
+
   if (!_isPhpSrv()) return;
 
   // เก็บข้อมูลที่ต้องส่งก่อน original เคลียร์ form
@@ -312,7 +321,7 @@ window.submitTask = function () {
     col: window._defaultCol || 'todo',
     date: gi('t-date') ? gi('t-date').value : '',
     priority: gi('t-priority') ? gi('t-priority').value : 'normal',
-    tags: window.selTags ? [...window.selTags] : [],
+    tags: taskTags,
     asgn: window.selAsgn ? [...window.selAsgn] : [],
     branch: (gi('t-branch') ? gi('t-branch').value : '') || window.currentUser?.branch || '',
     dept_key: gi('t-dept') ? gi('t-dept').value : '',
@@ -320,7 +329,9 @@ window.submitTask = function () {
   };
   if (!payload.title) return;
 
-  _api('task_save', payload).then(async r => {
+  Promise.all(taskTags.map(name => _saveTagToServer(name).catch(() => null)))
+    .then(() => _api('task_save', payload))
+    .then(async r => {
     if (!r.ok) {
       if (typeof toast === 'function') toast(r.error || 'บันทึกงานขึ้น Supabase ไม่สำเร็จ');
       _loadFromServer(true).then(() => renderAll());
