@@ -1023,6 +1023,72 @@
       padding-top: 4px;
     }
 
+
+    .meeting-assist {
+      border: .5px solid rgba(14, 206, 180, .28);
+      background: linear-gradient(135deg, rgba(14, 206, 180, .08), rgba(99, 102, 241, .06));
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .meeting-assist-title {
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .meeting-assist-note {
+      font-size: 11px;
+      color: var(--text2);
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+
+    .meeting-chip-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .meeting-chip {
+      background: rgba(255, 255, 255, .72);
+      border: .5px solid rgba(148, 163, 184, .35);
+      color: var(--text2);
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .meeting-assist-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .meeting-assist-btn {
+      border: .5px solid rgba(14, 206, 180, .35);
+      background: #fff;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-family: 'Sarabun', sans-serif;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .meeting-assist-btn.primary {
+      background: var(--teal);
+      color: #062036;
+      border-color: transparent;
+    }
+
     #modal-task .mft {
       position: sticky;
       bottom: 0;
@@ -3246,6 +3312,17 @@
           <div class="tag-wrap" id="tag-picker"></div>
         </div>
         <div class="mfl"><label>รายละเอียด</label><textarea id="t-desc" placeholder="อธิบายรายละเอียด..."></textarea>
+          <div class="meeting-assist" aria-label="ตัวช่วยรายละเอียดงานประชุม">
+            <div class="meeting-assist-title">📝 สาระสำคัญงานประชุม</div>
+            <div class="meeting-assist-note">ถ้าเป็นงานประชุม ควรระบุข้อมูลหลักให้ครบ เพื่อให้ผู้รับงานรู้ว่าต้องเตรียมอะไร ไปที่ไหน และต้องส่งผลลัพธ์อะไรหลังประชุม</div>
+            <div class="meeting-chip-grid">
+              <span class="meeting-chip">หัวข้อ</span><span class="meeting-chip">วัตถุประสงค์</span><span class="meeting-chip">วันเวลา</span><span class="meeting-chip">สถานที่/ออนไลน์</span><span class="meeting-chip">ผู้เข้าร่วม</span><span class="meeting-chip">วาระ</span><span class="meeting-chip">เอกสารที่ต้องเตรียม</span><span class="meeting-chip">ผลที่ต้องส่ง</span>
+            </div>
+            <div class="meeting-assist-actions">
+              <button class="meeting-assist-btn primary" type="button" onclick="insertMeetingDetails()">+ ใส่แบบฟอร์มงานประชุม</button>
+              <button class="meeting-assist-btn" type="button" onclick="addMeetingSteps()">+ เพิ่ม checklist ประชุม</button>
+            </div>
+          </div>
         </div>
         <div class="mfl"><label>ขั้นตอนงาน (checklist) — ใส่แต่ละขั้นตอนแล้ว Enter</label>
           <div class="ctag-row"><input id="nstep" placeholder="เช่น ศึกษาข้อมูล, ออกแบบ, พัฒนา..." /><button
@@ -5739,6 +5816,51 @@
       if (e.key === 'Escape') { e.preventDefault(); cancelStepEdit(); }
     }
     gi('nstep')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addStep(); } });
+
+    const MEETING_DETAIL_TEMPLATE = [
+      'หัวข้อประชุม:',
+      'วัตถุประสงค์:',
+      'วันเวลา:',
+      'สถานที่ / ช่องทางประชุม:',
+      'ผู้เข้าร่วม / หน่วยงานที่เกี่ยวข้อง:',
+      'วาระประชุม:',
+      'เอกสาร / ข้อมูลที่ต้องเตรียม:',
+      'ประเด็นที่ต้องพิจารณา:',
+      'มติ / ข้อสั่งการที่คาดว่าจะได้:',
+      'ผู้รับผิดชอบสรุปรายงาน:',
+      'ผลลัพธ์ที่ต้องส่งหลังประชุม:',
+      'กำหนดส่งสรุปผล:'
+    ].join('\n');
+
+    const MEETING_STEP_TEMPLATE = [
+      'ยืนยันวันเวลาและสถานที่/ลิงก์ประชุม',
+      'เตรียมวาระประชุมและเอกสารประกอบ',
+      'แจ้งผู้เข้าร่วมประชุมและผู้เกี่ยวข้อง',
+      'เข้าร่วมประชุมและบันทึกมติ/ข้อสั่งการ',
+      'จัดทำสรุปรายงานการประชุมและส่งผู้เกี่ยวข้อง'
+    ];
+
+    function insertMeetingDetails() {
+      const desc = gi('t-desc'); if (!desc) return;
+      const current = desc.value.trim();
+      if (current.includes('หัวข้อประชุม:') && current.includes('วาระประชุม:')) {
+        toast('มีแบบฟอร์มงานประชุมอยู่แล้ว'); desc.focus(); return;
+      }
+      desc.value = current ? `${current}\n\n${MEETING_DETAIL_TEMPLATE}` : MEETING_DETAIL_TEMPLATE;
+      desc.focus();
+      desc.selectionStart = desc.selectionEnd = desc.value.length;
+      toast('เพิ่มแบบฟอร์มสาระสำคัญงานประชุมแล้ว');
+    }
+
+    function addMeetingSteps() {
+      let added = 0;
+      MEETING_STEP_TEMPLATE.forEach(step => {
+        if (!pendingStepsList.some(x => String(x).trim() === step)) { pendingStepsList.push(step); added++; }
+      });
+      editingStepIndex = -1;
+      renderStepList();
+      toast(added ? `เพิ่ม checklist ประชุม ${added} ขั้นตอนแล้ว` : 'มี checklist ประชุมครบแล้ว');
+    }
 
     let _defaultCol = 'todo';
     function openTaskModalNew(col) {
