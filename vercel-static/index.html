@@ -175,7 +175,8 @@
       color: rgba(255, 255, 255, .4);
     }
 
-    .lfl input {
+    .lfl input,
+    .lfl select {
       background: rgba(255, 255, 255, .07);
       border: 1px solid rgba(255, 255, 255, .1);
       border-radius: 10px;
@@ -187,12 +188,18 @@
       width: 100%;
     }
 
-    .lfl input:focus {
+    .lfl input:focus,
+    .lfl select:focus {
       border-color: var(--accent);
     }
 
     .lfl input::placeholder {
       color: rgba(255, 255, 255, .2);
+    }
+
+    .lfl select option {
+      background: #132847;
+      color: #fff;
     }
 
     .lbtn {
@@ -2972,7 +2979,16 @@
             <div class="lfl">
               <label>สาขา *</label>
               <input id="r-branch" placeholder="เช่น พิษณุโลก" value="พิษณุโลก"
-                onkeydown="if(event.key==='Enter')gi('r-phone').focus()" />
+                onkeydown="if(event.key==='Enter')gi('r-dept').focus()" />
+            </div>
+            <div class="lfl">
+              <label>สังกัดงาน *</label>
+              <select id="r-dept" onkeydown="if(event.key==='Enter')gi('r-phone').focus()">
+                <option value="บริการ">งานบริการ</option>
+                <option value="ผลิต">งานผลิต</option>
+                <option value="จัดเก็บ">งานจัดเก็บ</option>
+                <option value="อำนวยการ">งานอำนวยการ</option>
+              </select>
             </div>
             <div class="lfl">
               <label>เบอร์โทร</label>
@@ -4782,6 +4798,9 @@
       const email = gi('r-email').value.trim();
       const username = gi('r-emp').value.trim();
       const branchName = gi('r-branch').value.trim();
+      const deptKey = gi('r-dept')?.value || 'บริการ';
+      const deptNameMap = { 'บริการ': 'งานบริการ', 'ผลิต': 'งานผลิต', 'จัดเก็บ': 'งานจัดเก็บ', 'อำนวยการ': 'งานอำนวยการ' };
+      const deptName = deptNameMap[deptKey] || deptKey;
       const phone = gi('r-phone').value.trim();
       const lineId = gi('r-line').value.trim();
       const telegram = gi('r-telegram').value.trim();
@@ -4792,6 +4811,7 @@
       if (!name) return showLoginErr('กรุณากรอกชื่อ-สกุล');
       if (!username) return showLoginErr('กรุณากรอกรหัสพนักงาน');
       if (!branchName) return showLoginErr('กรุณากรอกสาขา');
+      if (!deptKey) return showLoginErr('กรุณาเลือกสังกัดงาน');
       if (!email || !/^\S+@\S+\.\S+$/.test(email)) return showLoginErr('กรุณากรอกอีเมลให้ถูกต้อง');
       if (!password || password.length < 6) return showLoginErr('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
       if (password !== password2) return showLoginErr('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
@@ -4802,7 +4822,7 @@
         const res = await fetch('php/api.php?action=register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, username, wwcode: username, branch_name: branchName, branch: branchName, phone, line_id: lineId, password, telegram_chat_id: telegram }),
+          body: JSON.stringify({ name, email, username, wwcode: username, branch_name: branchName, branch: branchName, dept: deptName, dept_key: deptKey, phone, line_id: lineId, password, telegram_chat_id: telegram }),
           signal: AbortSignal.timeout(10000),
         });
         const data = await res.json().catch(() => null);
@@ -4812,7 +4832,7 @@
           return;
         }
         if (data.token) localStorage.setItem('tf_tok', data.token);
-        const u = _upsertLoginUser(data.user || { name, email, wwcode: username, branch_name: branchName, branch: branchName, phone, line_id: lineId, urole:'user', telegram_chat_id: telegram });
+        const u = _upsertLoginUser(data.user || { name, email, wwcode: username, branch_name: branchName, branch: branchName, dept: deptName, dept_key: deptKey, phone, line_id: lineId, urole:'user', telegram_chat_id: telegram });
         currentUser = u;
         _afterLogin();
         toast('สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ' + u.name + ' 🎉');
