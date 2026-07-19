@@ -19,6 +19,7 @@ create table if not exists public.tf_users (
   avatar_path varchar(255) default '',
   avatar_url varchar(255) default '',
   telegram_chat_id varchar(80) default '',
+  line_id varchar(120) default '',
   pass_hash varchar(255) default '',
   last_login timestamptz,
   created_at timestamptz default now(),
@@ -26,6 +27,7 @@ create table if not exists public.tf_users (
 );
 
 alter table public.tf_users add column if not exists telegram_chat_id varchar(80) default '';
+alter table public.tf_users add column if not exists line_id varchar(120) default '';
 
 create table if not exists public.tf_sessions (
   token varchar(64) primary key,
@@ -190,13 +192,14 @@ returns table (
   urole varchar,
   color smallint,
   avatar_url varchar,
-  telegram_chat_id varchar
+  telegram_chat_id varchar,
+  line_id varchar
 )
 language sql
 security definer
 set search_path = public
 as $$
-  select u.id,u.wwcode,u.name,u.role,u.dept,u.dept_key,u.branch,u.branch_name,u.email,u.urole,u.color,u.avatar_url,u.telegram_chat_id
+  select u.id,u.wwcode,u.name,u.role,u.dept,u.dept_key,u.branch,u.branch_name,u.email,u.urole,u.color,u.avatar_url,u.telegram_chat_id,u.line_id
   from public.tf_users u
   where (u.wwcode = p_username or u.email = p_username)
     and u.pass_hash::text = extensions.crypt(p_password::text, u.pass_hash::text)
@@ -207,6 +210,7 @@ $$;
 -- drop ทั้ง signature เก่าและใหม่ เพื่อให้รัน schema ซ้ำได้ปลอดภัย
 drop function if exists public.tf_member_save(bigint, text, text, text, text, text, text, text, text, text, smallint, text);
 drop function if exists public.tf_member_save(bigint, text, text, text, text, text, text, text, text, text, smallint, text, text);
+drop function if exists public.tf_member_save(bigint, text, text, text, text, text, text, text, text, text, smallint, text, text, text);
 create or replace function public.tf_member_save(
   p_id bigint default null,
   p_wwcode text default null,
@@ -220,6 +224,7 @@ create or replace function public.tf_member_save(
   p_urole text default 'user',
   p_color smallint default 0,
   p_telegram_chat_id text default '',
+  p_line_id text default '',
   p_new_password text default null
 )
 returns table (
@@ -235,7 +240,8 @@ returns table (
   urole varchar,
   color smallint,
   avatar_url varchar,
-  telegram_chat_id varchar
+  telegram_chat_id varchar,
+  line_id varchar
 )
 language plpgsql
 security definer
@@ -267,7 +273,7 @@ begin
     end loop;
 
     insert into public.tf_users (
-      wwcode, name, role, dept, dept_key, branch, branch_name, email, urole, color, pass_hash, telegram_chat_id
+      wwcode, name, role, dept, dept_key, branch, branch_name, email, urole, color, pass_hash, telegram_chat_id, line_id
     ) values (
       v_wwcode,
       trim(p_name),
@@ -280,7 +286,8 @@ begin
       case when p_urole in ('admin','manager','assistant','user') then p_urole else 'user' end,
       coalesce(p_color, 0),
       extensions.crypt(coalesce(nullif(p_new_password, ''), 'user123'), extensions.gen_salt('bf')),
-      coalesce(p_telegram_chat_id, '')
+      coalesce(p_telegram_chat_id, ''),
+      coalesce(p_line_id, '')
     ) returning tf_users.id into v_id;
   else
     v_id := p_id;
@@ -295,6 +302,7 @@ begin
       urole = case when p_urole in ('admin','manager','assistant','user') then p_urole else u.urole end,
       color = coalesce(p_color, u.color),
       telegram_chat_id = coalesce(p_telegram_chat_id, u.telegram_chat_id),
+      line_id = coalesce(p_line_id, u.line_id),
       pass_hash = case
         when nullif(p_new_password, '') is not null then extensions.crypt(p_new_password, extensions.gen_salt('bf'))
         else u.pass_hash
@@ -304,7 +312,7 @@ begin
   end if;
 
   return query
-  select u.id,u.wwcode,u.name,u.role,u.dept,u.dept_key,u.branch,u.branch_name,u.email,u.urole,u.color,u.avatar_url,u.telegram_chat_id
+  select u.id,u.wwcode,u.name,u.role,u.dept,u.dept_key,u.branch,u.branch_name,u.email,u.urole,u.color,u.avatar_url,u.telegram_chat_id,u.line_id
   from public.tf_users u
   where u.id = v_id;
 end;

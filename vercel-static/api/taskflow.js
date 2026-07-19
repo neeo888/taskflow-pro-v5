@@ -4,6 +4,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SESSION_HOURS = Number(process.env.SESSION_HOURS || 720);
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN || process.env.LINE_BOT_TOKEN || '';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -59,6 +60,28 @@ async function sendTelegramMessages(chatIds, text) {
   }
   return { sent, skipped: false };
 }
+
+async function sendLineMessages(lineIds, text, tokenOverride = '') {
+  const token = String(tokenOverride || LINE_CHANNEL_ACCESS_TOKEN || '').trim();
+  const ids = [...new Set((lineIds || []).map(v => String(v || '').trim()).filter(Boolean))];
+  if (!token || !ids.length || !text) return { sent: 0, skipped: true, errors: [] };
+  let sent = 0;
+  const errors = [];
+  for (const to of ids) {
+    try {
+      const ln = await fetch('https://api.line.me/v2/bot/message/push', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ to, messages: [{ type: 'text', text: String(text).slice(0, 4900) }] }),
+      });
+      if (ln.ok) sent += 1;
+      else errors.push({ to, status: ln.status, error: await ln.text().catch(() => '') });
+    } catch (e) {
+      errors.push({ to, error: String(e?.message || e) });
+    }
+  }
+  return { sent, skipped: false, errors };
+}
 function token64() {
   const a = new Uint8Array(32);
   crypto.getRandomValues(a);
@@ -94,7 +117,7 @@ async function localLogin(req) {
   const expires = new Date(Date.now() + SESSION_HOURS * 3600 * 1000).toISOString();
   await sb('/rest/v1/tf_sessions', { method: 'POST', body: JSON.stringify({ token, user_id: u.id, expires_at: expires }) });
   await sb(`/rest/v1/tf_users?id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ last_login: new Date().toISOString() }) });
-  return ok({ token, user: { id: Number(u.id), wwcode: u.wwcode, name: u.name, role: u.role, dept: u.dept, dept_key: u.dept_key, branch: u.branch, branch_name: u.branch_name, email: u.email, urole: u.urole, color: Number(u.color || 0), avatar_url: u.avatar_url || '', telegram_chat_id: u.telegram_chat_id || '' } });
+  return ok({ token, user: { id: Number(u.id), wwcode: u.wwcode, name: u.name, role: u.role, dept: u.dept, dept_key: u.dept_key, branch: u.branch, branch_name: u.branch_name, email: u.email, urole: u.urole, color: Number(u.color || 0), avatar_url: u.avatar_url || '', telegram_chat_id: u.telegram_chat_id || '', line_id: u.line_id || '' } });
 }
 
 async function registerUser(req) {
@@ -104,6 +127,7 @@ async function registerUser(req) {
   const usernameRaw = String(b.username || b.wwcode || '').trim().toLowerCase();
   const password = String(b.password || b.new_password || '');
   const telegramChatId = String(b.telegram_chat_id || b.telegramChatId || '').trim();
+  const lineId = String(b.line_id || b.lineId || b.idline || b.idLine || '').trim();
 
   if (!name) return err('กรุณากรอกชื่อ-สกุล');
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) return err('กรุณากรอกอีเมลให้ถูกต้อง');
@@ -129,6 +153,7 @@ async function registerUser(req) {
     p_urole: 'user',
     p_color: 0,
     p_telegram_chat_id: telegramChatId,
+    p_line_id: lineId,
     p_new_password: password,
   };
 
@@ -151,7 +176,7 @@ async function registerUser(req) {
       role: user.role || 'ผู้ใช้', dept: user.dept || payload.p_dept, dept_key: user.dept_key || payload.p_dept_key,
       branch: user.branch || payload.p_branch, branch_name: user.branch_name || payload.p_branch_name,
       email: user.email || email, urole: user.urole || 'user', color: Number(user.color || 0),
-      avatar_url: user.avatar_url || '', telegram_chat_id: user.telegram_chat_id || telegramChatId,
+      avatar_url: user.avatar_url || '', telegram_chat_id: user.telegram_chat_id || telegramChatId, line_id: user.line_id || lineId || '',
     },
   }, 201);
 }
@@ -160,11 +185,11 @@ async function getUsers(req) {
   const s = await auth(req);
   const q = s.urole === 'admin' ? '' : `&branch=eq.${encodeURIComponent(s.branch || '')}`;
   try {
-    const rows = await sb(`/rest/v1/tf_users?select=id,wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,avatar_url,telegram_chat_id${q}&order=id.asc`, { method: 'GET' });
+    const rows = await sb(`/rest/v1/tf_users?select=id,wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,avatar_url,telegram_chat_id,line_id${q}&order=id.asc`, { method: 'GET' });
     return ok({ users: rows });
   } catch (e) {
     const rows = await sb(`/rest/v1/tf_users?select=id,wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,avatar_url${q}&order=id.asc`, { method: 'GET' });
-    return ok({ users: rows.map(u => ({ ...u, telegram_chat_id: '' })), warning: 'telegram_chat_id column missing; run latest supabase/schema.sql' });
+    return ok({ users: rows.map(u => ({ ...u, telegram_chat_id: '', line_id: '' })), warning: 'telegram_chat_id/line_id column missing; run latest supabase/schema.sql' });
   }
 }
 
@@ -175,20 +200,21 @@ async function profileSave(req) {
   const email = String(b.email || '').trim();
   if (!name) return err('Missing name');
   const telegramChatId = String(b.telegram_chat_id || b.telegramChatId || '').trim();
-  const payload = { name, email, telegram_chat_id: telegramChatId, updated_at: new Date().toISOString() };
+  const lineId = String(b.line_id || b.lineId || b.idline || b.idLine || '').trim();
+  const payload = { name, email, telegram_chat_id: telegramChatId, line_id: lineId, updated_at: new Date().toISOString() };
   try {
     const rows = await sb(`/rest/v1/tf_users?id=eq.${s.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
     let user = rows?.[0] || null;
     if (user?.id) {
       try {
-        const patched = await sb(`/rest/v1/tf_users?id=eq.${user.id}`, { method: 'PATCH', body: JSON.stringify({ telegram_chat_id: telegramChatId, updated_at: new Date().toISOString() }) });
+        const patched = await sb(`/rest/v1/tf_users?id=eq.${user.id}`, { method: 'PATCH', body: JSON.stringify({ telegram_chat_id: telegramChatId, line_id: lineId, updated_at: new Date().toISOString() }) });
         user = patched?.[0] || user;
-      } catch (_) { user.telegram_chat_id = telegramChatId; }
+      } catch (_) { user.telegram_chat_id = telegramChatId; user.line_id = lineId; }
     }
     return ok({ user });
   } catch (e) {
     const rows = await sb(`/rest/v1/tf_users?id=eq.${s.id}`, { method: 'PATCH', body: JSON.stringify({ name, email, updated_at: new Date().toISOString() }) });
-    return ok({ user: rows?.[0] || null, warning: 'telegram_chat_id column missing; run latest supabase/schema.sql' });
+    return ok({ user: rows?.[0] || null, warning: 'telegram_chat_id/line_id column missing; run latest supabase/schema.sql' });
   }
 }
 
@@ -252,6 +278,7 @@ async function memberSave(req) {
   const color = Number.isFinite(Number(b.color)) ? Number(b.color) : 0;
   const newPassword = String(b.new_password || b.password || '').trim();
   const telegramChatId = String(b.telegram_chat_id || b.telegramChatId || '').trim();
+  const lineId = String(b.line_id || b.lineId || b.idline || b.idLine || '').trim();
   const wwcode = String(b.wwcode || makeWwcode(email, name)).trim();
 
   // Preferred path: use SQL function so password is hashed by pgcrypto in Supabase.
@@ -271,15 +298,17 @@ async function memberSave(req) {
         p_urole: urole,
         p_color: color,
         p_telegram_chat_id: telegramChatId,
+        p_line_id: lineId,
         p_new_password: newPassword || null,
       }),
     });
     const user = rows?.[0] || null;
     if (user && !('telegram_chat_id' in user)) user.telegram_chat_id = telegramChatId;
+    if (user && !('line_id' in user)) user.line_id = lineId;
     return ok({ user });
   } catch (e) {
     // Fallback keeps non-password profile fields working if schema has not been updated yet.
-    const payload = { name, email, role, dept, dept_key: deptKey, branch, branch_name: branchName, urole, color, telegram_chat_id: telegramChatId, updated_at: new Date().toISOString() };
+    const payload = { name, email, role, dept, dept_key: deptKey, branch, branch_name: branchName, urole, color, telegram_chat_id: telegramChatId, line_id: lineId, updated_at: new Date().toISOString() };
     if (id) {
       const rows = await sb(`/rest/v1/tf_users?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       return ok({ user: rows?.[0] || null, warning: 'tf_member_save RPC missing; password was not changed' });
@@ -393,19 +422,22 @@ async function taskSave(req) {
   const notifyIds = newlyAssignedIds.filter(uid => Number(uid) !== Number(s.id));
   let assignmentEmails = [];
   let telegramSent = 0;
+  let lineSent = 0;
   if (notifyIds.length) {
     const inNotify = `in.(${notifyIds.join(',')})`;
-    const recipients = await sb(`/rest/v1/tf_users?id=${inNotify}&select=id,name,email,telegram_chat_id`, { method: 'GET' });
+    const recipients = await sb(`/rest/v1/tf_users?id=${inNotify}&select=id,name,email,telegram_chat_id,line_id`, { method: 'GET' });
     assignmentEmails = recipients.map(u => u.email).filter(Boolean);
     const notifs = notifyIds.map(uid => ({ type: 'new_task', title: '🔔 งานใหม่ถูกมอบหมาย', body: `"${b.title}" โดย ${s.name}`, task_id: id, for_user_id: Number(uid) }));
     if (notifs.length) await sb('/rest/v1/tf_notifications', { method: 'POST', body: JSON.stringify(notifs) });
     const tgText = `🔔 TaskFlow Pro v5\nคุณได้รับมอบหมายงาน: ${b.title}\nโดย: ${s.name}${b.date ? `\nกำหนดส่ง: ${b.date}` : ''}\nกรุณาเข้าสู่ระบบเพื่อตรวจสอบรายละเอียด`;
     const tg = await sendTelegramMessages(recipients.map(u => u.telegram_chat_id), tgText);
     telegramSent = tg.sent || 0;
+    const ln = await sendLineMessages(recipients.map(u => u.line_id), tgText);
+    lineSent = ln.sent || 0;
   }
 
   if (Array.isArray(b.steps) && b.steps.length) await sb('/rest/v1/tf_task_steps', { method: 'POST', body: JSON.stringify(b.steps.map((st, i) => ({ task_id: id, label: st.label || st, sort_order: i }))) });
-  return ok({ task_id: id, assignment_emails: assignmentEmails, telegram_sent: telegramSent });
+  return ok({ task_id: id, assignment_emails: assignmentEmails, telegram_sent: telegramSent, line_sent: lineSent });
 }
 async function simplePatch(req, table, idField, payloadFn) {
   await auth(req);
@@ -497,6 +529,21 @@ async function telegramSend(req) {
     sent.push(data.result);
   }
   return ok({ telegram: sent, sent: sent.length });
+}
+
+
+async function lineSend(req) {
+  await auth(req);
+  const b = await bodyJson(req);
+  const lineIds = [...new Set([...(Array.isArray(b.line_ids) ? b.line_ids : []), b.line_id, b.to].map(v => String(v || '').trim()).filter(Boolean))];
+  const text = String(b.text || b.message || '').trim();
+  const token = String(LINE_CHANNEL_ACCESS_TOKEN || b.channel_access_token || b.token || '').trim();
+  if (!lineIds.length) return err('Missing LINE user_id / group_id / room_id');
+  if (!text) return err('Missing LINE message');
+  if (!token) return err('Missing LINE_CHANNEL_ACCESS_TOKEN');
+  const result = await sendLineMessages(lineIds, text, token);
+  if (!result.sent && result.errors?.length) return err(result.errors[0].error || 'LINE send failed', 502);
+  return ok({ line: result, sent: result.sent });
 }
 
 async function tagSave(req) {
@@ -609,6 +656,7 @@ export default async function handler(req) {
     if (action === 'obstacle_resolve' && req.method === 'POST') return simplePatch(req, 'tf_obstacles', 'id', () => ({ resolved: true, resolved_at: new Date().toISOString() }));
     if (action === 'comment_add' && req.method === 'POST') return commentAdd(req);
     if (action === 'telegram_send' && req.method === 'POST') return telegramSend(req);
+    if (action === 'line_send' && req.method === 'POST') return lineSend(req);
     if (action === 'tag_save' && req.method === 'POST') return tagSave(req);
     if (action === 'tag_delete' && req.method === 'POST') return tagDelete(req);
     if (action === 'tag_delete_all' && req.method === 'POST') return tagDeleteAll(req);

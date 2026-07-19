@@ -138,6 +138,7 @@ async function _loadFromServer(silent = false) {
         color: +(u.color || 0),
         avatar: u.avatar_url || '',
         telegram_chat_id: u.telegram_chat_id || '',
+        line_id: u.line_id || u.lineId || u.idline || '',
         pass: '',
       }));
     }
@@ -235,7 +236,7 @@ window.doLocalLogin = async function () {
             dept: ad.dept || '', dept_key: ad.dept_key || '',
             branch: ad.branch || '', branch_name: ad.branch_name || '',
             email: ad.email || '', urole: ad.urole || 'user',
-            color: +(ad.color || 0), avatar: ad.avatar_url || '', telegram_chat_id: ad.telegram_chat_id || '', pass: '',
+            color: +(ad.color || 0), avatar: ad.avatar_url || '', telegram_chat_id: ad.telegram_chat_id || '', line_id: ad.line_id || '', pass: '',
           };
           window.users.push(u);
         } else {
@@ -243,6 +244,7 @@ window.doLocalLogin = async function () {
             id: +ad.id, name: ad.name, urole: ad.urole || u.urole,
             avatar: ad.avatar_url || u.avatar,
             telegram_chat_id: ad.telegram_chat_id || u.telegram_chat_id || '',
+            line_id: ad.line_id || u.line_id || '',
             branch: ad.branch || u.branch, branch_name: ad.branch_name || u.branch_name,
             dept: ad.dept || u.dept, dept_key: ad.dept_key || u.dept_key,
           });
@@ -518,11 +520,12 @@ window.saveProfile = async function () {
   const name = gi('p-name') ? gi('p-name').value.trim() : (window.currentUser?.name || '');
   const email = gi('p-email') ? gi('p-email').value.trim() : (window.currentUser?.email || '');
   const telegramChatId = gi('p-telegram') ? gi('p-telegram').value.trim() : (window.currentUser?.telegram_chat_id || '');
+  const lineId = gi('p-line') ? gi('p-line').value.trim() : (window.currentUser?.line_id || '');
   _orig_saveProfile.call(this);
   const avatarBeforeSave = window.currentUser?.avatar || '';
   if (!_isPhpSrv() || !window.currentUser) return;
 
-  const saved = await _api('profile_save', { name, email, telegram_chat_id: telegramChatId });
+  const saved = await _api('profile_save', { name, email, telegram_chat_id: telegramChatId, line_id: lineId });
   if (!saved.ok) {
     if (typeof toast === 'function') toast('บันทึกชื่อ/อีเมลขึ้น Supabase ไม่สำเร็จ');
     return;
@@ -573,9 +576,10 @@ window.submitMember = function () {
   const urole = gi('m-urole') ? gi('m-urole').value : 'user';
   const pass = gi('m-pass') ? gi('m-pass').value : '';
   const telegramChatId = gi('m-telegram') ? gi('m-telegram').value.trim() : '';
+  const lineId = gi('m-line') ? gi('m-line').value.trim() : '';
   _orig_submitMember.call(this);
   if (_isPhpSrv() && name && email) {
-    const payload = { id: id ? +id : 0, name, email, role, dept, urole, telegram_chat_id: telegramChatId };
+    const payload = { id: id ? +id : 0, name, email, role, dept, urole, telegram_chat_id: telegramChatId, line_id: lineId };
     if (pass) payload.new_password = pass;
     _api('member_save', payload).then(r => {
       if (r.ok) _loadFromServer(true).then(() => { renderAll(); if (typeof renderMembers === 'function') renderMembers(); });

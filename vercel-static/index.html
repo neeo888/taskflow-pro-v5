@@ -3424,6 +3424,9 @@
         <div class="mfl"><label>Telegram Chat ID ของสมาชิก</label><input id="m-telegram" placeholder="เช่น 123456789 หรือ -100xxxxxxxxxx" />
           <div class="telegram-user-hint">ใช้สำหรับส่งแจ้งเตือนงานไป Telegram ของคนที่ถูกมอบหมายงานโดยอัตโนมัติ</div>
         </div>
+        <div class="mfl"><label>LINE User ID / ID Line ของสมาชิก</label><input id="m-line" placeholder="เช่น Uxxxxxxxx หรือ lineid123" />
+          <div class="telegram-user-hint">ใช้สำหรับส่งแจ้งเตือนงานไป LINE ของคนที่ถูกมอบหมายงานโดยอัตโนมัติ</div>
+        </div>
         <div class="mfl"><label>บทบาท</label><select id="m-urole">
             <option value="user">ผู้ใช้ทั่วไป</option>
             <option value="manager">หัวหน้างาน</option>
@@ -3633,10 +3636,15 @@
             <label>อีเมล</label>
             <input id="p-email" type="email" placeholder="อีเมล" />
           </div>
-          <div class="mfl" style="margin-bottom:0;">
+          <div class="mfl" style="margin-bottom:10px;">
             <label>Telegram Chat ID ของฉัน</label>
             <input id="p-telegram" placeholder="เช่น 123456789 หรือ -100xxxxxxxxxx" />
             <div class="telegram-user-hint">ใช้สำหรับรับแจ้งเตือนงานที่ถูกมอบหมายผ่าน Telegram</div>
+          </div>
+          <div class="mfl" style="margin-bottom:0;">
+            <label>LINE User ID / ID Line ของฉัน</label>
+            <input id="p-line" placeholder="เช่น Uxxxxxxxx หรือ lineid123" />
+            <div class="telegram-user-hint">ใช้สำหรับรับแจ้งเตือนงานที่ถูกมอบหมายผ่าน LINE</div>
           </div>
         </div>
 
@@ -4123,12 +4131,12 @@
     var users = [
       // ── Local Accounts สำหรับ login โดยไม่ผ่าน กปภ. ─────────
       // username = wwcode หรือ email  |  pass = รหัสผ่าน
-      { id: 1,  wwcode: 'admin',   name: 'กนกวรรณ พลชัย',  role: 'ผู้ดูแลระบบ',       dept: 'ฝ่ายเทคโนโลยี', dept_key: 'บริการ',    branch: '5512027', branch_name: "หน่วยงาน", email: 'admin@pwa.local',   pass: 'Pwa@12345', urole: 'admin',     color: 3, avatar: '', telegram_chat_id: '' },
-      { id: 2,  wwcode: 'manager', name: 'อนุชา สมิทธิ์',   role: 'ผู้จัดการสาขา',     dept: 'สำนักงาน',      dept_key: 'อำนวยการ', branch: '5512027', branch_name: "หน่วยงาน", email: 'manager@pwa.local', pass: 'Pwa@12345', urole: 'manager',   color: 0, avatar: '', telegram_chat_id: '' },
-      { id: 3,  wwcode: 'assist',  name: 'วรรณา ศรีทอง',   role: 'ผู้ช่วยผู้จัดการ',   dept: 'สำนักงาน',      dept_key: 'อำนวยการ', branch: '5512027', branch_name: "หน่วยงาน", email: 'assist@pwa.local',  pass: 'Pwa@12345', urole: 'assistant', color: 5, avatar: '', telegram_chat_id: '' },
-      { id: 4,  wwcode: 'user1',   name: 'มนัสวิน ทองดี',  role: 'ช่างเทคนิค',         dept: 'งานบริการ',     dept_key: 'บริการ',    branch: '5512027', branch_name: "หน่วยงาน", email: 'user1@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 1, avatar: '', telegram_chat_id: '' },
-      { id: 5,  wwcode: 'user2',   name: 'สุธีรา วงศ์กล้า', role: 'นักบัญชี',           dept: 'งานการเงิน',   dept_key: 'จัดเก็บ',   branch: '5512027', branch_name: "หน่วยงาน", email: 'user2@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 2, avatar: '', telegram_chat_id: '' },
-      { id: 6,  wwcode: 'user3',   name: 'ธนภัทร วงศ์ดี',   role: 'วิศวกร',             dept: 'งานผลิต',      dept_key: 'ผลิต',      branch: '5512027', branch_name: "หน่วยงาน", email: 'user3@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 4, avatar: '', telegram_chat_id: '' },
+      { id: 1,  wwcode: 'admin',   name: 'กนกวรรณ พลชัย',  role: 'ผู้ดูแลระบบ',       dept: 'ฝ่ายเทคโนโลยี', dept_key: 'บริการ',    branch: '5512027', branch_name: "หน่วยงาน", email: 'admin@pwa.local',   pass: 'Pwa@12345', urole: 'admin',     color: 3, avatar: '', telegram_chat_id: '', line_id: '' },
+      { id: 2,  wwcode: 'manager', name: 'อนุชา สมิทธิ์',   role: 'ผู้จัดการสาขา',     dept: 'สำนักงาน',      dept_key: 'อำนวยการ', branch: '5512027', branch_name: "หน่วยงาน", email: 'manager@pwa.local', pass: 'Pwa@12345', urole: 'manager',   color: 0, avatar: '', telegram_chat_id: '', line_id: '' },
+      { id: 3,  wwcode: 'assist',  name: 'วรรณา ศรีทอง',   role: 'ผู้ช่วยผู้จัดการ',   dept: 'สำนักงาน',      dept_key: 'อำนวยการ', branch: '5512027', branch_name: "หน่วยงาน", email: 'assist@pwa.local',  pass: 'Pwa@12345', urole: 'assistant', color: 5, avatar: '', telegram_chat_id: '', line_id: '' },
+      { id: 4,  wwcode: 'user1',   name: 'มนัสวิน ทองดี',  role: 'ช่างเทคนิค',         dept: 'งานบริการ',     dept_key: 'บริการ',    branch: '5512027', branch_name: "หน่วยงาน", email: 'user1@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 1, avatar: '', telegram_chat_id: '', line_id: '' },
+      { id: 5,  wwcode: 'user2',   name: 'สุธีรา วงศ์กล้า', role: 'นักบัญชี',           dept: 'งานการเงิน',   dept_key: 'จัดเก็บ',   branch: '5512027', branch_name: "หน่วยงาน", email: 'user2@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 2, avatar: '', telegram_chat_id: '', line_id: '' },
+      { id: 6,  wwcode: 'user3',   name: 'ธนภัทร วงศ์ดี',   role: 'วิศวกร',             dept: 'งานผลิต',      dept_key: 'ผลิต',      branch: '5512027', branch_name: "หน่วยงาน", email: 'user3@pwa.local',   pass: 'Pwa@12345', urole: 'user',      color: 4, avatar: '', telegram_chat_id: '', line_id: '' },
     ];
     var allTags = ['ออกแบบ', 'พัฒนา', 'ด่วน', 'การตลาด', 'ข้อมูล', 'วิจัย', 'QA', 'DevOps'];
 
@@ -4669,6 +4677,7 @@
         avatar: raw.avatar_url || raw.avatar || u?.avatar || '',
         avatar_url: raw.avatar_url || raw.avatar || u?.avatar_url || '',
         telegram_chat_id: raw.telegram_chat_id || u?.telegram_chat_id || '',
+        line_id: raw.line_id || raw.lineId || raw.idline || u?.line_id || '',
       };
       if (u) Object.assign(u, payload); else { u = payload; users.push(u); }
       return u;
@@ -5574,7 +5583,7 @@
         return `<tr><td><div style="display:flex;align-items:center;gap:8px;">${avEl(u, 28, 9)}<div><div style="font-weight:600;font-size:12px;">${u.name}</div><div style="font-size:10px;color:var(--text3);">${u.email}</div></div></div></td><td><div style="font-size:12px;">${u.role}</div><div style="font-size:10px;color:var(--text3);">${u.dept || ''}</div></td><td><span class="rb ${rc}" style="padding:3px 10px;">${rl}</span></td><td><span style="font-size:13px;font-weight:700;color:var(--amber);">${wip}</span></td><td><span style="font-size:13px;font-weight:700;color:var(--green);">${done}</span></td><td><div style="display:flex;align-items:center;gap:7px;"><div style="flex:1;height:5px;background:var(--surface);border-radius:3px;overflow:hidden;min-width:50px;"><div style="width:${kpi}%;height:100%;background:${kc};border-radius:3px;"></div></div><span style="font-size:11px;font-weight:700;color:${kc};">${kpi}%</span></div></td><td><div style="display:flex;gap:5px;"><button class="act-btn" onclick="editMember(${u.id})">แก้ไข</button>${canAssign() && u.id !== currentUser.id ? `<button class="act-btn" onclick="openTransferOnlyModal(${u.id})" title="โอนย้ายงาน" style="color:var(--purple);border-color:var(--purple);">⇄ โอนงาน</button>` : ''}${isAdmin() && u.id !== currentUser.id ? `<button class="act-btn del" onclick="delMember(${u.id})">🗑 ลบ</button>` : ''}</div></td></tr>`;
       }).join('');
     }
-    function editMember(id) { const u = findU(id); if (!u) return; gi('m-id').value = u.id; gi('m-name').value = u.name; gi('m-role-txt').value = u.role; gi('m-dept').value = u.dept || ''; gi('m-email').value = u.email; gi('m-pass').value = ''; if (gi('m-telegram')) gi('m-telegram').value = u.telegram_chat_id || u.telegramChatId || u.telegram || ''; gi('m-urole').value = u.urole; openModal('modal-member'); }
+    function editMember(id) { const u = findU(id); if (!u) return; gi('m-id').value = u.id; gi('m-name').value = u.name; gi('m-role-txt').value = u.role; gi('m-dept').value = u.dept || ''; gi('m-email').value = u.email; gi('m-pass').value = ''; if (gi('m-telegram')) gi('m-telegram').value = u.telegram_chat_id || u.telegramChatId || u.telegram || ''; if (gi('m-line')) gi('m-line').value = u.line_id || u.lineId || u.idline || ''; gi('m-urole').value = u.urole; openModal('modal-member'); }
     function delMember(id) {
       if (!isAdmin()) { toast('เฉพาะ Admin เท่านั้น'); return; }
       const u = findU(id); if (!u) return;
@@ -5920,8 +5929,28 @@
       }
       closeModal('modal-task'); renderAll(); renderBell();
     }
-    function openMemberModal() { gi('m-id').value = ''; gi('m-name').value = ''; gi('m-role-txt').value = ''; gi('m-dept').value = ''; gi('m-email').value = ''; gi('m-pass').value = ''; if (gi('m-telegram')) gi('m-telegram').value = ''; gi('m-urole').value = 'user'; openModal('modal-member'); }
-    function submitMember() { const name = gi('m-name').value.trim(), email = gi('m-email').value.trim(); const telegramChatId = gi('m-telegram') ? gi('m-telegram').value.trim() : ''; if (!name || !email) { toast('กรุณากรอกชื่อและอีเมล'); return; } const id = gi('m-id').value; if (id) { const u = findU(parseInt(id)); if (u) { u.name = name; u.role = gi('m-role-txt').value; u.dept = gi('m-dept').value; u.email = email; u.telegram_chat_id = telegramChatId; u.urole = gi('m-urole').value; if (gi('m-pass').value) u.pass = gi('m-pass').value; } toast('แก้ไขสมาชิกแล้ว'); } else { users.push({ id: nid++, name, role: gi('m-role-txt').value, dept: gi('m-dept').value, email, telegram_chat_id: telegramChatId, pass: gi('m-pass').value || 'user123', urole: gi('m-urole').value, color: users.length % 8 }); toast('เพิ่มสมาชิกแล้ว'); } closeModal('modal-member'); renderMembers(); }
+    function openMemberModal() { gi('m-id').value = ''; gi('m-name').value = ''; gi('m-role-txt').value = ''; gi('m-dept').value = ''; gi('m-email').value = ''; gi('m-pass').value = ''; if (gi('m-telegram')) gi('m-telegram').value = ''; if (gi('m-line')) gi('m-line').value = ''; gi('m-urole').value = 'user'; openModal('modal-member'); }
+    function submitMember() {
+      const name = gi('m-name').value.trim(), email = gi('m-email').value.trim();
+      const telegramChatId = gi('m-telegram') ? gi('m-telegram').value.trim() : '';
+      const lineId = gi('m-line') ? gi('m-line').value.trim() : '';
+      if (!name || !email) { toast('กรุณากรอกชื่อและอีเมล'); return; }
+      const id = gi('m-id').value;
+      if (id) {
+        const u = findU(parseInt(id));
+        if (u) {
+          u.name = name; u.role = gi('m-role-txt').value; u.dept = gi('m-dept').value; u.email = email;
+          u.telegram_chat_id = telegramChatId; u.line_id = lineId; u.urole = gi('m-urole').value;
+          if (gi('m-pass').value) u.pass = gi('m-pass').value;
+        }
+        toast('แก้ไขสมาชิกแล้ว');
+      } else {
+        users.push({ id: nid++, name, role: gi('m-role-txt').value, dept: gi('m-dept').value, email,
+          telegram_chat_id: telegramChatId, line_id: lineId, pass: gi('m-pass').value || 'user123', urole: gi('m-urole').value, color: users.length % 8 });
+        toast('เพิ่มสมาชิกแล้ว');
+      }
+      closeModal('modal-member'); renderMembers();
+    }
 
     function renderProgFilePreview(files) {
       const box = gi('prog-file-preview'); if (!box) return;
@@ -5952,6 +5981,7 @@
       gi('p-name').value = u.name;
       gi('p-email').value = u.email;
       const ptg = gi('p-telegram'); if (ptg) ptg.value = u.telegram_chat_id || u.telegramChatId || u.telegram || '';
+      const pln = gi('p-line'); if (pln) pln.value = u.line_id || u.lineId || u.idline || '';
       // Role badge
       const rl = { admin: 'Admin', manager: 'หัวหน้า', assistant: 'ผู้ช่วย', user: 'ผู้ใช้' };
       const rc = { admin: 'rb-admin', manager: 'rb-mgr', assistant: 'rb-asst', user: 'rb-user' };
@@ -6069,6 +6099,7 @@
       const name = gi('p-name').value.trim();
       const email = gi('p-email').value.trim();
       const telegramChatId = gi('p-telegram') ? gi('p-telegram').value.trim() : '';
+      const lineId = gi('p-line') ? gi('p-line').value.trim() : '';
       if (!name) { toast('กรุณาระบุชื่อ'); return; }
       const croppedAvatar = buildProfileCroppedAvatar();
       if (croppedAvatar && croppedAvatar.startsWith('data:')) {
@@ -6078,8 +6109,9 @@
       currentUser.name = name;
       if (email) currentUser.email = email;
       currentUser.telegram_chat_id = telegramChatId;
+      currentUser.line_id = lineId;
       const u = findU(currentUser.id);
-      if (u) { u.name = name; if (email) u.email = email; u.telegram_chat_id = telegramChatId; }
+      if (u) { u.name = name; if (email) u.email = email; u.telegram_chat_id = telegramChatId; u.line_id = lineId; }
       profileCropState = null;
       closeModal('modal-profile');
       updateTopbar();
