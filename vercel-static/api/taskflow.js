@@ -128,8 +128,10 @@ async function registerUser(req) {
   const password = String(b.password || b.new_password || '');
   const telegramChatId = String(b.telegram_chat_id || b.telegramChatId || '').trim();
   const lineId = String(b.line_id || b.lineId || b.idline || b.idLine || '').trim();
+  const role = String(b.role || b.position || '').trim();
 
   if (!name) return err('กรุณากรอกชื่อ-สกุล');
+  if (!role) return err('กรุณาเลือกตำแหน่ง');
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) return err('กรุณากรอกอีเมลให้ถูกต้อง');
   if (!password || password.length < 6) return err('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
 
@@ -144,7 +146,7 @@ async function registerUser(req) {
     p_id: null,
     p_wwcode: wwcode,
     p_name: name,
-    p_role: 'ผู้ใช้',
+    p_role: role,
     p_dept: String(b.dept || 'บริการ'),
     p_dept_key: String(b.dept_key || 'บริการ'),
     p_branch: String(b.branch || '5512027'),
@@ -173,7 +175,7 @@ async function registerUser(req) {
     token,
     user: {
       id: Number(user.id), wwcode: user.wwcode || wwcode, name: user.name || name,
-      role: user.role || 'ผู้ใช้', dept: user.dept || payload.p_dept, dept_key: user.dept_key || payload.p_dept_key,
+      role: user.role || role, dept: user.dept || payload.p_dept, dept_key: user.dept_key || payload.p_dept_key,
       branch: user.branch || payload.p_branch, branch_name: user.branch_name || payload.p_branch_name,
       email: user.email || email, urole: user.urole || 'user', color: Number(user.color || 0),
       avatar_url: user.avatar_url || '', telegram_chat_id: user.telegram_chat_id || telegramChatId, line_id: user.line_id || lineId || '',

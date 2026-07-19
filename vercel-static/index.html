@@ -1451,6 +1451,18 @@
       color: var(--text3);
     }
 
+    .apick-role {
+      max-width: 72px;
+      font-size: 8px;
+      line-height: 1.15;
+      color: var(--text3);
+      opacity: .85;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     /* FILE ATTACH */
     .attach-zone {
       border: 1.5px dashed var(--border);
@@ -2969,7 +2981,25 @@
             <div class="lfl reg-wide">
               <label>ชื่อ-สกุล *</label>
               <input id="r-name" placeholder="เช่น สมชาย ใจดี" autocomplete="name"
-                onkeydown="if(event.key==='Enter')gi('r-emp').focus()" />
+                onkeydown="if(event.key==='Enter')gi('r-role-txt').focus()" />
+            </div>
+            <div class="lfl">
+              <label>ตำแหน่ง *</label>
+              <select id="r-role-txt" onkeydown="if(event.key==='Enter')gi('r-emp').focus()">
+                <option value="">-- เลือกตำแหน่ง --</option>
+                <option value="ผู้จัดการ">ผู้จัดการ</option>
+                <option value="ผู้ช่วยผู้จัดการ">ผู้ช่วยผู้จัดการ</option>
+                <option value="หัวหน้างานผลิต">หัวหน้างานผลิต</option>
+                <option value="หัวหน้างานบริการ">หัวหน้างานบริการ</option>
+                <option value="หัวหน้างานอำนวยการ">หัวหน้างานอำนวยการ</option>
+                <option value="หัวหน้างานจัดเก็บ">หัวหน้างานจัดเก็บ</option>
+                <option value="ช่างไฟ">ช่างไฟ</option>
+                <option value="ช่างโยธา">ช่างโยธา</option>
+                <option value="วิศวกร">วิศวกร</option>
+                <option value="บัญชี">บัญชี</option>
+                <option value="ช่างเครื่องกล">ช่างเครื่องกล</option>
+                <option value="พัสดุ">พัสดุ</option>
+              </select>
             </div>
             <div class="lfl">
               <label>รหัสพนักงาน *</label>
@@ -3429,7 +3459,21 @@
         <input type="hidden" id="m-id" />
         <div class="mfl"><label>ชื่อ-สกุล *</label><input id="m-name" placeholder="ชื่อ-สกุล" /></div>
         <div class="mfl-2">
-          <div class="mfl"><label>ตำแหน่ง</label><input id="m-role-txt" placeholder="ตำแหน่ง" /></div>
+          <div class="mfl"><label>ตำแหน่ง *</label><select id="m-role-txt">
+            <option value="">-- เลือกตำแหน่ง --</option>
+            <option value="ผู้จัดการ">ผู้จัดการ</option>
+            <option value="ผู้ช่วยผู้จัดการ">ผู้ช่วยผู้จัดการ</option>
+            <option value="หัวหน้างานผลิต">หัวหน้างานผลิต</option>
+            <option value="หัวหน้างานบริการ">หัวหน้างานบริการ</option>
+            <option value="หัวหน้างานอำนวยการ">หัวหน้างานอำนวยการ</option>
+            <option value="หัวหน้างานจัดเก็บ">หัวหน้างานจัดเก็บ</option>
+            <option value="ช่างไฟ">ช่างไฟ</option>
+            <option value="ช่างโยธา">ช่างโยธา</option>
+            <option value="วิศวกร">วิศวกร</option>
+            <option value="บัญชี">บัญชี</option>
+            <option value="ช่างเครื่องกล">ช่างเครื่องกล</option>
+            <option value="พัสดุ">พัสดุ</option>
+          </select></div>
           <div class="mfl"><label>แผนก</label><input id="m-dept" placeholder="แผนก" /></div>
         </div>
         <div class="mfl-2">
@@ -4245,6 +4289,15 @@
     function getInits(n) { const p = (n || '').trim().split(' ').filter(Boolean); return p.length >= 2 ? p[0][0] + p[1][0] : (p[0] || '?').substring(0, 2); }
     function safeAttr(v) { return String(v || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function safeJs(v) { return String(v || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'').replace(/\n/g,'\\n'); }
+    function ensureSelectOption(id, val) {
+      const el = gi(id), v = String(val || '').trim();
+      if (!el || !v) return;
+      if (![...el.options].some(o => o.value === v)) {
+        const opt = document.createElement('option');
+        opt.value = v; opt.textContent = v + ' (เดิม)';
+        el.appendChild(opt);
+      }
+    }
     function findU(id) { return users.find(u => u.id === id); }
     function avEl(u, sz = 28, r = 9) { if (!u) return ''; const c = AVC[(u.color || 0) % 8]; const base = `width:${sz}px;height:${sz}px;border-radius:${r}px;display:flex;align-items:center;justify-content:center;font-size:${Math.floor(sz * .32)}px;font-weight:700;flex-shrink:0;overflow:hidden;`; return u.avatar ? `<div style="${base}background:#e2e8f0;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"/></div>` : `<div style="${base}background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; }
     function miniAv(u) { if (!u) return ''; const c = AVC[(u.color || 0) % 8]; return u.avatar ? `<div class="bc-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"/></div>` : `<div class="bc-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; }
@@ -4797,6 +4850,7 @@
       const name = gi('r-name').value.trim();
       const email = gi('r-email').value.trim();
       const username = gi('r-emp').value.trim();
+      const position = gi('r-role-txt')?.value.trim() || '';
       const branchName = gi('r-branch').value.trim();
       const deptKey = gi('r-dept')?.value || 'บริการ';
       const deptNameMap = { 'บริการ': 'งานบริการ', 'ผลิต': 'งานผลิต', 'จัดเก็บ': 'งานจัดเก็บ', 'อำนวยการ': 'งานอำนวยการ' };
@@ -4809,6 +4863,7 @@
       gi('lerr').style.display = 'none';
 
       if (!name) return showLoginErr('กรุณากรอกชื่อ-สกุล');
+      if (!position) return showLoginErr('กรุณาเลือกตำแหน่ง');
       if (!username) return showLoginErr('กรุณากรอกรหัสพนักงาน');
       if (!branchName) return showLoginErr('กรุณากรอกสาขา');
       if (!deptKey) return showLoginErr('กรุณาเลือกสังกัดงาน');
@@ -4822,7 +4877,7 @@
         const res = await fetch('php/api.php?action=register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, username, wwcode: username, branch_name: branchName, branch: branchName, dept: deptName, dept_key: deptKey, phone, line_id: lineId, password, telegram_chat_id: telegram }),
+          body: JSON.stringify({ name, email, username, wwcode: username, role: position, position, branch_name: branchName, branch: branchName, dept: deptName, dept_key: deptKey, phone, line_id: lineId, password, telegram_chat_id: telegram }),
           signal: AbortSignal.timeout(10000),
         });
         const data = await res.json().catch(() => null);
@@ -4832,7 +4887,7 @@
           return;
         }
         if (data.token) localStorage.setItem('tf_tok', data.token);
-        const u = _upsertLoginUser(data.user || { name, email, wwcode: username, branch_name: branchName, branch: branchName, dept: deptName, dept_key: deptKey, phone, line_id: lineId, urole:'user', telegram_chat_id: telegram });
+        const u = _upsertLoginUser(data.user || { name, email, wwcode: username, role: position, branch_name: branchName, branch: branchName, dept: deptName, dept_key: deptKey, phone, line_id: lineId, urole:'user', telegram_chat_id: telegram });
         currentUser = u;
         _afterLogin();
         toast('สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ' + u.name + ' 🎉');
@@ -5324,7 +5379,7 @@
         </div>
         <div class="dp-sec">
           <div class="dp-sec-t">ภาพรวมผู้รับผิดชอบ</div>
-          <div class="dp-owner-strip">${asgns.length ? asgns.map(u => `<div class="dp-owner-chip">${avEl(u, 22, 7)}<span>${u.name}</span></div>`).join('') : '<span style="font-size:12px;color:var(--text3);">ยังไม่ได้มอบหมาย</span>'}</div>
+          <div class="dp-owner-strip">${asgns.length ? asgns.map(u => `<div class="dp-owner-chip" title="${safeAttr(u.name || '')} • ${safeAttr(u.role || 'ไม่ระบุตำแหน่ง')}">${avEl(u, 22, 7)}<span>${u.name}<small style="display:block;font-size:9px;color:var(--text3);font-weight:600;line-height:1.1;">${u.role || 'ไม่ระบุตำแหน่ง'}</small></span></div>`).join('') : '<span style="font-size:12px;color:var(--text3);">ยังไม่ได้มอบหมาย</span>'}</div>
         </div>
         ${latestProgress ? `<div class="dp-sec"><div class="dp-sec-t">อัปเดตล่าสุด</div><div style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:10px 12px;">${findU(latestProgress.authorId)?.name || 'ผู้ใช้'} อัปเดตเป็น <b>${latestProgress.prog}%</b> <span style="color:var(--text3);">${latestProgress.at || ''}</span>${latestProgress.note ? `<br>${latestProgress.note}` : ''}</div></div>` : ''}
       `;
@@ -5425,7 +5480,7 @@
 
     <!-- assignees -->
     ${t.verifiedBy ? `<div class="dp-sec"><div class="dp-sec-t">ตรวจสอบโดย</div><div style="display:flex;align-items:center;gap:8px;background:#E0F2FE;border-radius:10px;padding:9px 12px;">${avEl(findU(t.verifiedBy) || users[0], 24, 8)}<span style="font-size:12px;font-weight:600;color:#0369A1;">🔍 ${(findU(t.verifiedBy) || { name: '-' }).name} — ตรวจสอบงานแล้ว</span></div></div>` : ''}
-    <div class="dp-sec"><div class="dp-sec-t">ผู้รับผิดชอบ</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${asgns.map(u => `<div style="display:flex;align-items:center;gap:6px;">${avEl(u, 24, 8)}<span style="font-size:11px;color:var(--text2);">${u.name}</span></div>`).join('')}</div></div>
+    <div class="dp-sec"><div class="dp-sec-t">ผู้รับผิดชอบ</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${asgns.map(u => `<div style="display:flex;align-items:center;gap:6px;" title="${safeAttr(u.name || '')} • ${safeAttr(u.role || 'ไม่ระบุตำแหน่ง')}">${avEl(u, 24, 8)}<span style="font-size:11px;color:var(--text2);">${u.name}<small style="display:block;font-size:9px;color:var(--text3);line-height:1.1;">${u.role || 'ไม่ระบุตำแหน่ง'}</small></span></div>`).join('')}</div></div>
 
     <!-- checklist per user -->
     ${t.steps?.length ? `<div class="dp-sec">
@@ -5603,7 +5658,7 @@
         return `<tr><td><div style="display:flex;align-items:center;gap:8px;">${avEl(u, 28, 9)}<div><div style="font-weight:600;font-size:12px;">${u.name}</div><div style="font-size:10px;color:var(--text3);">${u.email}</div></div></div></td><td><div style="font-size:12px;">${u.role}</div><div style="font-size:10px;color:var(--text3);">${u.dept || ''}</div></td><td><span class="rb ${rc}" style="padding:3px 10px;">${rl}</span></td><td><span style="font-size:13px;font-weight:700;color:var(--amber);">${wip}</span></td><td><span style="font-size:13px;font-weight:700;color:var(--green);">${done}</span></td><td><div style="display:flex;align-items:center;gap:7px;"><div style="flex:1;height:5px;background:var(--surface);border-radius:3px;overflow:hidden;min-width:50px;"><div style="width:${kpi}%;height:100%;background:${kc};border-radius:3px;"></div></div><span style="font-size:11px;font-weight:700;color:${kc};">${kpi}%</span></div></td><td><div style="display:flex;gap:5px;"><button class="act-btn" onclick="editMember(${u.id})">แก้ไข</button>${canAssign() && u.id !== currentUser.id ? `<button class="act-btn" onclick="openTransferOnlyModal(${u.id})" title="โอนย้ายงาน" style="color:var(--purple);border-color:var(--purple);">⇄ โอนงาน</button>` : ''}${isAdmin() && u.id !== currentUser.id ? `<button class="act-btn del" onclick="delMember(${u.id})">🗑 ลบ</button>` : ''}</div></td></tr>`;
       }).join('');
     }
-    function editMember(id) { const u = findU(id); if (!u) return; gi('m-id').value = u.id; gi('m-name').value = u.name; gi('m-role-txt').value = u.role; gi('m-dept').value = u.dept || ''; gi('m-email').value = u.email; gi('m-pass').value = ''; if (gi('m-telegram')) gi('m-telegram').value = u.telegram_chat_id || u.telegramChatId || u.telegram || ''; if (gi('m-line')) gi('m-line').value = u.line_id || u.lineId || u.idline || ''; gi('m-urole').value = u.urole; openModal('modal-member'); }
+    function editMember(id) { const u = findU(id); if (!u) return; gi('m-id').value = u.id; gi('m-name').value = u.name; ensureSelectOption('m-role-txt', u.role); gi('m-role-txt').value = u.role || ''; gi('m-dept').value = u.dept || ''; gi('m-email').value = u.email; gi('m-pass').value = ''; if (gi('m-telegram')) gi('m-telegram').value = u.telegram_chat_id || u.telegramChatId || u.telegram || ''; if (gi('m-line')) gi('m-line').value = u.line_id || u.lineId || u.idline || ''; gi('m-urole').value = u.urole; openModal('modal-member'); }
     function delMember(id) {
       if (!isAdmin()) { toast('เฉพาะ Admin เท่านั้น'); return; }
       const u = findU(id); if (!u) return;
@@ -5804,7 +5859,7 @@
       toast('เพิ่มประเภทงาน "' + v + '" แล้ว');
     }
     gi('ntag')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag(); } });
-    function buildAsgnPicker() { gi('asgn-picker').innerHTML = users.filter(u => u.urole !== 'admin' || isAdmin()).map(u => { const c = AVC[(u.color || 0) % 8]; const on = selAsgn.includes(u.id); const av = u.avatar ? `<div class="apick-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"></div>` : `<div class="apick-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; return `<div class="apick${on ? ' on' : ''}" onclick="togAsgn(this,${u.id})">${av}<span class="apick-nm">${u.name.split(' ')[0]}</span></div>`; }).join(''); }
+    function buildAsgnPicker() { gi('asgn-picker').innerHTML = users.filter(u => u.urole !== 'admin' || isAdmin()).map(u => { const c = AVC[(u.color || 0) % 8]; const on = selAsgn.includes(u.id); const nm = safeAttr((u.name || '').split(' ')[0] || u.name || ''); const pos = safeAttr(u.role || 'ไม่ระบุตำแหน่ง'); const av = u.avatar ? `<div class="apick-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"></div>` : `<div class="apick-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; return `<div class="apick${on ? ' on' : ''}" title="${safeAttr(u.name || '')} • ${pos}" onclick="togAsgn(this,${u.id})">${av}<span class="apick-nm">${nm}</span><span class="apick-role">${pos}</span></div>`; }).join(''); }
     function togAsgn(el, id) { selAsgn.includes(id) ? (selAsgn = selAsgn.filter(x => x !== id), el.classList.remove('on')) : (selAsgn.push(id), el.classList.add('on')); }
     function renderStepList() {
       const box = gi('step-list'); if (!box) return;
@@ -5952,20 +6007,21 @@
     function openMemberModal() { gi('m-id').value = ''; gi('m-name').value = ''; gi('m-role-txt').value = ''; gi('m-dept').value = ''; gi('m-email').value = ''; gi('m-pass').value = ''; if (gi('m-telegram')) gi('m-telegram').value = ''; if (gi('m-line')) gi('m-line').value = ''; gi('m-urole').value = 'user'; openModal('modal-member'); }
     function submitMember() {
       const name = gi('m-name').value.trim(), email = gi('m-email').value.trim();
+      const position = gi('m-role-txt')?.value.trim() || '';
       const telegramChatId = gi('m-telegram') ? gi('m-telegram').value.trim() : '';
       const lineId = gi('m-line') ? gi('m-line').value.trim() : '';
-      if (!name || !email) { toast('กรุณากรอกชื่อและอีเมล'); return; }
+      if (!name || !email || !position) { toast('กรุณากรอกชื่อ อีเมล และตำแหน่ง'); return; }
       const id = gi('m-id').value;
       if (id) {
         const u = findU(parseInt(id));
         if (u) {
-          u.name = name; u.role = gi('m-role-txt').value; u.dept = gi('m-dept').value; u.email = email;
+          u.name = name; u.role = position; u.dept = gi('m-dept').value; u.email = email;
           u.telegram_chat_id = telegramChatId; u.line_id = lineId; u.urole = gi('m-urole').value;
           if (gi('m-pass').value) u.pass = gi('m-pass').value;
         }
         toast('แก้ไขสมาชิกแล้ว');
       } else {
-        users.push({ id: nid++, name, role: gi('m-role-txt').value, dept: gi('m-dept').value, email,
+        users.push({ id: nid++, name, role: position, dept: gi('m-dept').value, email,
           telegram_chat_id: telegramChatId, line_id: lineId, pass: gi('m-pass').value || 'user123', urole: gi('m-urole').value, color: users.length % 8 });
         toast('เพิ่มสมาชิกแล้ว');
       }
