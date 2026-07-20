@@ -356,14 +356,39 @@ window.submitTask = function () {
 };
 
 // ══════════════════════════════════════════════════════════════
-// 9. PATCH delTask — ลบผ่าน API
+// 9. PATCH delTask — ลบผ่าน API และ reload จาก Supabase
 // ══════════════════════════════════════════════════════════════
 const _orig_delTask = window.delTask;
-window.delTask = function (id) {
-  if (!confirm('ลบงาน?')) return;
-  window.tasks = window.tasks.filter(t => t.id !== id);
-  closeDP(); renderAll(); toast('ลบงานแล้ว');
-  if (_isPhpSrv()) _api('task_delete', { id });
+window.delTask = async function (id) {
+  const tid = Number(id || 0);
+  if (!tid) return;
+  let title = '';
+  try {
+    const list = (typeof tasks !== 'undefined') ? tasks : (window.tasks || []);
+    const found = (list || []).find(t => Number(t.id) === tid);
+    if (found?.title) title = ` "${found.title}"`;
+  } catch (_) {}
+  if (!confirm(`ลบงาน${title}?
+ระบบจะลบออกจาก Supabase ด้วย`)) return;
+  try {
+    if (_isPhpSrv()) {
+      const r = await _api('task_delete', { id: tid, task_id: tid });
+      if (!r.ok) throw new Error(r.error || 'ลบงานใน Supabase ไม่สำเร็จ');
+      if (typeof closeDP === 'function') closeDP();
+      await _loadFromServer(true);
+      if (typeof renderAll === 'function') renderAll();
+      if (typeof toast === 'function') toast('ลบงานจาก Supabase แล้ว');
+      return;
+    }
+    if (typeof tasks !== 'undefined') tasks = (tasks || []).filter(t => Number(t.id) !== tid);
+    else window.tasks = (window.tasks || []).filter(t => Number(t.id) !== tid);
+    if (typeof closeDP === 'function') closeDP();
+    if (typeof renderAll === 'function') renderAll();
+    if (typeof toast === 'function') toast('ลบงานแล้ว');
+  } catch (e) {
+    console.error('[sync.js] task delete failed', e);
+    if (typeof toast === 'function') toast('ลบงานไม่สำเร็จ: ' + (e.message || e));
+  }
 };
 
 // ══════════════════════════════════════════════════════════════

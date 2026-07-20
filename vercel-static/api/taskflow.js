@@ -504,8 +504,26 @@ async function simplePatch(req, table, idField, payloadFn) {
 async function taskDelete(req) {
   await auth(req);
   const b = await bodyJson(req);
-  await sb(`/rest/v1/tf_tasks?id=eq.${Number(b.id || 0)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
-  return ok();
+  const id = Number(b.id || b.task_id || 0);
+  if (!id) return err('Missing id');
+  const related = [
+    ['/rest/v1/tf_notifications?task_id=eq.' + id, 'notifications'],
+    ['/rest/v1/tf_attachments?task_id=eq.' + id, 'attachments'],
+    ['/rest/v1/tf_progress_log?task_id=eq.' + id, 'progress_log'],
+    ['/rest/v1/tf_task_steps?task_id=eq.' + id, 'task_steps'],
+    ['/rest/v1/tf_task_assignees?task_id=eq.' + id, 'task_assignees'],
+    ['/rest/v1/tf_task_tags?task_id=eq.' + id, 'task_tags'],
+  ];
+  for (const [path, name] of related) {
+    try {
+      await sb(path, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+    } catch (e) {
+      // บาง schema อาจยังไม่มีบางตาราง ให้ข้ามได้เพื่อไม่ให้ลบงานหลักค้าง
+      console.warn('[task_delete] skip related table', name, e.message || e);
+    }
+  }
+  await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+  return ok({ id });
 }
 async function taskProgress(req) {
   const s = await auth(req);

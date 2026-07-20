@@ -4630,6 +4630,29 @@
       });
     }
 
+    function isDoneTask(t) {
+      return !!t && (t.col === 'done' || t.col === 'verified' || Number(t.prog || 0) >= 100);
+    }
+    function isActiveTask(t) { return !!t && !isDoneTask(t); }
+    function isOverdueTask(t) {
+      if (!t || isDoneTask(t) || !t.date) return false;
+      const due = new Date(t.date);
+      if (Number.isNaN(due.getTime())) return false;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      return due < today;
+    }
+    function taskHasProgressUpdate(t) {
+      return Number(t?.prog || 0) > 0 ||
+        (Array.isArray(t?.progressLog) && t.progressLog.length > 0) ||
+        (Array.isArray(t?.comments) && t.comments.length > 0);
+    }
+    function isOverdueNoUpdate(t) { return isOverdueTask(t) && !taskHasProgressUpdate(t); }
+    function overdueNoUpdateBadge(t) {
+      return isOverdueNoUpdate(t)
+        ? `<span class="badge" style="background:#FFEDEE;color:#B91C1C;">⚠️ เกินกำหนด/ยังไม่อัปเดต</span>`
+        : '';
+    }
+
     // ══════════════════════════════════════════════════════════════
     // สาขา กปภ. เขต 10 (costcenter → ชื่อสาขา)
     // ══════════════════════════════════════════════════════════════
@@ -5018,16 +5041,20 @@
             taskId:t.id, forUserIds:[uid], read:false, ackBy:[],
             at: t.date ? t.date+'T00:00:00Z' : new Date().toISOString() });
         }
-        // overdue
-        if (t.date&&t.col!=='done'&&t.col!=='verified') {
-          const due = new Date(t.date); const today = new Date(); today.setHours(0,0,0,0);
-          if (due<today) {
-            const ov=notifications.find(n=>n.taskId===t.id&&n.type==='overdue'&&n.forUserIds?.includes(uid));
-            if (!ov) notifications.push({ id:nid++, type:'overdue',
-              title:'⚠️ งานเลยกำหนด', body:'"'+t.title+'" กำหนด '+t.date,
-              taskId:t.id, forUserIds:[uid], read:false, ackBy:[],
-              at:new Date().toISOString() });
-          }
+        // overdue + overdue without update
+        if (isOverdueTask(t)) {
+          const ov=notifications.find(n=>n.taskId===t.id&&n.type==='overdue'&&n.forUserIds?.includes(uid));
+          if (!ov) notifications.push({ id:nid++, type:'overdue',
+            title:'⚠️ งานเลยกำหนด', body:'"'+t.title+'" '+taskDueLabel(t),
+            taskId:t.id, forUserIds:[uid], read:false, ackBy:[],
+            at:new Date().toISOString() });
+        }
+        if (isOverdueNoUpdate(t)) {
+          const nu=notifications.find(n=>n.taskId===t.id&&n.type==='overdue_no_update'&&n.forUserIds?.includes(uid));
+          if (!nu) notifications.push({ id:nid++, type:'overdue_no_update',
+            title:'⚠️ งานเกินกำหนดและยังไม่อัปเดต', body:'"'+t.title+'" '+taskDueLabel(t),
+            taskId:t.id, forUserIds:[uid], read:false, ackBy:[],
+            at:new Date().toISOString() });
         }
       });
       notifications.sort((a,b)=>new Date(b.at)-new Date(a.at));
@@ -5125,8 +5152,8 @@
     function switchMyTab(tab) { myTaskTab = tab; gi('tab-wip').classList.toggle('active', tab === 'wip'); gi('tab-completed').classList.toggle('active', tab === 'completed'); renderMyTasks(); }
     function renderMyTasks() {
       const myT = tasks.filter(t => canSeeTask(t));
-      const wip = sortTasksByDue(myT.filter(t => COL[t.col] && (COL[t.col] || COL['done']).g === 'wip'));
-      const done = sortTasksByDue(myT.filter(t => t.col === 'done' || t.col === 'verified'));
+      const wip = sortTasksByDue(myT.filter(t => isActiveTask(t) && COL[t.col] && (COL[t.col] || COL['done']).g === 'wip'));
+      const done = sortTasksByDue(myT.filter(t => isDoneTask(t)));
       gi('tc-wip').textContent = wip.length; gi('tc-done').textContent = done.length;
       const list = myTaskTab === 'wip' ? wip : done;
       gi('my-tasks-list').innerHTML = list.length ? list.map(t => taskCard(t)).join('') : `<div style="text-align:center;padding:40px;font-size:13px;color:var(--text3);">${myTaskTab === 'wip' ? 'ไม่มีงานที่กำลังดำเนินการ' : 'ยังไม่มีงานที่เสร็จ'}</div>`;
@@ -5135,13 +5162,13 @@
     function taskCard(t) {
       const cfg = COL[t.col]; const pr = PRIO[t.priority];
       const asgns = users.filter(u => (Array.isArray(t.asgn) ? t.asgn.map(Number) : []).includes(Number(u.id)));
-      const ov = t.date && new Date(t.date) < new Date() && t.col !== 'done' && t.col !== 'verified';
+      const ov = isOverdueTask(t);
       const openObs = (t.obstacles || []).filter(o => !o.resolved).length;
       const myStepsDone = t.steps ? (t.stepChecks[currentUser.id] ? Object.values(t.stepChecks[currentUser.id]).filter(v => v.done).length : 0) : 0;
       return `<div class="task-card${ov ? ' overdue' : ''}" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
     <div class="tc-hd">
       <div class="tc-title">${t.title}</div>
-      <div class="tc-badges"><span class="badge" style="background:${cfg.c}22;color:${cfg.c};">${cfg.n}</span><span class="badge" style="background:${pr.bg};color:${pr.fg};">${pr.l}</span></div>
+      <div class="tc-badges"><span class="badge" style="background:${cfg.c}22;color:${cfg.c};">${cfg.n}</span><span class="badge" style="background:${pr.bg};color:${pr.fg};">${pr.l}</span>${overdueNoUpdateBadge(t)}</div>
     </div>
     ${(t.tags || []).length ? `<div class="tc-tags">${(t.tags || []).map(tg => `<span class="tag">${tg}</span>`).join('')}</div>` : ''}
     <div class="tc-prog-row"><div class="tc-prog-track"><div class="tc-prog-fill" style="width:${t.prog}%;background:${cfg.c};"></div></div><span style="font-size:10px;font-weight:700;color:${cfg.c};min-width:28px;text-align:right;">${t.prog}%</span></div>
@@ -5152,9 +5179,9 @@
       ${t.comments?.length ? `<div class="tc-meta-item">💬 ${t.comments.length}</div>` : ''}
       <div class="tc-avs">${asgns.slice(0, 3).map(u => miniAv(u)).join('')}</div>
     </div>
-    ${canUpdateTask(t) ? `<div style="display:flex;gap:6px;margin-top:10px;" onclick="event.stopPropagation();">
-      <button class="btn-pri" style="flex:1;font-size:11px;padding:7px;" onclick="openProgModal(${t.id})">อัปเดตความคืบหน้า</button>
-      <button class="btn-sec" style="font-size:11px;padding:7px;" onclick="openObsModal(${t.id})">+ อุปสรรค</button>
+    ${canUpdateTask(t) || canAssign() ? `<div style="display:flex;gap:6px;margin-top:10px;" onclick="event.stopPropagation();">
+      ${canUpdateTask(t) ? `<button class="btn-pri" style="flex:1;font-size:11px;padding:7px;" onclick="openProgModal(${t.id})">อัปเดตความคืบหน้า</button><button class="btn-sec" style="font-size:11px;padding:7px;" onclick="openObsModal(${t.id})">+ อุปสรรค</button>` : ''}
+      ${canAssign() ? `<button class="btn-sec" style="font-size:11px;padding:7px;color:var(--danger);" onclick="delTask(${t.id})">ลบงาน</button>` : ''}
     </div>`: ''}
   </div>`;
     }
@@ -5166,15 +5193,17 @@
       const uid = currentUser.id;
       // กรองเฉพาะงานที่มีสิทธิ์เห็น (user role = เฉพาะงานที่ assign)
       const myT = tasks.filter(t => canSeeTask(t));
-      const wip = sortTasksByDue(myT.filter(t => COL[t.col] && (COL[t.col] || COL['done']).g === 'wip'));
-      const done = sortTasksByDue(myT.filter(t => t.col === 'done' || t.col === 'verified'));
-      const review = myT.filter(t => t.col === 'review');
+      const activeT = sortTasksByDue(myT.filter(t => isActiveTask(t)));
+      const wip = sortTasksByDue(myT.filter(t => isActiveTask(t) && COL[t.col] && (COL[t.col] || COL['done']).g === 'wip'));
+      const done = sortTasksByDue(myT.filter(t => isDoneTask(t)));
+      const review = activeT.filter(t => t.col === 'review');
+      const overdueNoUpdate = activeT.filter(t => isOverdueNoUpdate(t));
       const pct = Math.round(myT.length ? done.length / myT.length * 100 : 0);
       const kc = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)';
-      const totalSteps = myT.reduce((s, t) => s + (t.steps?.length || 0), 0);
-      const doneSteps = myT.reduce((s, t) => { if (!t.steps || !t.stepChecks[uid]) return s; return s + Object.values(t.stepChecks[uid]).filter(v => v.done).length; }, 0);
-      // อุปสรรคและคอมเมนต์ — กรองจากงานที่เห็นได้เท่านั้น
-      const myObs = myT.flatMap(t => t.obstacles.filter(o => o.authorId === uid));
+      const totalSteps = activeT.reduce((s, t) => s + (t.steps?.length || 0), 0);
+      const doneSteps = activeT.reduce((s, t) => { if (!t.steps || !t.stepChecks[uid]) return s; return s + Object.values(t.stepChecks[uid]).filter(v => v.done).length; }, 0);
+      // อุปสรรคและคอมเมนต์ — กรองจากงานที่ยังไม่เสร็จและเห็นได้เท่านั้น
+      const myObs = activeT.flatMap(t => t.obstacles.filter(o => o.authorId === uid));
       const myComments = myT.filter(t => t.comments?.length);
 
       gi('mydash-body').innerHTML = `
@@ -5202,17 +5231,20 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:12px;">ความคืบหน้างานของฉัน</div>
-        ${myT.length ? sortTasksByDue(myT, true).map(t => {
+        ${activeT.length ? activeT.map(t => {
         const cfg = COL[t.col] || COL.todo; return `<div class="dash-task-row" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:6px;">
             <span class="dash-task-title">${t.title}</span>
-            <span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:8px;">${t.prog}%</span>
+            ${overdueNoUpdateBadge(t)}
+            <span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:auto;">${t.prog}%</span>
             <span class="dash-open-pill" role="button" aria-label="เปิดดูรายละเอียดงาน">เปิดดูงาน</span>
+            ${canAssign() ? `<button class="dash-open-pill" style="border:0;color:var(--danger);background:#FFF1F2;" onclick="event.stopPropagation();delTask(${t.id})">ลบ</button>` : ''}
           </div>
           <div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden;"><div style="width:${t.prog}%;height:100%;background:${cfg.c};border-radius:3px;"></div></div>
           <div style="font-size:9px;color:var(--text3);margin-top:2px;">${cfg.n} · ${taskDueLabel(t)}</div>
         </div>`;
-      }).join('') : `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">ยังไม่มีงาน</div>`}
+      }).join('') : `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">ไม่มีงานกำลังดำเนินการ — งานที่เสร็จแล้วถูกแยกออกด้านล่าง</div>`}
+        ${done.length ? `<div style="margin-top:14px;padding-top:10px;border-top:.5px solid var(--border);"><div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;">งานเสร็จแล้วล่าสุด</div>${done.slice(0, 5).map(t => { const cfg = COL[t.col] || COL.done; return `<div class="dash-task-row" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:6px;"><span class="dash-task-title">${t.title}</span><span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:auto;">${t.prog}%</span><span class="dash-open-pill" role="button" aria-label="เปิดดูรายละเอียดงาน">เปิดดูงาน</span>${canAssign() ? `<button class="dash-open-pill" style="border:0;color:var(--danger);background:#FFF1F2;" onclick="event.stopPropagation();delTask(${t.id})">ลบ</button>` : ''}</div><div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden;"><div style="width:${t.prog}%;height:100%;background:${cfg.c};border-radius:3px;"></div></div><div style="font-size:9px;color:var(--text3);margin-top:2px;">${cfg.n} · ${taskDueLabel(t)}</div></div>`; }).join('')}</div>` : ''}
       </div>
 
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
@@ -5221,7 +5253,7 @@
           ${[{ l: 'ขั้นตอนทั้งหมด', v: totalSteps, c: '#6366F1' }, { l: 'เสร็จแล้ว', v: doneSteps, c: '#10B981' }, { l: 'คงเหลือ', v: totalSteps - doneSteps, c: '#F59E0B' }, { l: '%สำเร็จ', v: Math.round(totalSteps ? doneSteps / totalSteps * 100 : 0) + '%', c: '#8B5CF6' }].map(m => `<div style="background:var(--surface);border-radius:9px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:${m.c};">${m.v}</div><div style="font-size:9px;color:var(--text3);">${m.l}</div></div>`).join('')}
         </div>
         <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px;">งานที่มีขั้นตอนค้าง</div>
-        ${sortTasksByDue(myT.filter(t => t.steps?.length)).map(t => {
+        ${sortTasksByDue(activeT.filter(t => t.steps?.length)).map(t => {
         const mySC = t.stepChecks[uid] || {}; const doneC = Object.values(mySC).filter(v => v.done).length; const tot = t.steps.length; const ppct = Math.round(tot ? doneC / tot * 100 : 0); return `<div class="dash-task-row" style="display:flex;align-items:center;gap:8px;margin-bottom:7px;" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
           <div style="flex:1;min-width:0;"><span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;font-weight:700;">${t.title}</span>
           <div style="height:4px;background:var(--surface);border-radius:2px;overflow:hidden;margin-top:3px;"><div style="width:${ppct}%;height:100%;background:var(--purple);border-radius:2px;"></div></div></div>
@@ -5518,6 +5550,7 @@
         <span style="font-size:13px;font-weight:700;color:${cfg.c};">${t.prog}%</span>
       </div>
       ${t.date ? `<div style="font-size:11px;color:${ov ? 'var(--danger)' : 'var(--text3)'};">📅 ${t.date}${ov ? ' ⚠️ เกินกำหนด' : ''}</div>` : ''}
+      ${isOverdueNoUpdate(t) ? `<div style="margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#FFF7ED;color:#B45309;font-size:12px;font-weight:700;">⚠️ งานนี้เกินกำหนดและยังไม่มีการอัปเดตความคืบหน้า กรุณาอัปเดตสถานะหรือแนบหลักฐาน</div>` : ''}
     </div>
 
     ${t.desc ? `<div class="dp-sec"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="dp-sec-t" style="margin-bottom:0;">รายละเอียดงาน</div>${canEditText ? `<button class="dp-inline-edit" onclick="openTaskModalEdit(${t.id})">✏️ แก้ไขข้อความ</button>` : ''}</div><div class="dp-detail-text">${t.desc}</div></div>` : `<div class="dp-sec"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="dp-sec-t" style="margin-bottom:0;">รายละเอียดงาน</div>${canEditText ? `<button class="dp-inline-edit" onclick="openTaskModalEdit(${t.id})">✏️ เพิ่ม/แก้ไขรายละเอียด</button>` : ''}</div><div class="dp-detail-text" style="color:var(--text3);">ยังไม่มีรายละเอียดงาน</div></div>`}
@@ -5664,7 +5697,7 @@
     window.showDP = showDP;
     window.openTaskDetail = openTaskDetail;
     window.closeDP = closeDP;
-    function delTask(id) { if (confirm('ลบงาน?')) { tasks = tasks.filter(t => t.id !== id); closeDP(); renderAll(); toast('ลบงานแล้ว'); } }
+    function delTask(id) { const tid = Number(id || 0); if (!tid) return; if (confirm('ลบงาน?')) { tasks = tasks.filter(t => Number(t.id) !== tid); closeDP(); renderAll(); toast('ลบงานแล้ว'); } }
     function updateObsBadge() {
       const b = gi('obs-badge'); if (!b) return;
       // นับเฉพาะอุปสรรคในสาขาตัวเอง
