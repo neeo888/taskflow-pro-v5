@@ -3210,6 +3210,17 @@
           <div id="mydash-body"></div>
         </div>
 
+        <!-- MY CALENDAR -->
+        <div class="page" id="page-mycalendar">
+          <div class="ph">
+            <div>
+              <div class="pt">ปฏิทินงานของฉัน</div>
+              <div class="ps">งานที่ต้องส่ง / ส่งแล้ว ตามสิทธิ์การล็อกอิน</div>
+            </div>
+          </div>
+          <div id="mycalendar-body"></div>
+        </div>
+
         <!-- BOARD (admin/mgr) -->
         <div class="page" id="page-board">
           <div class="ph">
@@ -5079,7 +5090,8 @@
       let h = `<div class="nsec">เมนูหลัก</div>
   <div class="ni active" id="ni-home" role="button" tabindex="0" data-page="home" onclick="goPage('home',this)"><svg viewBox="0 0 16 16" fill="none"><path d="M2 8L8 3l6 5v7a.7.7 0 0 1-.7.7H10v-4H6v4H2.7A.7.7 0 0 1 2 15V8z" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>หน้าหลัก</div>
   <div class="ni" id="ni-mytasks" role="button" tabindex="0" data-page="mytasks" onclick="goPage('mytasks',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M4 8h8M4 5h5M4 11h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>งานของฉัน</div>
-  <div class="ni" id="ni-mydash" role="button" tabindex="0" data-page="mydash" onclick="goPage('mydash',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M8 4v4l3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Dashboard ของฉัน</div>`;
+  <div class="ni" id="ni-mydash" role="button" tabindex="0" data-page="mydash" onclick="goPage('mydash',this)"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M8 4v4l3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Dashboard ของฉัน</div>
+  <div class="ni" id="ni-mycalendar" role="button" tabindex="0" data-page="mycalendar" onclick="goPage('mycalendar',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 1.8v2.6M11 1.8v2.6M2 6h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5 8h2M9 8h2M5 11h2M9 11h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>ปฏิทินงานของฉัน</div>`;
       if (ca) {
         h += `<div class="nsec">จัดการ</div>
     <div class="ni" id="ni-board" role="button" tabindex="0" data-page="board" onclick="goPage('board',this)"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="10" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="10" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>กระดานงาน</div>`;
@@ -5116,12 +5128,12 @@
       const pg = gi('page-' + p); if (pg) pg.classList.add('active');
       if (el) el.classList.add('active');
       closeDP();
-      ({ home: renderHome, mytasks: renderMyTasks, mydash: renderMyDash, board: renderBoard, tags: renderTagsPage, members: renderMembers, issues: renderGlobalIssues, dashboard: renderDashboard }[p] || function () { })();
+      ({ home: renderHome, mytasks: renderMyTasks, mydash: renderMyDash, mycalendar: renderMyCalendar, board: renderBoard, tags: renderTagsPage, members: renderMembers, issues: renderGlobalIssues, dashboard: renderDashboard }[p] || function () { })();
     }
 
     function renderAll() {
       if (currentUser) renderBell();
-      renderHome(); renderMyTasks(); renderMyDash();
+      renderHome(); renderMyTasks(); renderMyDash(); renderMyCalendar();
       if (canAssign()) renderBoard();
       if (isAM()) { renderMembers(); renderGlobalIssues(); renderDashboard(); }
     }
@@ -5187,24 +5199,152 @@
     }
 
     // ══════════════════════════
-    // MY DASHBOARD
+    // MY DASHBOARD + PERSONAL CALENDAR
     // ══════════════════════════
+    let myCalendarMonth = new Date();
+    const TF_CAL_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    const TF_CAL_DAYS = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+    function taskDateKey(t) {
+      if (!t || !t.date) return '';
+      const m = String(t.date).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+    }
+    function fmtDateKeyTH(key) {
+      if (!key) return 'ไม่มีกำหนดส่ง';
+      const [y, m, d] = key.split('-').map(Number);
+      if (!y || !m || !d) return 'ไม่มีกำหนดส่ง';
+      return `${d} ${TF_CAL_MONTHS[m - 1]} ${y + 543}`;
+    }
+    function taskDueTimeLabel(t) {
+      const time = (t && t.dueTime) ? String(t.dueTime).trim() : '';
+      return `${fmtDateKeyTH(taskDateKey(t))}${time ? ' เวลา ' + time + ' น.' : ''}`;
+    }
+    function changeMyCalendarMonth(delta) {
+      myCalendarMonth = new Date(myCalendarMonth.getFullYear(), myCalendarMonth.getMonth() + Number(delta || 0), 1);
+      renderMyCalendar();
+    }
+    function resetMyCalendarMonth() {
+      myCalendarMonth = new Date();
+      renderMyCalendar();
+    }
+    function visibleMyTasksAll() {
+      return sortTasksByDue(tasks.filter(t => canSeeTask(t)), true);
+    }
+    function dashboardTaskRow(t, mode) {
+      const cfg = COL[t.col] || (isDoneTask(t) ? COL.done : COL.todo);
+      const overBadge = !isDoneTask(t) ? overdueNoUpdateBadge(t) : '';
+      const due = taskDueTimeLabel(t);
+      const delBtn = canAssign() ? `<button class="dash-open-pill" style="border:0;color:var(--danger);background:#FFF1F2;" onclick="event.stopPropagation();delTask(${t.id})">ลบ</button>` : '';
+      return `<div class="dash-task-row" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}" style="cursor:pointer;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:6px;">
+          <span class="dash-task-title">${t.title}</span>
+          ${overBadge}
+          <span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:auto;">${t.prog}%</span>
+          <span class="dash-open-pill" role="button" aria-label="เปิดดูรายละเอียดงาน">เปิดดูงาน</span>
+          ${delBtn}
+        </div>
+        <div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden;"><div style="width:${t.prog}%;height:100%;background:${cfg.c};border-radius:3px;"></div></div>
+        <div style="font-size:9px;color:var(--text3);margin-top:2px;">${cfg.n} · กำหนดแล้วเสร็จ: ${due}</div>
+      </div>`;
+    }
+    function renderTaskMiniList(list, emptyText, limit) {
+      const rows = (limit ? list.slice(0, limit) : list).map(t => dashboardTaskRow(t)).join('');
+      return rows || `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">${emptyText}</div>`;
+    }
+    function calendarTaskState(t) {
+      if (isDoneTask(t)) return { l: 'ส่งแล้ว', c: '#00A6E7', bg: '#EAF8FF' };
+      if (isOverdueTask(t)) return { l: 'เกินกำหนด', c: '#FF4D6D', bg: '#FFF1F2' };
+      return { l: 'ต้องส่ง', c: '#6366F1', bg: '#F3F6FF' };
+    }
+    function renderCalChip(t) {
+      const st = calendarTaskState(t);
+      return `<div role="button" tabindex="0" title="${t.title}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}" style="display:flex;align-items:center;gap:4px;margin-top:4px;padding:4px 6px;border-radius:8px;background:${st.bg};border:.5px solid rgba(99,102,241,.12);font-size:9px;line-height:1.25;cursor:pointer;overflow:hidden;">
+        <span style="width:6px;height:6px;border-radius:50%;background:${st.c};flex-shrink:0;"></span>
+        <span style="font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</span>
+      </div>`;
+    }
+    function renderMyCalendar() {
+      const body = gi('mycalendar-body');
+      if (!body || !currentUser) return;
+      const visible = visibleMyTasksAll();
+      const activeT = sortTasksByDue(visible.filter(isActiveTask));
+      const doneT = sortTasksByDue(visible.filter(isDoneTask));
+      const noDue = visible.filter(t => !taskDateKey(t));
+      const y = myCalendarMonth.getFullYear();
+      const m = myCalendarMonth.getMonth();
+      const monthKey = `${y}-${pad2(m + 1)}`;
+      const first = new Date(y, m, 1);
+      const days = new Date(y, m + 1, 0).getDate();
+      const blanks = first.getDay();
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const byDay = {};
+      visible.forEach(t => {
+        const k = taskDateKey(t);
+        if (!k || !k.startsWith(monthKey)) return;
+        (byDay[k] ||= []).push(t);
+      });
+      Object.keys(byDay).forEach(k => byDay[k] = sortTasksByDue(byDay[k], true));
+      const monthTasks = visible.filter(t => taskDateKey(t).startsWith(monthKey));
+      const monthActive = monthTasks.filter(isActiveTask);
+      const monthDone = monthTasks.filter(isDoneTask);
+      const overdue = activeT.filter(isOverdueTask);
+      let cells = '';
+      for (let i = 0; i < blanks; i++) cells += `<div style="min-height:92px;border:.5px solid var(--border);background:#FBFCFF;border-radius:10px;"></div>`;
+      for (let d = 1; d <= days; d++) {
+        const key = `${monthKey}-${pad2(d)}`;
+        const dayTasks = byDay[key] || [];
+        const isToday = key === todayKey;
+        cells += `<div style="min-height:92px;border:.5px solid ${isToday ? 'rgba(0,196,140,.7)' : 'var(--border)'};background:${isToday ? '#ECFFF9' : 'var(--white)'};border-radius:10px;padding:7px;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:800;color:${isToday ? 'var(--teal)' : 'var(--text)'};">
+            <span>${d}</span>${dayTasks.length ? `<span style="font-size:9px;color:var(--text3);">${dayTasks.length} งาน</span>` : ''}
+          </div>
+          ${dayTasks.slice(0, 3).map(renderCalChip).join('')}
+          ${dayTasks.length > 3 ? `<div style="font-size:9px;color:var(--text3);margin-top:4px;">+ อีก ${dayTasks.length - 3} งาน</div>` : ''}
+        </div>`;
+      }
+      body.innerHTML = `<div style="display:grid;grid-template-columns:1.45fr .9fr;gap:14px;align-items:start;">
+        <div style="background:var(--white);border:.5px solid var(--border);border-radius:14px;padding:14px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <button class="btn-sec" style="padding:8px 12px;" onclick="changeMyCalendarMonth(-1)">← เดือนก่อน</button>
+            <div style="flex:1;text-align:center;font-weight:800;color:var(--text);font-size:18px;">${TF_CAL_MONTHS[m]} ${y + 543}</div>
+            <button class="btn-sec" style="padding:8px 12px;" onclick="resetMyCalendarMonth()">วันนี้</button>
+            <button class="btn-sec" style="padding:8px 12px;" onclick="changeMyCalendarMonth(1)">เดือนถัดไป →</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+            <div style="background:#F3F6FF;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:#6366F1;">${monthActive.length}</div><div style="font-size:10px;color:var(--text3);">ต้องส่งเดือนนี้</div></div>
+            <div style="background:#EAF8FF;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:#00A6E7;">${monthDone.length}</div><div style="font-size:10px;color:var(--text3);">ส่งแล้วเดือนนี้</div></div>
+            <div style="background:#FFF1F2;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:#FF4D6D;">${overdue.length}</div><div style="font-size:10px;color:var(--text3);">เกินกำหนด</div></div>
+            <div style="background:#FFF8E8;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:#F59E0B;">${noDue.length}</div><div style="font-size:10px;color:var(--text3);">ไม่มีกำหนด</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;">${TF_CAL_DAYS.map(d => `<div style="text-align:center;font-size:11px;font-weight:800;color:var(--text3);padding:4px;">${d}</div>`).join('')}</div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">${cells}</div>
+        </div>
+        <div style="display:grid;gap:14px;">
+          <div style="background:var(--white);border:.5px solid var(--border);border-radius:14px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:800;">งานยังไม่เสร็จ</div><span style="font-size:11px;color:#6366F1;font-weight:800;">${activeT.length} งาน</span></div>
+            ${renderTaskMiniList(activeT, 'ไม่มีงานค้าง', 8)}
+          </div>
+          <div style="background:var(--white);border:.5px solid var(--border);border-radius:14px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:800;">งานส่งแล้ว / เสร็จแล้ว</div><span style="font-size:11px;color:#00A6E7;font-weight:800;">${doneT.length} งาน</span></div>
+            ${renderTaskMiniList(doneT, 'ยังไม่มีงานเสร็จแล้ว', 8)}
+          </div>
+        </div>
+      </div>`;
+    }
+
     function renderMyDash() {
       const uid = currentUser.id;
-      // กรองเฉพาะงานที่มีสิทธิ์เห็น (user role = เฉพาะงานที่ assign)
-      const myT = tasks.filter(t => canSeeTask(t));
-      const activeT = sortTasksByDue(myT.filter(t => isActiveTask(t)));
-      const wip = sortTasksByDue(myT.filter(t => isActiveTask(t) && COL[t.col] && (COL[t.col] || COL['done']).g === 'wip'));
-      const done = sortTasksByDue(myT.filter(t => isDoneTask(t)));
+      const myT = visibleMyTasksAll();
+      const activeT = sortTasksByDue(myT.filter(isActiveTask));
+      const done = sortTasksByDue(myT.filter(isDoneTask));
+      const wip = activeT.filter(t => COL[t.col] && COL[t.col].g === 'wip');
       const review = activeT.filter(t => t.col === 'review');
-      const overdueNoUpdate = activeT.filter(t => isOverdueNoUpdate(t));
       const pct = Math.round(myT.length ? done.length / myT.length * 100 : 0);
-      const kc = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)';
+      const kcHex = pct >= 80 ? '#00C48C' : pct >= 50 ? '#FFB340' : '#FF4D6D';
       const totalSteps = activeT.reduce((s, t) => s + (t.steps?.length || 0), 0);
       const doneSteps = activeT.reduce((s, t) => { if (!t.steps || !t.stepChecks[uid]) return s; return s + Object.values(t.stepChecks[uid]).filter(v => v.done).length; }, 0);
-      // อุปสรรคและคอมเมนต์ — กรองจากงานที่ยังไม่เสร็จและเห็นได้เท่านั้น
       const myObs = activeT.flatMap(t => t.obstacles.filter(o => o.authorId === uid));
-      const myComments = myT.filter(t => t.comments?.length);
 
       gi('mydash-body').innerHTML = `
     <div class="my-dash-header">
@@ -5213,10 +5353,10 @@
         ${avEl(currentUser, 54, 16)}
         <div>
           <div class="mdh-name">${currentUser.name}</div>
-          <div class="mdh-role">${currentUser.role} · ${currentUser.dept}</div>
+          <div class="mdh-role">${currentUser.role || currentUser.position || ''} · ${currentUser.dept || ''}</div>
         </div>
         <div style="margin-left:auto;text-align:right;">
-          <div style="font-size:28px;font-weight:700;color:${kc.replace('var(', '').replace(')', '').replace('--success', '#00C48C').replace('--warn', '#FFB340').replace('--danger', '#FF4D6D')};">${pct}%</div>
+          <div style="font-size:28px;font-weight:700;color:${kcHex};">${pct}%</div>
           <div style="font-size:11px;opacity:.5;">KPI</div>
         </div>
       </div>
@@ -5229,22 +5369,21 @@
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
-      <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
-        <div style="font-size:12px;font-weight:700;margin-bottom:12px;">ความคืบหน้างานของฉัน</div>
-        ${activeT.length ? activeT.map(t => {
-        const cfg = COL[t.col] || COL.todo; return `<div class="dash-task-row" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:6px;">
-            <span class="dash-task-title">${t.title}</span>
-            ${overdueNoUpdateBadge(t)}
-            <span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:auto;">${t.prog}%</span>
-            <span class="dash-open-pill" role="button" aria-label="เปิดดูรายละเอียดงาน">เปิดดูงาน</span>
-            ${canAssign() ? `<button class="dash-open-pill" style="border:0;color:var(--danger);background:#FFF1F2;" onclick="event.stopPropagation();delTask(${t.id})">ลบ</button>` : ''}
+      <div style="display:grid;gap:14px;">
+        <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:800;color:var(--text);">งานยังไม่เสร็จ</div>
+            <span style="font-size:11px;font-weight:800;color:#6366F1;">${activeT.length} งาน</span>
           </div>
-          <div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden;"><div style="width:${t.prog}%;height:100%;background:${cfg.c};border-radius:3px;"></div></div>
-          <div style="font-size:9px;color:var(--text3);margin-top:2px;">${cfg.n} · ${taskDueLabel(t)}</div>
-        </div>`;
-      }).join('') : `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">ไม่มีงานกำลังดำเนินการ — งานที่เสร็จแล้วถูกแยกออกด้านล่าง</div>`}
-        ${done.length ? `<div style="margin-top:14px;padding-top:10px;border-top:.5px solid var(--border);"><div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;">งานเสร็จแล้วล่าสุด</div>${done.slice(0, 5).map(t => { const cfg = COL[t.col] || COL.done; return `<div class="dash-task-row" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:6px;"><span class="dash-task-title">${t.title}</span><span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:auto;">${t.prog}%</span><span class="dash-open-pill" role="button" aria-label="เปิดดูรายละเอียดงาน">เปิดดูงาน</span>${canAssign() ? `<button class="dash-open-pill" style="border:0;color:var(--danger);background:#FFF1F2;" onclick="event.stopPropagation();delTask(${t.id})">ลบ</button>` : ''}</div><div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden;"><div style="width:${t.prog}%;height:100%;background:${cfg.c};border-radius:3px;"></div></div><div style="font-size:9px;color:var(--text3);margin-top:2px;">${cfg.n} · ${taskDueLabel(t)}</div></div>`; }).join('')}</div>` : ''}
+          ${renderTaskMiniList(activeT, 'ไม่มีงานค้างอยู่')}
+        </div>
+        <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:800;color:var(--text);">งานเสร็จแล้ว / ส่งแล้ว</div>
+            <span style="font-size:11px;font-weight:800;color:#00A6E7;">${done.length} งาน</span>
+          </div>
+          ${renderTaskMiniList(done, 'ยังไม่มีงานที่เสร็จแล้ว')}
+        </div>
       </div>
 
       <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
@@ -5254,13 +5393,13 @@
         </div>
         <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px;">งานที่มีขั้นตอนค้าง</div>
         ${sortTasksByDue(activeT.filter(t => t.steps?.length)).map(t => {
-        const mySC = t.stepChecks[uid] || {}; const doneC = Object.values(mySC).filter(v => v.done).length; const tot = t.steps.length; const ppct = Math.round(tot ? doneC / tot * 100 : 0); return `<div class="dash-task-row" style="display:flex;align-items:center;gap:8px;margin-bottom:7px;" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
+        const mySC = t.stepChecks[uid] || {}; const doneC = Object.values(mySC).filter(v => v.done).length; const tot = t.steps.length; const ppct = Math.round(tot ? doneC / tot * 100 : 0); return `<div class="dash-task-row" style="display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer;" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
           <div style="flex:1;min-width:0;"><span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;font-weight:700;">${t.title}</span>
           <div style="height:4px;background:var(--surface);border-radius:2px;overflow:hidden;margin-top:3px;"><div style="width:${ppct}%;height:100%;background:var(--purple);border-radius:2px;"></div></div></div>
           <span style="font-size:10px;font-weight:700;color:var(--purple);">${doneC}/${tot}</span>
-          <span class="dash-open-pill" style="opacity:.95;" role="button" aria-label="เปิดดูรายละเอียดงาน">เปิดดูงาน</span>
+          <span class="dash-open-pill" style="opacity:.95;">เปิดดูงาน</span>
         </div>`;
-      }).join('')}
+      }).join('') || `<div style="text-align:center;padding:14px;font-size:12px;color:var(--text3);">ไม่มีขั้นตอนค้าง</div>`}
       </div>
     </div>
 
@@ -5276,10 +5415,7 @@
       </div>
     </div>`;
 
-      // mini chart
-      setTimeout(() => {
-        if (myDashChart) myDashChart.destroy();
-      }, 50);
+      setTimeout(() => { if (myDashChart) myDashChart.destroy(); }, 50);
     }
 
     // ══════════════════════════
