@@ -3613,41 +3613,49 @@
   </div>
 
   <div class="modal-bg" id="modal-prog">
-    <div class="modal" style="width:420px;">
-      <div class="mhd"><span class="mhd-t">อัปเดตความคืบหน้า</span><button class="mx"
+    <div class="modal" style="width:min(560px, calc(100vw - 18px));">
+      <div class="mhd"><span class="mhd-t">อัปเดตความคืบหน้า / ส่งงานเสร็จ</span><button class="mx"
           onclick="closeModal('modal-prog')">✕</button></div>
       <div class="mbody">
         <input type="hidden" id="prog-task-id" />
+        <div id="prog-task-title" class="prog-task-card"></div>
+        <div class="prog-guide">เลือกเปอร์เซ็นต์ความคืบหน้าให้ชัดเจน หากเลือก <b>100%</b> ระบบจะส่งงานเข้าสถานะ <b>รอตรวจสอบ</b> พร้อมแนบหลักฐานได้หลายรูป/หลายไฟล์ (มากกว่า 3 ไฟล์ได้)</div>
         <div class="mfl"><label>ความคืบหน้า (%)</label>
           <input type="range" id="prog-slider" min="0" max="100" step="5"
-            oninput="gi('prog-val').textContent=this.value+'%';gi('prog-hint').style.display=this.value>=100?'block':'none';"
+            oninput="setProgValue(this.value)"
             style="width:100%;margin-bottom:4px;" />
-          <div style="text-align:center;font-size:18px;font-weight:700;color:var(--purple);" id="prog-val">0%</div>
+          <div style="text-align:center;font-size:22px;font-weight:800;color:var(--purple);" id="prog-val">0%</div>
+          <div class="prog-quick-grid">
+            <button type="button" class="prog-quick" data-prog="25" onclick="setProgValue(25)">25%<small>เริ่มทำ</small></button>
+            <button type="button" class="prog-quick" data-prog="50" onclick="setProgValue(50)">50%<small>ครึ่งทาง</small></button>
+            <button type="button" class="prog-quick" data-prog="75" onclick="setProgValue(75)">75%<small>ใกล้เสร็จ</small></button>
+            <button type="button" class="prog-quick done" data-prog="100" onclick="setProgValue(100)">100%<small>ส่งงานเสร็จ</small></button>
+          </div>
         </div>
         <div id="prog-hint"
-          style="background:#EAF3DE;border-radius:8px;padding:8px 12px;font-size:11px;color:#27500A;margin-bottom:12px;display:none;">
-          เมื่อ 100% — จะเปลี่ยนสถานะเป็น <b>รอตรวจสอบ</b> อัตโนมัติ</div>
-        <div class="mfl"><label>หมายเหตุ</label><textarea id="prog-note"
-            placeholder="บันทึกสิ่งที่ทำไปแล้ว..."></textarea></div>
+          style="background:#EAF3DE;border-radius:10px;padding:9px 12px;font-size:11px;color:#27500A;margin-bottom:12px;display:none;">
+          ✅ เมื่อบันทึก 100% งานจะถูกย้ายเป็น <b>รอตรวจสอบ</b> อัตโนมัติ</div>
+        <div class="mfl"><label>สรุปงาน / หมายเหตุ</label><textarea id="prog-note"
+            placeholder="เช่น ดำเนินการถึงขั้นตอน..., ปัญหาที่พบ..., ผลลัพธ์ที่ได้..."></textarea></div>
         <div class="mfl progress-upload-field">
-          <label>📎 แนบรูปอัปเดต / ไฟล์ประกอบ</label>
+          <label>📎 แนบรูปถ่าย / ไฟล์หลักฐาน</label>
           <div class="upload-zone" id="prog-upload-zone" role="button" tabindex="0" data-key-click="true" aria-label="เลือกไฟล์อัปเดตความคืบหน้า" onclick="document.getElementById('prog-files').click()"
             ondragover="dragOver(event,'prog-upload-zone')" ondragleave="dragLeave(event,'prog-upload-zone')"
-            ondrop="dropFile(event,'prog-files')">
-            <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">ลากรูป/ไฟล์มาวาง หรือเลือกไฟล์แนบหลักฐานความก้าวหน้า</div>
+            ondrop="dropFile(event,'prog-files');setTimeout(()=>renderProgFilePreview(document.getElementById('prog-files').files),80)">
+            <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">ลากรูป/ไฟล์มาวาง หรือเลือกหลายไฟล์พร้อมกัน</div>
             <div class="upload-btns" onclick="event.stopPropagation()">
               <button class="upload-btn-sm" type="button" onclick="document.getElementById('prog-camera-input').click()">📷 ถ่ายรูป</button>
               <button class="upload-btn-sm" type="button" onclick="document.getElementById('prog-files').click()">📂 เลือกไฟล์</button>
             </div>
           </div>
-          <input type="file" id="prog-files" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style="display:none;" onchange="renderProgFilePreview(this.files)" />
+          <input type="file" id="prog-files" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style="display:none;" onchange="appendProgFiles(this.files);this.value=''" />
           <input type="file" id="prog-camera-input" multiple accept="image/*" capture="environment" style="display:none;" onchange="appendProgFiles(this.files);this.value=''" />
           <div class="muted" style="font-size:11px;margin-top:6px;">รองรับรูปภาพ JPG/PNG/WebP และเอกสารประกอบ ระบบจะเก็บไว้ใน Supabase Storage bucket: task-attachments</div>
           <div id="prog-file-preview" class="prog-file-preview"></div>
         </div>
       </div>
       <div class="mft"><button class="btn-sec" onclick="closeModal('modal-prog')">ยกเลิก</button><button class="btn-pri"
-          onclick="submitProg()">บันทึก</button></div>
+          onclick="submitProg()">💾 บันทึกอัปเดต</button></div>
     </div>
   </div>
 
@@ -5192,7 +5200,7 @@
       <div class="tc-avs">${asgns.slice(0, 3).map(u => miniAv(u)).join('')}</div>
     </div>
     ${canUpdateTask(t) || canAssign() ? `<div style="display:flex;gap:6px;margin-top:10px;" onclick="event.stopPropagation();">
-      ${canUpdateTask(t) ? `<button class="btn-pri" style="flex:1;font-size:11px;padding:7px;" onclick="openProgModal(${t.id})">อัปเดตความคืบหน้า</button><button class="btn-sec" style="font-size:11px;padding:7px;" onclick="openObsModal(${t.id})">+ อุปสรรค</button>` : ''}
+      ${canUpdateTask(t) ? `<button class="btn-pri" style="flex:1;font-size:11px;padding:7px;" onclick="openProgModal(${t.id})">📈 อัปเดต/ส่งงาน</button><button class="btn-sec" style="font-size:11px;padding:7px;" onclick="openObsModal(${t.id})">+ อุปสรรค</button>` : ''}
       ${canAssign() ? `<button class="btn-sec" style="font-size:11px;padding:7px;color:var(--danger);" onclick="delTask(${t.id})">ลบงาน</button>` : ''}
     </div>`: ''}
   </div>`;
@@ -5232,24 +5240,35 @@
       return sortTasksByDue(tasks.filter(t => canSeeTask(t)), true);
     }
     function dashboardTaskRow(t, mode) {
-      const cfg = COL[t.col] || (isDoneTask(t) ? COL.done : COL.todo);
-      const overBadge = !isDoneTask(t) ? overdueNoUpdateBadge(t) : '';
+      const doneMode = mode === 'done' || isDoneTask(t);
+      const cfg = COL[t.col] || (doneMode ? (COL.done || { c: '#10B981', n: 'เสร็จแล้ว' }) : (COL.todo || { c: '#6366F1', n: 'รอดำเนินการ' }));
+      const overdue = !doneMode && isOverdueTask(t);
+      const overBadge = overdue ? overdueNoUpdateBadge(t) : '';
       const due = taskDueTimeLabel(t);
+      const prog = Math.max(0, Math.min(100, Number(t.prog || 0)));
+      const leftColor = doneMode ? '#10B981' : overdue ? '#FF4D6D' : '#6366F1';
+      const rowBg = doneMode ? '#F0FDF4' : overdue ? '#FFF1F2' : '#FBFCFF';
+      const rowBorder = doneMode ? 'rgba(16,185,129,.36)' : overdue ? 'rgba(255,77,109,.35)' : 'rgba(99,102,241,.18)';
+      const barColor = doneMode ? '#10B981' : cfg.c;
+      const statusText = doneMode ? 'เสร็จแล้ว / ส่งแล้ว' : (overdue ? 'เกินกำหนด ต้องติดตาม' : cfg.n);
+      const openText = doneMode ? 'ดูงานเสร็จ' : 'เปิดดูงาน';
+      const doneBadge = doneMode ? `<span style="font-size:10px;font-weight:800;color:#047857;background:#DCFCE7;border-radius:999px;padding:3px 8px;white-space:nowrap;">✅ เสร็จแล้ว</span>` : '';
       const delBtn = canAssign() ? `<button class="dash-open-pill" style="border:0;color:var(--danger);background:#FFF1F2;" onclick="event.stopPropagation();delTask(${t.id})">ลบ</button>` : '';
-      return `<div class="dash-task-row" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}" style="cursor:pointer;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:6px;">
-          <span class="dash-task-title">${t.title}</span>
+      return `<div class="dash-task-row ${doneMode ? 'dash-done-row' : 'dash-active-row'}" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}" style="cursor:pointer;background:${rowBg};border:.5px solid ${rowBorder};border-radius:12px;padding:10px 12px;margin-bottom:8px;box-shadow:inset 4px 0 0 ${leftColor};">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;gap:6px;">
+          <span class="dash-task-title" style="color:${doneMode ? '#065F46' : 'var(--text)'};">${t.title}</span>
           ${overBadge}
-          <span style="font-size:10px;font-weight:700;color:${cfg.c};margin-left:auto;">${t.prog}%</span>
-          <span class="dash-open-pill" role="button" aria-label="เปิดดูรายละเอียดงาน">เปิดดูงาน</span>
+          ${doneBadge}
+          <span style="font-size:10px;font-weight:800;color:${barColor};margin-left:auto;">${prog}%</span>
+          <span class="dash-open-pill" role="button" aria-label="เปิดดูรายละเอียดงาน">${openText}</span>
           ${delBtn}
         </div>
-        <div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden;"><div style="width:${t.prog}%;height:100%;background:${cfg.c};border-radius:3px;"></div></div>
-        <div style="font-size:9px;color:var(--text3);margin-top:2px;">${cfg.n} · กำหนดแล้วเสร็จ: ${due}</div>
+        <div style="height:6px;background:${doneMode ? '#D1FAE5' : 'var(--surface)'};border-radius:999px;overflow:hidden;"><div style="width:${prog}%;height:100%;background:${barColor};border-radius:999px;"></div></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">${statusText} · กำหนดแล้วเสร็จ: ${due}</div>
       </div>`;
     }
-    function renderTaskMiniList(list, emptyText, limit) {
-      const rows = (limit ? list.slice(0, limit) : list).map(t => dashboardTaskRow(t)).join('');
+    function renderTaskMiniList(list, emptyText, limit, mode) {
+      const rows = (limit ? list.slice(0, limit) : list).map(t => dashboardTaskRow(t, mode)).join('');
       return rows || `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">${emptyText}</div>`;
     }
     function calendarTaskState(t) {
@@ -5323,11 +5342,11 @@
         <div style="display:grid;gap:14px;">
           <div style="background:var(--white);border:.5px solid var(--border);border-radius:14px;padding:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:800;">งานยังไม่เสร็จ</div><span style="font-size:11px;color:#6366F1;font-weight:800;">${activeT.length} งาน</span></div>
-            ${renderTaskMiniList(activeT, 'ไม่มีงานค้าง', 8)}
+            ${renderTaskMiniList(activeT, 'ไม่มีงานค้าง', 8, 'active')}
           </div>
           <div style="background:var(--white);border:.5px solid var(--border);border-radius:14px;padding:14px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:800;">งานส่งแล้ว / เสร็จแล้ว</div><span style="font-size:11px;color:#00A6E7;font-weight:800;">${doneT.length} งาน</span></div>
-            ${renderTaskMiniList(doneT, 'ยังไม่มีงานเสร็จแล้ว', 8)}
+            ${renderTaskMiniList(doneT, 'ยังไม่มีงานเสร็จแล้ว', 8, 'done')}
           </div>
         </div>
       </div>`;
@@ -5372,17 +5391,17 @@
       <div style="display:grid;gap:14px;">
         <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div style="font-size:13px;font-weight:800;color:var(--text);">งานยังไม่เสร็จ</div>
+            <div><div style="font-size:13px;font-weight:900;color:var(--text);">📌 งานยังไม่เสร็จ / ต้องดำเนินการ</div><div style="font-size:10px;color:var(--text3);margin-top:2px;">รายการนี้เท่านั้นที่ต้องติดตาม</div></div>
             <span style="font-size:11px;font-weight:800;color:#6366F1;">${activeT.length} งาน</span>
           </div>
-          ${renderTaskMiniList(activeT, 'ไม่มีงานค้างอยู่')}
+          ${renderTaskMiniList(activeT, 'ไม่มีงานค้างอยู่', null, 'active')}
         </div>
-        <div style="background:var(--white);border:.5px solid var(--border);border-radius:13px;padding:14px;">
+        <div style="background:linear-gradient(180deg,#F0FDF4,#FFFFFF);border:.5px solid rgba(16,185,129,.28);border-radius:13px;padding:14px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div style="font-size:13px;font-weight:800;color:var(--text);">งานเสร็จแล้ว / ส่งแล้ว</div>
+            <div><div style="font-size:13px;font-weight:900;color:#065F46;">✅ งานเสร็จแล้ว / ส่งแล้ว</div><div style="font-size:10px;color:var(--text3);margin-top:2px;">แยกออกจากงานค้าง เพื่อไม่ให้สับสน</div></div>
             <span style="font-size:11px;font-weight:800;color:#00A6E7;">${done.length} งาน</span>
           </div>
-          ${renderTaskMiniList(done, 'ยังไม่มีงานที่เสร็จแล้ว')}
+          ${renderTaskMiniList(done, 'ยังไม่มีงานที่เสร็จแล้ว', null, 'done')}
         </div>
       </div>
 
@@ -5391,7 +5410,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
           ${[{ l: 'ขั้นตอนทั้งหมด', v: totalSteps, c: '#6366F1' }, { l: 'เสร็จแล้ว', v: doneSteps, c: '#10B981' }, { l: 'คงเหลือ', v: totalSteps - doneSteps, c: '#F59E0B' }, { l: '%สำเร็จ', v: Math.round(totalSteps ? doneSteps / totalSteps * 100 : 0) + '%', c: '#8B5CF6' }].map(m => `<div style="background:var(--surface);border-radius:9px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:${m.c};">${m.v}</div><div style="font-size:9px;color:var(--text3);">${m.l}</div></div>`).join('')}
         </div>
-        <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px;">งานที่มีขั้นตอนค้าง</div>
+        <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px;">งานที่มีขั้นตอนค้าง (เฉพาะงานยังไม่เสร็จ)</div>
         ${sortTasksByDue(activeT.filter(t => t.steps?.length)).map(t => {
         const mySC = t.stepChecks[uid] || {}; const doneC = Object.values(mySC).filter(v => v.done).length; const tot = t.steps.length; const ppct = Math.round(tot ? doneC / tot * 100 : 0); return `<div class="dash-task-row" style="display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer;" role="button" tabindex="0" data-task-open="detail" data-task-id="${t.id}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}">
           <div style="flex:1;min-width:0;"><span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;font-weight:700;">${t.title}</span>
@@ -5560,6 +5579,15 @@
       if (!Array.isArray(t.comments)) t.comments = [];
       if (!COL[t.col]) t.col = 'todo';
       if (!PRIO[t.priority]) t.priority = 'normal';
+      if (!t.meeting || typeof t.meeting !== 'object') {
+        if (typeof t.meeting === 'string') { try { t.meeting = JSON.parse(t.meeting) || {}; } catch (_) { t.meeting = {}; } }
+        else t.meeting = {};
+      }
+      t.task_kind = t.task_kind || t.taskKind || t.kind || ((t.tags || []).includes('ประชุม') ? 'meeting' : 'task');
+      t.taskKind = t.task_kind;
+      t.kind = t.task_kind;
+      t.due_time = t.due_time || t.dueTime || t.meeting.time || '';
+      t.dueTime = t.due_time;
       t.prog = Math.max(0, Math.min(100, Number(t.prog || 0)));
       return t;
     }
@@ -5583,7 +5611,7 @@
       cfg = cfg || COL[t.col] || COL.todo;
       pr = pr || PRIO[t.priority] || PRIO.normal;
       asgns = Array.isArray(asgns) ? asgns : [];
-      const due = detailDateText(t.date);
+      const due = detailTaskDateText(t);
       const creator = findU(t.createdBy);
       const submitter = findU(t.submittedBy);
       const verifier = findU(t.verifiedBy);
@@ -5726,7 +5754,7 @@
     <!-- progress log -->
     ${(t.progressLog || []).length ? `<div class="dp-sec"><div class="dp-sec-t">ประวัติความคืบหน้า</div>${[...(t.progressLog || [])].reverse().map(lg => {
         const u2 = findU(lg.authorId); return `<div style="display:flex;gap:7px;padding:6px 0;border-bottom:.5px solid var(--border);">${u2 ? avEl(u2, 20, 6) : ''}
-      <div><div style="font-size:10px;font-weight:700;color:var(--text2);">${u2?.name || ''} <span style="font-weight:400;color:var(--text3);">${lg.at}</span></div>${lg.note ? `<div style="font-size:11px;margin-top:2px;">${lg.note}</div>` : ''}</div>
+      <div style="flex:1;min-width:0;"><div style="font-size:10px;font-weight:700;color:var(--text2);">${u2?.name || ''} <span style="font-weight:400;color:var(--text3);">${lg.at}</span></div>${lg.note ? `<div style="font-size:11px;margin-top:2px;">${lg.note}</div>` : ''}${(lg.files || []).length ? `<div class="progress-log-files">${(lg.files || []).map(f => _atchItemHtml(f, null)).join('')}</div>` : ''}</div>
       <span style="margin-left:auto;font-size:11px;font-weight:700;color:var(--purple);">${lg.prog}%</span>
     </div>`;
       }).join('')}</div>` : ''}
@@ -5760,7 +5788,7 @@
 
     <!-- actions -->
     <div style="display:flex;gap:7px;flex-wrap:wrap;padding-top:10px;border-top:.5px solid var(--border);">
-      ${canUpdateTask(t) ? `<button class="btn-pri" style="flex:1;" onclick="openProgModal(${t.id})">อัปเดตความคืบหน้า</button>` : ''}
+      ${canUpdateTask(t) ? `<button class="btn-pri" style="flex:1;" onclick="openProgModal(${t.id})">📈 อัปเดต/ส่งงาน</button>` : ''}
       ${canAssign() ? `<button class="btn-sec" onclick="openTaskModalEdit(${t.id})">แก้ไข</button><button class="btn-sec" style="color:var(--danger);" onclick="delTask(${t.id})">ลบ</button>` : ''}
       ${isAM() && (t.col === 'review' || t.col === 'done') ? `
       <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;">
@@ -6316,40 +6344,95 @@
         return false;
       }
     }
+    let progSelectedFiles = [];
     function appendProgFiles(files) {
-      const input = gi('prog-files'); if (!input) return;
-      const merged = Array.from(input.files || []).concat(Array.from(files || []));
-      if (_setFileInputFiles(input, merged)) renderProgFilePreview(input.files);
-      else renderProgFilePreview(merged);
+      const added = Array.from(files || []);
+      if (!added.length) return;
+      progSelectedFiles = progSelectedFiles.concat(added);
+      const input = gi('prog-files');
+      if (input) _setFileInputFiles(input, progSelectedFiles);
+      renderProgFilePreview(progSelectedFiles);
     }
     function removeProgFileAt(idx) {
-      const input = gi('prog-files'); if (!input) return;
-      const kept = Array.from(input.files || []).filter((_, i) => i !== idx);
-      _setFileInputFiles(input, kept);
-      renderProgFilePreview(input.files);
+      progSelectedFiles = (progSelectedFiles || []).filter((_, i) => i !== idx);
+      const input = gi('prog-files');
+      if (input) _setFileInputFiles(input, progSelectedFiles);
+      renderProgFilePreview(progSelectedFiles);
     }
     function renderProgFilePreview(files) {
       const box = gi('prog-file-preview'); if (!box) return;
       const arr = Array.from(files || []);
       if (!arr.length) { box.innerHTML = ''; return; }
-      box.innerHTML = `<div class="muted" style="font-size:11px;margin:8px 0 5px;">เลือกแล้ว ${arr.length} ไฟล์ — จะอัปโหลดพร้อมการบันทึกความก้าวหน้า</div>` + arr.map((f, i) => {
+      const totalKb = arr.reduce((s, f) => s + (f.size || 0), 0) / 1024;
+      box.innerHTML = `<div class="prog-file-summary">เลือกแล้ว <b>${arr.length}</b> ไฟล์ (${Math.round(totalKb).toLocaleString()}KB) — แนบได้มากกว่า 3 ไฟล์ และจะบันทึกพร้อมความคืบหน้า</div>` + arr.map((f, i) => {
         const isImg = (f.type || '').startsWith('image/');
         const url = isImg ? URL.createObjectURL(f) : '';
-        const nm = (typeof safeAttr === 'function') ? safeAttr(f.name || 'file') : String(f.name || 'file').replace(/[&<>"]/g, '');
+        const nm = safeAttr(f.name || 'file');
         const size = f.size ? `${Math.round(f.size / 1024).toLocaleString()}KB` : '';
         return `<div class="prog-file-chip">${isImg ? `<img src="${url}" alt="${nm}">` : '<span class="prog-file-icon">📎</span>'}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nm}<small style="display:block;color:var(--text3);font-size:9px;">${size}</small></span><button type="button" class="atch-del" title="เอาไฟล์นี้ออก" onclick="removeProgFileAt(${i})">✕</button></div>`;
       }).join('');
     }
-    function openProgModal(tid) { const t = tasks.find(t => t.id === tid); if (!t) return; gi('prog-task-id').value = tid; gi('prog-slider').value = t.prog; gi('prog-val').textContent = t.prog + '%'; gi('prog-note').value = ''; if (gi('prog-files')) gi('prog-files').value = ''; if (gi('prog-camera-input')) gi('prog-camera-input').value = ''; if (gi('prog-file-preview')) gi('prog-file-preview').innerHTML = ''; gi('prog-hint').style.display = t.prog >= 95 ? 'block' : 'none'; gi('prog-slider').oninput = function () { gi('prog-val').textContent = this.value + '%'; gi('prog-hint').style.display = this.value >= 100 ? 'block' : 'none'; }; openModal('modal-prog'); }
-    function submitProg() {
+    function setProgValue(v) {
+      const val = Math.max(0, Math.min(100, parseInt(v || 0)));
+      const sl = gi('prog-slider'); if (sl) sl.value = val;
+      const pv = gi('prog-val'); if (pv) pv.textContent = val + '%';
+      const hint = gi('prog-hint'); if (hint) hint.style.display = val >= 100 ? 'block' : 'none';
+      document.querySelectorAll('.prog-quick').forEach(b => b.classList.toggle('active', parseInt(b.dataset.prog || '0') === val));
+    }
+    function _fileToProgressAttachment(file) {
+      return new Promise(resolve => {
+        const obj = (typeof _pendingFileObj === 'function')
+          ? _pendingFileObj(file, 'progress')
+          : { id: 'progress_' + Date.now() + '_' + Math.random().toString(36).slice(2), name: file.name, size: file.size, type: file.type, pendingFile: file };
+        obj.name = file.name || obj.name;
+        obj.size = file.size || 0;
+        obj.type = file.type || 'application/octet-stream';
+        if (typeof _readPendingFile === 'function') _readPendingFile(file, obj, () => resolve(obj));
+        else {
+          const r = new FileReader();
+          r.onload = () => { obj.data = r.result; resolve(obj); };
+          r.onerror = () => resolve(obj);
+          r.readAsDataURL(file);
+        }
+      });
+    }
+    function openProgModal(tid) {
+      const t = tasks.find(t => t.id === tid); if (!t) return;
+      gi('prog-task-id').value = tid;
+      gi('prog-note').value = '';
+      progSelectedFiles = [];
+      if (gi('prog-files')) gi('prog-files').value = '';
+      if (gi('prog-camera-input')) gi('prog-camera-input').value = '';
+      if (gi('prog-file-preview')) gi('prog-file-preview').innerHTML = '';
+      const title = gi('prog-task-title');
+      if (title) title.innerHTML = `<div class="prog-task-name">${t.title || 'งาน'}</div><div class="prog-task-meta"><span>${(COL[t.col] || {}).n || t.col || '-'}</span><span>ความคืบหน้า ${t.prog || 0}%</span><span>${taskDueLabel(t) || 'ไม่มีกำหนด'}</span></div>`;
+      setProgValue(t.prog || 0);
+      openModal('modal-prog');
+    }
+    async function submitProg() {
       const tid = parseInt(gi('prog-task-id').value); const t = tasks.find(t => t.id === tid); if (!t) return;
-      const prog = parseInt(gi('prog-slider').value); const note = gi('prog-note').value.trim();
-      t.prog = prog;
-      if (prog === 100 && (t.col === 'doing' || t.col === 'todo')) { t.col = 'review'; toast('✅ 100% — เปลี่ยนสถานะเป็น รอตรวจสอบ อัตโนมัติ', 3000); }
-      else if (prog > 0 && t.col === 'todo') { t.col = 'doing'; toast('▶ เริ่มงาน — เปลี่ยนเป็น กำลังดำเนินการ', 2500); }
-      else toast('บันทึกความคืบหน้า ' + prog + '%');
-      t.progressLog.push({ prog, note: note || 'อัปเดตความคืบหน้า', authorId: currentUser.id, at: now2() });
-      closeModal('modal-prog'); renderAll(); setTimeout(() => showDP(tid), 120);
+      const prog = parseInt(gi('prog-slider').value || 0); const note = gi('prog-note').value.trim();
+      const btn = document.querySelector('#modal-prog .btn-pri');
+      const old = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = 'กำลังบันทึก...'; }
+      try {
+        const uploaded = progSelectedFiles.length ? await Promise.all(progSelectedFiles.map(_fileToProgressAttachment)) : [];
+        t.prog = prog;
+        if (!Array.isArray(t.progressLog)) t.progressLog = [];
+        if (uploaded.length) {
+          if (!Array.isArray(t.submittedFiles)) t.submittedFiles = [];
+          t.submittedFiles.push(...uploaded);
+        }
+        t.progressLog.push({ prog, note: note || (prog >= 100 ? 'ส่งงานเสร็จพร้อมหลักฐาน' : 'อัปเดตความคืบหน้า'), authorId: currentUser.id, at: now2(), files: uploaded });
+        if (prog === 100 && (t.col === 'doing' || t.col === 'todo')) { t.col = 'review'; toast(`✅ ส่งงาน 100% แล้ว${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''} — รอตรวจสอบ`, 3500); }
+        else if (prog > 0 && t.col === 'todo') { t.col = 'doing'; toast(`▶ บันทึกความคืบหน้า ${prog}%${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''}`, 3000); }
+        else toast(`บันทึกความคืบหน้า ${prog}%${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''}`);
+        closeModal('modal-prog'); renderAll(); setTimeout(() => showDP(tid), 120);
+      } catch (e) {
+        console.error(e); toast('บันทึกความคืบหน้าไม่สำเร็จ กรุณาลองใหม่');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = old; }
+      }
     }
     function openObsModal(tid) { gi('obs-task-id').value = tid; gi('obs-title').value = ''; gi('obs-desc').value = ''; gi('obs-level').value = 'med'; openModal('modal-obs'); }
     function submitObs() { const title = gi('obs-title').value.trim(); if (!title) { toast('กรุณาระบุหัวข้ออุปสรรค'); return; } const tid = parseInt(gi('obs-task-id').value); const t = tasks.find(t => t.id === tid); if (!t) return; t.obstacles.push({ id: nid++, title, desc: gi('obs-desc').value, level: gi('obs-level').value, authorId: currentUser.id, resolved: false, comments: [], at: now2() }); closeModal('modal-obs'); updateObsBadge(); renderAll(); setTimeout(() => showDP(tid), 100); toast('บันทึกอุปสรรคแล้ว'); }
