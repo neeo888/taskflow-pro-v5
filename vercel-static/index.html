@@ -5483,10 +5483,21 @@
     }
 
     function handleBoardAction(id, val) {
-      if (!val) return;
-      if (val === '__edit') { openTaskModalEdit(id); return; }
-      if (val === '__del') { if (confirm('ลบงาน?')) { tasks = tasks.filter(t => t.id !== id); renderAll(); closeDP(); toast('ลบงานแล้ว'); } return; }
-      const t = tasks.find(t => t.id === id); if (!t) return;
+      const tid = Number(id || 0);
+      if (!val || !tid) return;
+      if (val === '__edit') { openTaskModalEdit(tid); return; }
+      if (val === '__del') {
+        if (typeof window.delTask === 'function') { window.delTask(tid); return; }
+        const found = tasks.find(t => Number(t.id) === tid);
+        const title = found?.title ? ` "${found.title}"` : '';
+        if (confirm(`ลบงาน${title}?`)) {
+          tasks = tasks.filter(t => Number(t.id) !== tid);
+          if (typeof closeDP === 'function') closeDP();
+          renderAll(); toast('ลบงานแล้ว');
+        }
+        return;
+      }
+      const t = tasks.find(t => Number(t.id) === tid); if (!t) return;
       const old = t.col;
       t.col = val;
       if (val === 'done' || val === 'verified') t.prog = 100;
@@ -5861,7 +5872,16 @@
     window.showDP = showDP;
     window.openTaskDetail = openTaskDetail;
     window.closeDP = closeDP;
-    function delTask(id) { const tid = Number(id || 0); if (!tid) return; if (confirm('ลบงาน?')) { tasks = tasks.filter(t => Number(t.id) !== tid); closeDP(); renderAll(); toast('ลบงานแล้ว'); } }
+    function delTask(id) {
+      const tid = Number(id || 0); if (!tid) return;
+      const found = tasks.find(t => Number(t.id) === tid);
+      const title = found?.title ? ` "${found.title}"` : '';
+      if (confirm(`ลบงาน${title}?`)) {
+        tasks = tasks.filter(t => Number(t.id) !== tid);
+        if (typeof closeDP === 'function') closeDP();
+        renderAll(); toast('ลบงานแล้ว');
+      }
+    }
     function updateObsBadge() {
       const b = gi('obs-badge'); if (!b) return;
       // นับเฉพาะอุปสรรคในสาขาตัวเอง
@@ -6259,7 +6279,8 @@
     }
     function openTaskModalEdit(id) {
       if (!canAssign()) { toast('ไม่มีสิทธิ์แก้ไขงาน'); return; }
-      const t = tasks.find(t => t.id === id); if (!t) return;
+      const tid = Number(id || 0);
+      const t = tasks.find(t => Number(t.id) === tid); if (!t) return;
       if (!canSeeTask(t)) { toast('ไม่มีสิทธิ์ดู/แก้ไขงานนี้'); return; }
       if (isDeptHead() && !sameDeptEntity(t, currentUser)) { toast('หัวหน้างานแก้ไขได้เฉพาะงานของตนเอง'); return; }
       gi('t-id').value = t.id; gi('modal-task-t').textContent = 'แก้ไขงาน';

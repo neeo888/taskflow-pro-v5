@@ -362,24 +362,29 @@ const _orig_delTask = window.delTask;
 window.delTask = async function (id) {
   const tid = Number(id || 0);
   if (!tid) return;
+
   let title = '';
   try {
     const list = (typeof tasks !== 'undefined') ? tasks : (window.tasks || []);
     const found = (list || []).find(t => Number(t.id) === tid);
     if (found?.title) title = ` "${found.title}"`;
   } catch (_) {}
-  if (!confirm(`ลบงาน${title}?
-ระบบจะลบออกจาก Supabase ด้วย`)) return;
+
+  if (!confirm(`ลบงาน${title}?\nระบบจะลบออกจาก Supabase ด้วย`)) return;
+
   try {
     if (_isPhpSrv()) {
       const r = await _api('task_delete', { id: tid, task_id: tid });
-      if (!r.ok) throw new Error(r.error || 'ลบงานใน Supabase ไม่สำเร็จ');
+      if (!r || !r.ok) throw new Error(r?.error || 'ลบงานใน Supabase ไม่สำเร็จ');
+
       if (typeof closeDP === 'function') closeDP();
       await _loadFromServer(true);
       if (typeof renderAll === 'function') renderAll();
       if (typeof toast === 'function') toast('ลบงานจาก Supabase แล้ว');
       return;
     }
+
+    // fallback สำหรับเปิดไฟล์ local / preview แบบไม่มี API
     if (typeof tasks !== 'undefined') tasks = (tasks || []).filter(t => Number(t.id) !== tid);
     else window.tasks = (window.tasks || []).filter(t => Number(t.id) !== tid);
     if (typeof closeDP === 'function') closeDP();
@@ -388,23 +393,75 @@ window.delTask = async function (id) {
   } catch (e) {
     console.error('[sync.js] task delete failed', e);
     if (typeof toast === 'function') toast('ลบงานไม่สำเร็จ: ' + (e.message || e));
+    try {
+      if (_isPhpSrv()) {
+        await _loadFromServer(true);
+        if (typeof renderAll === 'function') renderAll();
+      }
+    } catch (_) {}
   }
 };
 
 // ══════════════════════════════════════════════════════════════
-// 10. PATCH handleBoardAction — ย้าย column ผ่าน API
+// 10. PATCH handleBoardAction — ปิดงาน/ย้ายสถานะผ่าน API ก่อน reload จาก Supabase
 // ══════════════════════════════════════════════════════════════
 const _orig_handleBoardAction = window.handleBoardAction;
-window.handleBoardAction = function (id, val) {
-  _orig_handleBoardAction.call(this, id, val);
-  if (!_isPhpSrv() || !val || val === '__edit' || val === '__del') return;
-  // ส่ง task_verify สำหรับ review→done/verified, task_col สำหรับที่เหลือ
-  const t = window.tasks.find(t => t.id === id);
-  if (!t) return;
-  if ((val === 'done' || val === 'verified') && isAM && isAM()) {
-    _api('task_verify', { task_id: id, action: val === 'verified' ? 'approve' : 'approve' });
+window.handleBoardAction = async function (id, val) {
+  const tid = Number(id || 0);
+  if (!val || !tid) return;
+
+  if (val === '__del') {
+    if (typeof window.delTask === 'function') return window.delTask(tid);
+    if (typeof _orig_handleBoardAction === 'function') return _orig_handleBoardAction.call(this, tid, val);
+    return;
   }
-  _api('task_col', { id, col: val });
+
+  if (val === '__edit') {
+    if (typeof _orig_handleBoardAction === 'function') return _orig_handleBoardAction.call(this, tid, val);
+    return;
+  }
+
+  if (!_isPhpSrv()) {
+    if (typeof _orig_handleBoardAction === 'function') _orig_handleBoardAction.call(this, tid, val);
+    return;
+  }
+
+  const dpWasOpen = !!document.getElementById('dp')?.classList.contains('open');
+
+  try {
+    let r;
+    const canVerify = (typeof isAM === 'function') && isAM();
+    if ((val === 'done' || val === 'verified') && canVerify) {
+      r = await _api('task_verify', { task_id: tid, action: 'approve' });
+    } else {
+      r = await _api('task_col', { id: tid, task_id: tid, col: val });
+    }
+    if (!r || !r.ok) throw new Error(r?.error || 'บันทึกสถานะงานไม่สำเร็จ');
+
+    await _loadFromServer(true);
+    if (typeof renderAll === 'function') renderAll();
+
+    if (dpWasOpen && typeof showDP === 'function') {
+      setTimeout(() => {
+        try {
+          const list = (typeof tasks !== 'undefined') ? tasks : (window.tasks || []);
+          if ((list || []).some(t => Number(t.id) === tid)) showDP(tid);
+        } catch (_) {}
+      }, 120);
+    }
+
+    if (typeof toast === 'function') {
+      if (val === 'done' || val === 'verified') toast('✅ ปิดงาน/ตรวจรับงานเรียบร้อยแล้ว');
+      else toast('บันทึกสถานะงานแล้ว');
+    }
+  } catch (e) {
+    console.error('[sync.js] task status failed', e);
+    if (typeof toast === 'function') toast('บันทึกสถานะงานไม่สำเร็จ: ' + (e.message || e));
+    try {
+      await _loadFromServer(true);
+      if (typeof renderAll === 'function') renderAll();
+    } catch (_) {}
+  }
 };
 
 // ══════════════════════════════════════════════════════════════
