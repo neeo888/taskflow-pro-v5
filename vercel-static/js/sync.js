@@ -472,8 +472,14 @@ window.submitProg = async function () {
   const tid = parseInt(gi('prog-task-id').value);
   const prog = parseInt(gi('prog-slider').value);
   const note = gi('prog-note') ? gi('prog-note').value.trim() : '';
-  const progressFiles = gi('prog-files') ? Array.from(gi('prog-files').files || []) : [];
-  _orig_submitProg.call(this);
+  let progressFiles = [];
+  try {
+    if (typeof progSelectedFiles !== 'undefined' && Array.isArray(progSelectedFiles)) {
+      progressFiles = [...progSelectedFiles];
+    }
+  } catch (_) {}
+  if (!progressFiles.length && gi('prog-files')) progressFiles = Array.from(gi('prog-files').files || []);
+  await _orig_submitProg.call(this);
   if (!_isPhpSrv()) return;
   const progressIsFinal = prog >= 100;
   await _api('task_progress', { task_id: tid, prog, note });

@@ -5617,6 +5617,19 @@
       return { main: txt, sub: hasTime ? 'ระบุวันและเวลาแล้ว' : 'กำหนดส่ง' };
     }
 
+    function detailTaskDateText(t) {
+      t = t || {};
+      const meeting = (t.meeting && typeof t.meeting === 'object') ? t.meeting : {};
+      const dateVal = t.date || t.due_date || t.dueDate || meeting.date || t.meeting_date || t.meetingDate || '';
+      const timeVal = t.due_time || t.dueTime || t.time || meeting.time || t.meeting_time || t.meetingTime || '';
+      if (!dateVal && !timeVal) return { main: 'ไม่มีกำหนดส่ง', sub: 'ยังไม่ระบุวัน/เวลา' };
+      const info = detailDateText(dateVal);
+      const timeText = String(timeVal || '').trim().replace(/\s*น\.?$/,'');
+      let main = info.main || String(dateVal || 'ไม่ระบุวัน');
+      if (timeText && !String(main).includes(timeText)) main += ` เวลา ${timeText} น.`;
+      return { main, sub: timeText ? 'ระบุวันและเวลาแล้ว' : (info.sub || 'กำหนดส่ง') };
+    }
+
     function detailSummaryHtml(t, cfg, pr, asgns, ov) {
       t = normalizeDetailTask(t) || {};
       cfg = cfg || COL[t.col] || COL.todo;
