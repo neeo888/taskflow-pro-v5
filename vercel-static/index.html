@@ -2922,6 +2922,66 @@
       flex-direction: column;
       gap: 2px;
     }
+
+/* MY CALENDAR: full page, responsive, touch friendly */
+#page-mycalendar .ph { margin-bottom: 14px; }
+#mycalendar-body { width: 100%; }
+.mycal-shell { width: 100%; max-width: none; background: var(--white); border: .5px solid var(--border); border-radius: 24px; padding: 18px; box-shadow: var(--shadow); }
+.mycal-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+.mycal-title { font-size:30px; font-weight:900; color:var(--text); line-height:1.1; }
+.mycal-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.mycal-actions .btn-sec { border-radius:14px; padding:11px 14px; min-height:44px; }
+.mycal-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:10px 0 18px; }
+.mycal-stat { border-radius:18px; padding:16px 14px; min-height:96px; display:flex; flex-direction:column; justify-content:center; text-align:center; border:.5px solid rgba(99,102,241,.08); }
+.mycal-stat .num { font-size:32px; font-weight:900; line-height:1; margin-bottom:7px; }
+.mycal-stat .lbl { color:var(--text3); font-size:12px; font-weight:800; line-height:1.35; }
+.mycal-layout { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(320px,.75fr); gap:16px; align-items:start; }
+.mycal-board,.mycal-side { background:var(--white); border:.5px solid var(--border); border-radius:18px; padding:14px; }
+.mycal-scroll { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:6px; }
+.mycal-week,.mycal-grid { display:grid; grid-template-columns:repeat(7,minmax(108px,1fr)); gap:8px; }
+.mycal-week { margin-bottom:8px; }
+.mycal-week div { text-align:center; font-size:12px; font-weight:900; color:var(--text3); padding:7px 4px; }
+.mycal-day { min-height:122px; border:.5px solid var(--border); background:#fff; border-radius:16px; padding:10px; overflow:hidden; transition:border .15s ease, box-shadow .15s ease, transform .15s ease; }
+.mycal-day:hover { border-color:rgba(99,102,241,.35); box-shadow:0 10px 24px rgba(15,31,61,.08); transform:translateY(-1px); }
+.mycal-day.muted { background:#FBFCFF; opacity:.72; }
+.mycal-day.today { border-color:rgba(0,196,140,.7); background:#ECFFF9; box-shadow:inset 0 0 0 1px rgba(0,196,140,.14); }
+.mycal-day.has-overdue { border-color:rgba(255,77,109,.45); background:#FFF7F8; }
+.mycal-day-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.mycal-day-num { font-size:15px; font-weight:900; color:var(--text); }
+.mycal-day.today .mycal-day-num { color:var(--teal); }
+.mycal-day-count { font-size:10px; color:var(--text3); font-weight:800; white-space:nowrap; }
+.mycal-chip { display:flex; align-items:center; gap:6px; margin-top:6px; padding:7px 8px; border-radius:11px; background:#F3F6FF; border:.5px solid rgba(99,102,241,.14); font-size:10px; line-height:1.3; cursor:pointer; overflow:hidden; }
+.mycal-chip:hover,.mycal-chip:focus-visible { background:#EEF2FF; border-color:rgba(99,102,241,.38); }
+.mycal-chip-dot { width:7px; height:7px; border-radius:50%; background:#6366F1; flex-shrink:0; }
+.mycal-chip-title { font-weight:800; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1; }
+.mycal-chip.done { background:#EAF8FF; border-color:rgba(0,166,231,.18); }
+.mycal-chip.done .mycal-chip-dot { background:#00A6E7; }
+.mycal-chip.overdue { background:#FFF1F2; border-color:rgba(255,77,109,.18); }
+.mycal-chip.overdue .mycal-chip-dot { background:#FF4D6D; }
+.mycal-more { margin-top:6px; font-size:10px; color:var(--text3); font-weight:800; }
+.mycal-side-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; font-size:14px; font-weight:900; color:var(--text); }
+.mycal-list { display:grid; gap:8px; max-height:620px; overflow:auto; padding-right:2px; }
+.mycal-list-item { border:.5px solid var(--border); background:#FBFCFF; border-radius:14px; padding:10px; cursor:pointer; display:grid; gap:5px; }
+.mycal-list-item:hover,.mycal-list-item:focus-visible { background:#F3F6FF; border-color:rgba(99,102,241,.32); }
+.mycal-list-name { font-size:12px; font-weight:900; color:var(--text); line-height:1.35; }
+.mycal-list-meta { display:flex; gap:7px; flex-wrap:wrap; align-items:center; font-size:10px; color:var(--text3); font-weight:800; }
+.mycal-badge { border-radius:999px; padding:3px 8px; font-size:10px; font-weight:900; display:inline-flex; align-items:center; gap:4px; }
+.mycal-empty { text-align:center; color:var(--text3); font-size:12px; padding:20px 10px; background:var(--surface); border-radius:14px; }
+@media (max-width:1100px){ .mycal-layout{grid-template-columns:1fr;} .mycal-list{max-height:none;} }
+@media (max-width:760px){
+  #page-mycalendar{padding-left:12px;padding-right:12px;}
+  .mycal-shell{padding:12px;border-radius:20px;}
+  .mycal-toolbar{align-items:stretch;}
+  .mycal-title{width:100%;font-size:26px;}
+  .mycal-actions{width:100%;}
+  .mycal-actions .btn-sec{flex:1;min-width:130px;}
+  .mycal-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .mycal-stat{min-height:86px;padding:13px 10px;}
+  .mycal-stat .num{font-size:28px;}
+  .mycal-week,.mycal-grid{min-width:780px;}
+  .mycal-day{min-height:112px;}
+}
+
 </style>
 </head>
 
@@ -5271,16 +5331,21 @@
       const rows = (limit ? list.slice(0, limit) : list).map(t => dashboardTaskRow(t, mode)).join('');
       return rows || `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);">${emptyText}</div>`;
     }
+    function tfCalSafe(s) {
+      return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
     function calendarTaskState(t) {
-      if (isDoneTask(t)) return { l: 'ส่งแล้ว', c: '#00A6E7', bg: '#EAF8FF' };
-      if (isOverdueTask(t)) return { l: 'เกินกำหนด', c: '#FF4D6D', bg: '#FFF1F2' };
-      return { l: 'ต้องส่ง', c: '#6366F1', bg: '#F3F6FF' };
+      if (isDoneTask(t)) return { l: 'ส่งแล้ว', c: '#00A6E7', bg: '#EAF8FF', cls: 'done' };
+      if (isOverdueTask(t)) return { l: 'เกินกำหนด', c: '#FF4D6D', bg: '#FFF1F2', cls: 'overdue' };
+      return { l: 'ต้องส่ง', c: '#6366F1', bg: '#F3F6FF', cls: '' };
     }
     function renderCalChip(t) {
       const st = calendarTaskState(t);
-      return `<div role="button" tabindex="0" title="${t.title}" onclick="openTaskDetail(${t.id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${t.id}, true, event)}" style="display:flex;align-items:center;gap:4px;margin-top:4px;padding:4px 6px;border-radius:8px;background:${st.bg};border:.5px solid rgba(99,102,241,.12);font-size:9px;line-height:1.25;cursor:pointer;overflow:hidden;">
-        <span style="width:6px;height:6px;border-radius:50%;background:${st.c};flex-shrink:0;"></span>
-        <span style="font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</span>
+      const id = Number(t.id);
+      const title = tfCalSafe(t.title);
+      return `<div class="mycal-chip ${st.cls}" role="button" tabindex="0" title="${title}" aria-label="เปิดงาน ${title}" onclick="openTaskDetail(${id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${id}, true, event)}">
+        <span class="mycal-chip-dot"></span>
+        <span class="mycal-chip-title">${title}</span>
       </div>`;
     }
     function renderMyCalendar() {
@@ -5288,7 +5353,6 @@
       if (!body || !currentUser) return;
       const visible = visibleMyTasksAll();
       const activeT = sortTasksByDue(visible.filter(isActiveTask));
-      const doneT = sortTasksByDue(visible.filter(isDoneTask));
       const noDue = visible.filter(t => !taskDateKey(t));
       const y = myCalendarMonth.getFullYear();
       const m = myCalendarMonth.getMonth();
@@ -5304,49 +5368,71 @@
         (byDay[k] ||= []).push(t);
       });
       Object.keys(byDay).forEach(k => byDay[k] = sortTasksByDue(byDay[k], true));
-      const monthTasks = visible.filter(t => taskDateKey(t).startsWith(monthKey));
+      const monthTasks = sortTasksByDue(visible.filter(t => (taskDateKey(t) || '').startsWith(monthKey)), true);
       const monthActive = monthTasks.filter(isActiveTask);
       const monthDone = monthTasks.filter(isDoneTask);
       const overdue = activeT.filter(isOverdueTask);
       let cells = '';
-      for (let i = 0; i < blanks; i++) cells += `<div style="min-height:92px;border:.5px solid var(--border);background:#FBFCFF;border-radius:10px;"></div>`;
+      for (let i = 0; i < blanks; i++) cells += `<div class="mycal-day muted" aria-hidden="true"></div>`;
       for (let d = 1; d <= days; d++) {
         const key = `${monthKey}-${pad2(d)}`;
         const dayTasks = byDay[key] || [];
         const isToday = key === todayKey;
-        cells += `<div style="min-height:92px;border:.5px solid ${isToday ? 'rgba(0,196,140,.7)' : 'var(--border)'};background:${isToday ? '#ECFFF9' : 'var(--white)'};border-radius:10px;padding:7px;overflow:hidden;">
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:800;color:${isToday ? 'var(--teal)' : 'var(--text)'};">
-            <span>${d}</span>${dayTasks.length ? `<span style="font-size:9px;color:var(--text3);">${dayTasks.length} งาน</span>` : ''}
+        const hasOverdue = dayTasks.some(isOverdueTask);
+        cells += `<div class="mycal-day ${isToday ? 'today' : ''} ${hasOverdue ? 'has-overdue' : ''}">
+          <div class="mycal-day-head">
+            <span class="mycal-day-num">${d}</span>
+            ${dayTasks.length ? `<span class="mycal-day-count">${dayTasks.length} งาน</span>` : ''}
           </div>
-          ${dayTasks.slice(0, 3).map(renderCalChip).join('')}
-          ${dayTasks.length > 3 ? `<div style="font-size:9px;color:var(--text3);margin-top:4px;">+ อีก ${dayTasks.length - 3} งาน</div>` : ''}
+          ${dayTasks.slice(0, 4).map(renderCalChip).join('')}
+          ${dayTasks.length > 4 ? `<div class="mycal-more">+ อีก ${dayTasks.length - 4} งาน</div>` : ''}
         </div>`;
       }
-      body.innerHTML = `<div style="display:grid;grid-template-columns:1.45fr .9fr;gap:14px;align-items:start;">
-        <div style="background:var(--white);border:.5px solid var(--border);border-radius:14px;padding:14px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-            <button class="btn-sec" style="padding:8px 12px;" onclick="changeMyCalendarMonth(-1)">← เดือนก่อน</button>
-            <div style="flex:1;text-align:center;font-weight:800;color:var(--text);font-size:18px;">${TF_CAL_MONTHS[m]} ${y + 543}</div>
-            <button class="btn-sec" style="padding:8px 12px;" onclick="resetMyCalendarMonth()">วันนี้</button>
-            <button class="btn-sec" style="padding:8px 12px;" onclick="changeMyCalendarMonth(1)">เดือนถัดไป →</button>
+      const monthList = monthTasks.map(t => {
+        const st = calendarTaskState(t);
+        const id = Number(t.id);
+        const title = tfCalSafe(t.title);
+        const dueKey = taskDateKey(t);
+        const time = t.dueTime || t.time || t.due_time || '';
+        const due = dueKey ? `${dueKey}${time ? ' เวลา ' + time + ' น.' : ''}` : 'ไม่มีกำหนด';
+        const tag = Array.isArray(t.tags) && t.tags.length ? t.tags[0] : (t.type || '');
+        return `<div class="mycal-list-item" role="button" tabindex="0" data-task-open="detail" data-task-id="${id}" onclick="openTaskDetail(${id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${id}, true, event)}">
+          <div class="mycal-list-name">${title}</div>
+          <div class="mycal-list-meta">
+            <span class="mycal-badge ${st.cls}" style="background:${st.bg};color:${st.c};">${st.l}</span>
+            <span>📅 ${tfCalSafe(due)}</span>
+            ${tag ? `<span>🏷️ ${tfCalSafe(tag)}</span>` : ''}
           </div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
-            <div style="background:#F3F6FF;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:#6366F1;">${monthActive.length}</div><div style="font-size:10px;color:var(--text3);">ต้องส่งเดือนนี้</div></div>
-            <div style="background:#EAF8FF;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:#00A6E7;">${monthDone.length}</div><div style="font-size:10px;color:var(--text3);">ส่งแล้วเดือนนี้</div></div>
-            <div style="background:#FFF1F2;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:#FF4D6D;">${overdue.length}</div><div style="font-size:10px;color:var(--text3);">เกินกำหนด</div></div>
-            <div style="background:#FFF8E8;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:900;color:#F59E0B;">${noDue.length}</div><div style="font-size:10px;color:var(--text3);">ไม่มีกำหนด</div></div>
+        </div>`;
+      }).join('') || `<div class="mycal-empty">เดือนนี้ยังไม่มีงานตามสิทธิของคุณ</div>`;
+      body.innerHTML = `<div class="mycal-shell">
+        <div class="mycal-toolbar">
+          <div>
+            <div class="mycal-title">${TF_CAL_MONTHS[m]} ${y + 543}</div>
+            <div style="font-size:12px;color:var(--text3);font-weight:800;margin-top:4px;">ปฏิทินงานที่ต้องส่ง / ส่งแล้ว ตามสิทธิการล็อกอิน</div>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;">${TF_CAL_DAYS.map(d => `<div style="text-align:center;font-size:11px;font-weight:800;color:var(--text3);padding:4px;">${d}</div>`).join('')}</div>
-          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">${cells}</div>
+          <div class="mycal-actions">
+            <button class="btn-sec" onclick="changeMyCalendarMonth(-1)">← เดือนก่อน</button>
+            <button class="btn-sec" onclick="resetMyCalendarMonth()">วันนี้</button>
+            <button class="btn-sec" onclick="changeMyCalendarMonth(1)">เดือนถัดไป →</button>
+          </div>
         </div>
-        <div style="display:grid;gap:14px;">
-          <div style="background:var(--white);border:.5px solid var(--border);border-radius:14px;padding:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:800;">งานยังไม่เสร็จ</div><span style="font-size:11px;color:#6366F1;font-weight:800;">${activeT.length} งาน</span></div>
-            ${renderTaskMiniList(activeT, 'ไม่มีงานค้าง', 8, 'active')}
+        <div class="mycal-stats">
+          <div class="mycal-stat" style="background:#F3F6FF;"><div class="num" style="color:#6366F1;">${monthActive.length}</div><div class="lbl">ต้องส่งเดือนนี้</div></div>
+          <div class="mycal-stat" style="background:#EAF8FF;"><div class="num" style="color:#00A6E7;">${monthDone.length}</div><div class="lbl">ส่งแล้วเดือนนี้</div></div>
+          <div class="mycal-stat" style="background:#FFF1F2;"><div class="num" style="color:#FF4D6D;">${overdue.length}</div><div class="lbl">เกินกำหนด</div></div>
+          <div class="mycal-stat" style="background:#FFF8E8;"><div class="num" style="color:#F59E0B;">${noDue.length}</div><div class="lbl">ไม่มีกำหนด</div></div>
+        </div>
+        <div class="mycal-layout">
+          <div class="mycal-board">
+            <div class="mycal-scroll">
+              <div class="mycal-week">${TF_CAL_DAYS.map(d => `<div>${d}</div>`).join('')}</div>
+              <div class="mycal-grid">${cells}</div>
+            </div>
           </div>
-          <div style="background:var(--white);border:.5px solid var(--border);border-radius:14px;padding:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:800;">งานส่งแล้ว / เสร็จแล้ว</div><span style="font-size:11px;color:#00A6E7;font-weight:800;">${doneT.length} งาน</span></div>
-            ${renderTaskMiniList(doneT, 'ยังไม่มีงานเสร็จแล้ว', 8, 'done')}
+          <div class="mycal-side">
+            <div class="mycal-side-title"><span>รายการงานเดือนนี้</span><span style="color:#6366F1;font-size:12px;">${monthTasks.length} งาน</span></div>
+            <div class="mycal-list">${monthList}</div>
           </div>
         </div>
       </div>`;
