@@ -4709,6 +4709,18 @@
       });
     }
 
+
+    function sortDoneTasksLatest(list) {
+      return [...(list || [])].sort((a, b) => {
+        const da = taskDueTime(a), db = taskDueTime(b);
+        const aNoDate = da === Number.MAX_SAFE_INTEGER;
+        const bNoDate = db === Number.MAX_SAFE_INTEGER;
+        if (aNoDate !== bNoDate) return aNoDate ? 1 : -1;
+        if (da !== db) return db - da;
+        return (b.id || 0) - (a.id || 0);
+      });
+    }
+
     function isDoneTask(t) {
       return !!t && (t.col === 'done' || t.col === 'verified' || Number(t.prog || 0) >= 100);
     }
@@ -5233,7 +5245,7 @@
     function renderMyTasks() {
       const myT = tasks.filter(t => canSeeTask(t));
       const wip = sortTasksByDue(myT.filter(t => isActiveTask(t) && COL[t.col] && (COL[t.col] || COL['done']).g === 'wip'));
-      const done = sortTasksByDue(myT.filter(t => isDoneTask(t)));
+      const done = sortDoneTasksLatest(myT.filter(t => isDoneTask(t)));
       gi('tc-wip').textContent = wip.length; gi('tc-done').textContent = done.length;
       const list = myTaskTab === 'wip' ? wip : done;
       gi('my-tasks-list').innerHTML = list.length ? list.map(t => taskCard(t)).join('') : `<div style="text-align:center;padding:40px;font-size:13px;color:var(--text3);">${myTaskTab === 'wip' ? 'ไม่มีงานที่กำลังดำเนินการ' : 'ยังไม่มีงานที่เสร็จ'}</div>`;
@@ -5442,7 +5454,7 @@
       const uid = currentUser.id;
       const myT = visibleMyTasksAll();
       const activeT = sortTasksByDue(myT.filter(isActiveTask));
-      const done = sortTasksByDue(myT.filter(isDoneTask));
+      const done = sortDoneTasksLatest(myT.filter(isDoneTask));
       const wip = activeT.filter(t => COL[t.col] && COL[t.col].g === 'wip');
       const review = activeT.filter(t => t.col === 'review');
       const pct = Math.round(myT.length ? done.length / myT.length * 100 : 0);
