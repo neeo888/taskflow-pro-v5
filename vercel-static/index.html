@@ -2931,8 +2931,9 @@
 .mycal-title { font-size:30px; font-weight:900; color:var(--text); line-height:1.1; }
 .mycal-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .mycal-actions .btn-sec { border-radius:14px; padding:11px 14px; min-height:44px; }
-.mycal-add-meeting { background:rgba(16,201,171,.12) !important; border-color:rgba(16,201,171,.28) !important; color:#075e54 !important; font-weight:900 !important; }
-.mycal-day-add { width:100%; border:1px dashed rgba(16,201,171,.38); background:rgba(16,201,171,.08); color:#075e54; border-radius:12px; padding:7px 8px; font-size:11px; font-weight:900; cursor:pointer; margin:2px 0 7px; transition:.15s ease; }
+.mycal-add-meeting { background:linear-gradient(135deg,#10c9ab,#13d6bd) !important; border-color:rgba(16,201,171,.55) !important; color:#072033 !important; font-weight:950 !important; box-shadow:0 12px 28px rgba(16,201,171,.22); }
+.mycal-day-meta { display:flex; align-items:center; gap:6px; margin-left:auto; min-width:0; }
+.mycal-day-add { width:30px; height:30px; min-width:30px; border:1px solid rgba(16,201,171,.45); background:linear-gradient(135deg,rgba(16,201,171,.18),rgba(16,201,171,.08)); color:#075e54; border-radius:10px; padding:0; font-size:18px; line-height:1; font-weight:950; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:.15s ease; box-shadow:0 6px 14px rgba(16,201,171,.12); }
 .mycal-day-add:hover,.mycal-day-add:focus-visible { background:rgba(16,201,171,.15); border-color:rgba(16,201,171,.58); transform:translateY(-1px); outline:none; }
 .mycal-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:10px 0 18px; }
 .mycal-stat { border-radius:18px; padding:16px 14px; min-height:96px; display:flex; flex-direction:column; justify-content:center; text-align:center; border:.5px solid rgba(99,102,241,.08); }
@@ -2988,7 +2989,8 @@
   .mycal-week div{font-size:10px;padding:5px 0;}
   .mycal-day{min-height:94px;padding:6px 4px;border-radius:12px;}
   .mycal-day-head{gap:3px;margin-bottom:4px;}
-  .mycal-day-add{font-size:8px;padding:4px 3px;border-radius:8px;margin:1px 0 4px;}
+  .mycal-day-meta{gap:3px;}
+  .mycal-day-add{width:24px;height:24px;min-width:24px;font-size:13px;border-radius:8px;}
   .mycal-day-num{font-size:13px;}
   .mycal-day-count{font-size:8px;}
   .mycal-chip{gap:3px;margin-top:4px;padding:4px 3px;border-radius:8px;font-size:8px;}
@@ -5425,7 +5427,10 @@
         cells += `<div class="mycal-day ${isToday ? 'today' : ''} ${hasOverdue ? 'has-overdue' : ''}">
           <div class="mycal-day-head">
             <span class="mycal-day-num">${d}</span>
-            ${dayTasks.length ? `<span class="mycal-day-count">${dayTasks.length} งาน</span>` : ''}
+            <div class="mycal-day-meta">
+              ${dayTasks.length ? `<span class="mycal-day-count">${dayTasks.length} งาน</span>` : ''}
+              <button type="button" class="mycal-day-add" title="เพิ่มประชุม/อบรม วันที่ ${d}" aria-label="เพิ่มประชุมหรืออบรมวันที่ ${d}" onclick="openMeetingTrainingFromCalendar('${key}', event)">＋</button>
+            </div>
           </div>
           ${dayTasks.slice(0, 4).map(renderCalChip).join('')}
           ${dayTasks.length > 4 ? `<div class="mycal-more">+ อีก ${dayTasks.length - 4} งาน</div>` : ''}
@@ -5455,6 +5460,7 @@
             <div style="font-size:12px;color:var(--text3);font-weight:800;margin-top:4px;">ปฏิทินงานที่ต้องส่ง / ส่งแล้ว ตามสิทธิการล็อกอิน</div>
           </div>
           <div class="mycal-actions">
+            <button type="button" class="btn-sec mycal-add-meeting" onclick="openMeetingTrainingFromCalendar(null,event)">＋ เพิ่มประชุม/อบรม</button>
             <button class="btn-sec" onclick="changeMyCalendarMonth(-1)">← เดือนก่อน</button>
             <button class="btn-sec" onclick="resetMyCalendarMonth()">วันนี้</button>
             <button class="btn-sec" onclick="changeMyCalendarMonth(1)">เดือนถัดไป →</button>
