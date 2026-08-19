@@ -2931,6 +2931,9 @@
 .mycal-title { font-size:30px; font-weight:900; color:var(--text); line-height:1.1; }
 .mycal-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .mycal-actions .btn-sec { border-radius:14px; padding:11px 14px; min-height:44px; }
+.mycal-add-meeting { background:rgba(16,201,171,.12) !important; border-color:rgba(16,201,171,.28) !important; color:#075e54 !important; font-weight:900 !important; }
+.mycal-day-add { width:100%; border:1px dashed rgba(16,201,171,.38); background:rgba(16,201,171,.08); color:#075e54; border-radius:12px; padding:7px 8px; font-size:11px; font-weight:900; cursor:pointer; margin:2px 0 7px; transition:.15s ease; }
+.mycal-day-add:hover,.mycal-day-add:focus-visible { background:rgba(16,201,171,.15); border-color:rgba(16,201,171,.58); transform:translateY(-1px); outline:none; }
 .mycal-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:10px 0 18px; }
 .mycal-stat { border-radius:18px; padding:16px 14px; min-height:96px; display:flex; flex-direction:column; justify-content:center; text-align:center; border:.5px solid rgba(99,102,241,.08); }
 .mycal-stat .num { font-size:32px; font-weight:900; line-height:1; margin-bottom:7px; }
@@ -2985,6 +2988,7 @@
   .mycal-week div{font-size:10px;padding:5px 0;}
   .mycal-day{min-height:94px;padding:6px 4px;border-radius:12px;}
   .mycal-day-head{gap:3px;margin-bottom:4px;}
+  .mycal-day-add{font-size:8px;padding:4px 3px;border-radius:8px;margin:1px 0 4px;}
   .mycal-day-num{font-size:13px;}
   .mycal-day-count{font-size:8px;}
   .mycal-chip{gap:3px;margin-top:4px;padding:4px 3px;border-radius:8px;font-size:8px;}
@@ -6397,6 +6401,62 @@
       editingStepIndex = -1;
       renderStepList();
       toast(added ? `เพิ่ม checklist ประชุม ${added} ขั้นตอนแล้ว` : 'มี checklist ประชุมครบแล้ว');
+    }
+
+    function buildMeetingTrainingDetailTemplate(dateIso = '') {
+      const dateText = dateIso || 'ระบุวันที่';
+      return [
+        'ประเภท: ประชุม / อบรม',
+        'หัวข้อประชุม/อบรม:',
+        `วันเริ่ม: ${dateText}`,
+        'วันสิ้นสุด:',
+        'เวลาเริ่ม:',
+        'เวลาสิ้นสุด:',
+        'สถานที่ / ช่องทาง:',
+        'การแต่งกาย: ชุดสุภาพ / ชุดกากี / เสื้อฟ้าขาว / เสื้อคน กปภ. / อื่นๆ:',
+        'รายละเอียด / วาระ:',
+        'ข้อสั่งการโดยสรุป:',
+        'ผู้เข้าร่วม / ผู้รับผิดชอบ:',
+        'เอกสาร / รูปภาพที่ต้องแนบ:',
+        'หมายเหตุ:'
+      ].join('\n');
+    }
+
+    function selectTaskTagSilently(tag) {
+      const v = (typeof cleanTagName === 'function' ? cleanTagName(tag) : String(tag || '').trim());
+      if (!v) return;
+      try { if (Array.isArray(allTags) && !allTags.includes(v)) allTags.push(v); } catch (e) {}
+      try { if (Array.isArray(selTags) && !selTags.includes(v)) selTags.push(v); } catch (e) {}
+    }
+
+    function prefillMeetingTrainingTask(dateIso) {
+      const date = dateIso || new Date().toISOString().slice(0, 10);
+      const title = gi('t-title');
+      const desc = gi('t-desc');
+      const dateInput = gi('t-date');
+      const priority = gi('t-priority');
+      if (gi('modal-task-t')) gi('modal-task-t').textContent = 'เพิ่มประชุม/อบรม';
+      if (title && !title.value.trim()) title.value = 'ประชุม/อบรม';
+      if (desc) desc.value = buildMeetingTrainingDetailTemplate(date);
+      if (dateInput) dateInput.value = date;
+      if (priority) priority.value = 'normal';
+      selectTaskTagSilently('ประชุม');
+      selectTaskTagSilently('อบรม');
+      MEETING_STEP_TEMPLATE.forEach(step => {
+        if (!pendingStepsList.some(x => String(x).trim() === step)) pendingStepsList.push(step);
+      });
+      editingStepIndex = -1;
+      if (typeof buildTagPicker === 'function') buildTagPicker();
+      if (typeof renderStepList === 'function') renderStepList();
+    }
+
+    function openMeetingTrainingFromCalendar(dateIso, ev) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      openTaskModalNew('todo');
+      const modal = gi('modal-task');
+      if (!modal || !modal.classList.contains('open')) return;
+      prefillMeetingTrainingTask(dateIso);
+      toast(dateIso ? `เตรียมฟอร์มประชุม/อบรม วันที่ ${dateIso} แล้ว` : 'เตรียมฟอร์มประชุม/อบรมแล้ว');
     }
 
     let _defaultCol = 'todo';
