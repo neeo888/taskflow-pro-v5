@@ -79,6 +79,7 @@ function _normTask(t) {
     tags,
     asgn,
     date: t.due_date || t.date || '',
+    startDate: t.start_date || t.startDate || '',
     prog: +(t.prog || 0),
     priority: t.priority || 'normal',
     branch: t.branch || '',
@@ -294,6 +295,7 @@ window.doLogout = function () {
 // ══════════════════════════════════════════════════════════════
 const _orig_submitTask = window.submitTask;
 window.submitTask = function () {
+  if (!validateScheduleRange()) return;
   const title = gi('t-title').value.trim();
   if (!title) { toast('กรุณาระบุชื่องาน'); return; }
   if (!window.selAsgn || !window.selAsgn.length) { toast('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน'); return; }
@@ -322,6 +324,7 @@ window.submitTask = function () {
     desc: gi('t-desc') ? gi('t-desc').value : '',
     col: window._defaultCol || 'todo',
     date: gi('t-date') ? gi('t-date').value : '',
+    startDate: gi('t-start-date').value,
     priority: gi('t-priority') ? gi('t-priority').value : 'normal',
     tags: taskTags,
     asgn: window.selAsgn ? [...window.selAsgn] : [],

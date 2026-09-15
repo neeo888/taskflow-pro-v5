@@ -415,6 +415,8 @@ async function taskSave(req) {
 
   const b = await bodyJson(req);
   if (!b.title) return err('Missing title');
+  const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+  if ((b.date && !validDate(b.date)) || (b.startDate && (!validDate(b.startDate) || !b.date || b.startDate > b.date))) return err('วันที่เริ่มต้นหรือสิ้นสุดไม่ถูกต้อง', 400);
   const assignedIds = [...new Set((Array.isArray(b.asgn) ? b.asgn : []).map(uid => Number(uid)).filter(Boolean))];
   if (!assignedIds.length) return err('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน');
 
@@ -452,6 +454,7 @@ async function taskSave(req) {
     col: b.col || 'todo',
     priority: b.priority || 'normal',
     due_date: b.date || null,
+    start_date: b.startDate || null,
     branch: s.urole === 'admin' ? (b.branch || s.branch || '') : (s.branch || b.branch || ''),
     dept_key: deptHead ? (s.dept_key || desiredDept) : desiredDept,
     tags: b.tags || [],
