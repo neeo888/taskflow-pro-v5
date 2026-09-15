@@ -3015,6 +3015,25 @@
   .mycal-chip{font-size:7px;padding:3px 2px;border-radius:7px;}
 }
 
+/* Month grid: shared borders, readable events and stable controls. */
+.mycal-layout { grid-template-columns:minmax(0,1fr); }
+.mycal-week,.mycal-grid { gap:0; }
+.mycal-grid { border-top:1px solid var(--border); border-left:1px solid var(--border); }
+.mycal-day { border:0; border-right:1px solid var(--border); border-bottom:1px solid var(--border); border-radius:0; padding:8px; min-height:140px; }
+.mycal-day:hover { transform:none; box-shadow:none; }
+.mycal-day-head { flex-wrap:wrap; gap:4px; }
+.mycal-day-count { display:none; }
+.mycal-day-add { flex-shrink:0; box-shadow:none; }
+.mycal-chip { border-radius:4px; padding:5px; }
+.mycal-chip-title { white-space:normal; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.mycal-list { max-height:400px; }
+@media(max-width:600px) {
+  .mycal-scroll { overflow-x:auto; }
+  .mycal-week,.mycal-grid { min-width:560px; }
+  .mycal-day { min-height:120px; border-radius:0; }
+  .mycal-chip { font-size:11px; }
+  .mycal-day-num { font-size:14px; }
+}
 </style>
 </head>
 
@@ -3569,7 +3588,8 @@
               <option value="high">สูง</option>
               <option value="urgent">ด่วนมาก</option>
             </select></div>
-          <div class="mfl"><label>วันกำหนดส่ง</label><input type="date" id="t-date" /></div>
+          <div class="mfl"><label for="t-start-date">วันที่เริ่มประชุม/อบรม (ถ้ามี)</label><input type="date" id="t-start-date" /><small>เลือกวันเริ่มต้นและสิ้นสุดเพื่อบันทึกหลายวันต่อเนื่อง</small></div>
+          <div class="mfl"><label for="t-date">วันที่สิ้นสุด / วันกำหนดส่ง</label><input type="date" id="t-date" /></div>
         </div>
         <div class="mfl"><label>มอบหมายให้</label></div>
         <div class="asgn-picks" id="asgn-picker"></div>
@@ -4539,6 +4559,12 @@
 
     function pad2(n) { return String(n).padStart(2, '0'); }
     function taskCalendarRange(t) {
+      if (t.startDate && t.date) {
+        const start = new Date(t.startDate + 'T00:00:00');
+        const end = new Date(t.date + 'T00:00:00');
+        end.setDate(end.getDate() + 1);
+        return { start, end };
+      }
       let startMs = taskDueTime(t);
       if (startMs === Number.MAX_SAFE_INTEGER) startMs = Date.now() + 60 * 60 * 1000;
       const start = new Date(startMs);
@@ -5318,6 +5344,20 @@
     const TF_CAL_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
     const TF_CAL_DAYS = ['อา','จ','อ','พ','พฤ','ศ','ส'];
 
+    function validateScheduleRange() {
+      const start = gi('t-start-date').value, end = gi('t-date').value;
+      if (start && (!end || start > end)) {
+        toast('กรุณาระบุวันที่สิ้นสุดให้ตรงกับหรือหลังวันที่เริ่มต้น');
+        gi('t-date').focus();
+        return false;
+      }
+      return true;
+    }
+    function calendarTaskOnDate(t, key) {
+      const end = taskDateKey(t);
+      const start = t.startDate || end;
+      return !!end && start <= key && key <= end;
+    }
     function taskDateKey(t) {
       if (!t || !t.date) return '';
       const m = String(t.date).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -5405,15 +5445,14 @@
       const first = new Date(y, m, 1);
       const days = new Date(y, m + 1, 0).getDate();
       const blanks = first.getDay();
-      const todayKey = new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const todayKey = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
       const byDay = {};
-      visible.forEach(t => {
-        const k = taskDateKey(t);
-        if (!k || !k.startsWith(monthKey)) return;
-        (byDay[k] ||= []).push(t);
-      });
-      Object.keys(byDay).forEach(k => byDay[k] = sortTasksByDue(byDay[k], true));
-      const monthTasks = sortTasksByDue(visible.filter(t => (taskDateKey(t) || '').startsWith(monthKey)), true);
+      for (let d = 1; d <= days; d++) {
+        const key = `${monthKey}-${pad2(d)}`;
+        byDay[key] = sortTasksByDue(visible.filter(t => calendarTaskOnDate(t, key)), true);
+      }
+      const monthTasks = sortTasksByDue(visible.filter(t => taskDateKey(t) >= `${monthKey}-01` && (t.startDate || taskDateKey(t)) <= `${monthKey}-${pad2(days)}`), true);
       const monthActive = monthTasks.filter(isActiveTask);
       const monthDone = monthTasks.filter(isDoneTask);
       const overdue = activeT.filter(isOverdueTask);
@@ -5436,13 +5475,14 @@
           ${dayTasks.length > 4 ? `<div class="mycal-more">+ อีก ${dayTasks.length - 4} งาน</div>` : ''}
         </div>`;
       }
+      for (let i = (blanks + days) % 7; i > 0 && i < 7; i++) cells += '<div class="mycal-day muted" aria-hidden="true"></div>';
       const monthList = monthTasks.map(t => {
         const st = calendarTaskState(t);
         const id = Number(t.id);
         const title = tfCalSafe(t.title);
         const dueKey = taskDateKey(t);
         const time = t.dueTime || t.time || t.due_time || '';
-        const due = dueKey ? `${dueKey}${time ? ' เวลา ' + time + ' น.' : ''}` : 'ไม่มีกำหนด';
+        const due = dueKey ? `${t.startDate ? t.startDate + ' – ' : ''}${dueKey}${time ? ' เวลา ' + time + ' น.' : ''}` : 'ไม่มีกำหนด';
         const tag = Array.isArray(t.tags) && t.tags.length ? t.tags[0] : (t.type || '');
         return `<div class="mycal-list-item" role="button" tabindex="0" data-task-open="detail" data-task-id="${id}" onclick="openTaskDetail(${id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${id}, true, event)}">
           <div class="mycal-list-name">${title}</div>
@@ -5759,6 +5799,7 @@
       const timeVal = t.due_time || t.dueTime || t.time || meeting.time || t.meeting_time || t.meetingTime || '';
       if (!dateVal && !timeVal) return { main: 'ไม่มีกำหนดส่ง', sub: 'ยังไม่ระบุวัน/เวลา' };
       const info = detailDateText(dateVal);
+      if (t.startDate) info.main = detailDateText(t.startDate).main + ' – ' + info.main;
       const timeText = String(timeVal || '').trim().replace(/\s*น\.?$/,'');
       let main = info.main || String(dateVal || 'ไม่ระบุวัน');
       if (timeText && !String(main).includes(timeText)) main += ` เวลา ${timeText} น.`;
@@ -6436,7 +6477,8 @@
     }
 
     function prefillMeetingTrainingTask(dateIso) {
-      const date = dateIso || new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const date = dateIso || `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
       const title = gi('t-title');
       const desc = gi('t-desc');
       const dateInput = gi('t-date');
@@ -6445,6 +6487,7 @@
       if (title && !title.value.trim()) title.value = 'ประชุม/อบรม';
       if (desc) desc.value = buildMeetingTrainingDetailTemplate(date);
       if (dateInput) dateInput.value = date;
+      gi('t-start-date').value = date;
       if (priority) priority.value = 'normal';
       selectTaskTagSilently('ประชุม');
       selectTaskTagSilently('อบรม');
@@ -6470,6 +6513,7 @@
       if (!canAssign()) { toast('เฉพาะ Admin, ผู้จัดการ, ผู้ช่วยผู้จัดการ และหัวหน้างานเท่านั้น'); return; }
       gi('t-id').value = '';
       gi('modal-task-t').textContent = 'มอบหมายงานใหม่';
+      gi('t-start-date').value = '';
       gi('t-title').value = ''; gi('t-desc').value = ''; gi('t-date').value = ''; gi('t-priority').value = 'normal';
       // Pre-fill branch/dept from current user
       const tb = gi('t-branch'), td = gi('t-dept');
@@ -6489,6 +6533,7 @@
       if (isDeptHead() && !sameDeptEntity(t, currentUser)) { toast('หัวหน้างานแก้ไขได้เฉพาะงานของตนเอง'); return; }
       gi('t-id').value = t.id; gi('modal-task-t').textContent = 'แก้ไขงาน';
       gi('t-title').value = t.title; gi('t-desc').value = t.desc || '';
+      gi('t-start-date').value = t.startDate || '';
       gi('t-date').value = t.date || ''; gi('t-priority').value = t.priority;
       selTags = [...t.tags]; selAsgn = [...t.asgn]; taskPendingFiles = t.attachments.map(f => ({ ...f }));
       const tbE = gi('t-branch'), tdE = gi('t-dept');
@@ -6500,6 +6545,7 @@
       openModal('modal-task');
     }
     function submitTask() {
+      if (!validateScheduleRange()) return;
       const title = gi('t-title').value.trim(); if (!title) { toast('กรุณาระบุชื่องาน'); return; }
       setTaskDeptControl();
       const branchKey = isAdmin() ? (gi('t-branch')?.value || currentUser?.branch || '') : (currentUser?.branch || gi('t-branch')?.value || '');
@@ -6513,14 +6559,14 @@
       const newSteps = pendingStepsList.map((label, i) => ({ id: nid++, label }));
       if (id) {
         const t = tasks.find(t => t.id == id);
-        if (t) { Object.assign(t, { title, desc: gi('t-desc').value, date: gi('t-date').value, priority: gi('t-priority').value, tags: [...selTags], asgn: [...selAsgn], attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), steps: newSteps, branch: branchKey || t.branch || '', dept_key: deptKey || t.dept_key || '' }); }
+        if (t) { Object.assign(t, { title, desc: gi('t-desc').value, date: gi('t-date').value, startDate: gi('t-start-date').value, priority: gi('t-priority').value, tags: [...selTags], asgn: [...selAsgn], attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), steps: newSteps, branch: branchKey || t.branch || '', dept_key: deptKey || t.dept_key || '' }); }
         toast('แก้ไขงานแล้ว');
       } else {
         tasks.push({
           id: nid++, title, desc: gi('t-desc').value, col: _defaultCol || 'todo',
           branch: branchKey,
           dept_key: deptKey,
-          ackBy: [], tags: [...selTags], asgn: [...selAsgn], date: gi('t-date').value, prog: 0, priority: gi('t-priority').value, steps: newSteps, stepChecks: {}, attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), submittedFiles: [], submitNote: '', obstacles: [], comments: [], progressLog: [], createdBy: currentUser.id
+          ackBy: [], tags: [...selTags], asgn: [...selAsgn], date: gi('t-date').value, startDate: gi('t-start-date').value, prog: 0, priority: gi('t-priority').value, steps: newSteps, stepChecks: {}, attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), submittedFiles: [], submitNote: '', obstacles: [], comments: [], progressLog: [], createdBy: currentUser.id
         });
         // add notification + sound
         if (selAsgn.length) {
@@ -7335,6 +7381,6 @@ function liveSearch(val) {
      API Connector — โหลดหลัง inline script เพื่อ override functions
      เชื่อมต่อ frontend กับ PHP backend (php/api.php)
      ═══════════════════════════════════════════════════════════ -->
-<script src="js/sync.js?v=20260718-assignee-telegram-email"></script>
+<script src="js/sync.js?v=20260913-calendar-range"></script>
 </body>
 </html>

@@ -44,6 +44,7 @@ create table if not exists public.tf_tasks (
   priority varchar(10) default 'normal',
   prog smallint default 0,
   due_date date,
+  start_date date CHECK (start_date IS NULL OR (due_date IS NOT NULL AND start_date <= due_date)),
   branch varchar(20) default '',
   dept_key varchar(20) default '',
   tags jsonb default '[]'::jsonb,
