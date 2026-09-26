@@ -476,6 +476,13 @@ async function taskSave(req) {
     dept_key: deptHead ? (s.dept_key || desiredDept) : desiredDept,
     tags: b.tags || [],
     ack_by: b.ackBy || [],
+    meeting: (b.meeting && typeof b.meeting === 'object') ? {
+      topic: String(b.meeting.topic || '').slice(0, 300),
+      location: String(b.meeting.location || '').slice(0, 300),
+      dress_code: String(b.meeting.dress_code || b.meeting.dressCode || '').slice(0, 200),
+      start_time: String(b.meeting.start_time || b.meeting.startTime || '').slice(0, 10),
+      end_time: String(b.meeting.end_time || b.meeting.endTime || '').slice(0, 10),
+    } : {},
   };
   if (id) {
     await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payload) });

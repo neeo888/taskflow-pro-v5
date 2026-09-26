@@ -81,6 +81,7 @@ function _normTask(t) {
     date: t.due_date || t.date || '',
     start_date: t.start_date || t.due_date || t.date || '',
     end_date: t.end_date || t.start_date || t.due_date || t.date || '',
+    meeting: (t.meeting && typeof t.meeting === 'object') ? t.meeting : {},
     prog: +(t.prog || 0),
     priority: t.priority || 'normal',
     branch: t.branch || '',
@@ -302,6 +303,7 @@ window.submitTask = function () {
   const idVal = gi('t-id').value;
   const isEdit = !!idVal;
   const pendingFiles = (window.taskPendingFiles || []).filter(f => f && f.data && !f.url);
+  const meeting = typeof window.taskMeetingDataFromForm === 'function' ? window.taskMeetingDataFromForm() : {};
 
   // เรียก original ก่อน (อัปเดต local state + UI)
   _orig_submitTask.call(this);
@@ -326,6 +328,7 @@ window.submitTask = function () {
     date: gi('t-date') ? gi('t-date').value : '',
     start_date: gi('t-date') ? gi('t-date').value : '',
     end_date: gi('t-end-date') ? gi('t-end-date').value : '',
+    meeting,
     priority: gi('t-priority') ? gi('t-priority').value : 'normal',
     tags: taskTags,
     asgn: window.selAsgn ? [...window.selAsgn] : [],

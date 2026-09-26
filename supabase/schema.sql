@@ -46,6 +46,7 @@ create table if not exists public.tf_tasks (
   due_date date,
   start_date date,
   end_date date,
+  meeting jsonb default '{}'::jsonb,
   branch varchar(20) default '',
   dept_key varchar(20) default '',
   tags jsonb default '[]'::jsonb,
@@ -59,6 +60,7 @@ create table if not exists public.tf_tasks (
 
 alter table public.tf_tasks add column if not exists start_date date;
 alter table public.tf_tasks add column if not exists end_date date;
+alter table public.tf_tasks add column if not exists meeting jsonb default '{}'::jsonb;
 
 create table if not exists public.tf_task_assignees (
   task_id bigint not null references public.tf_tasks(id) on delete cascade,

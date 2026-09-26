@@ -1031,6 +1031,14 @@
     }
 
 
+    .task-form-section { border: .5px solid var(--border); background: var(--surface); border-radius: 14px; padding: 14px; margin: 12px 0; }
+    .task-form-section-title { font-size: 12px; font-weight: 900; color: var(--text); margin-bottom: 11px; display:flex; align-items:center; gap:6px; }
+    .task-schedule-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    .task-form-section .mfl { margin-bottom: 0; }
+    .task-optional { margin: 12px 0; border: .5px solid var(--border); border-radius: 12px; padding: 0 12px; }
+    .task-optional summary { cursor:pointer; font-size:12px; font-weight:800; color:var(--text2); padding:11px 0; }
+    @media (max-width: 640px) { .task-schedule-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
     .meeting-assist {
       border: .5px solid rgba(14, 206, 180, .28);
       background: linear-gradient(135deg, rgba(14, 206, 180, .08), rgba(99, 102, 241, .06));
@@ -3528,29 +3536,29 @@
       <div class="mbody">
         <input type="hidden" id="t-id" />
         <div class="mfl"><label>ชื่องาน *</label><input id="t-title" placeholder="ระบุชื่องาน..." /></div>
-        <div class="mfl"><label>ประเภทงาน (เพิ่มได้เอง)</label>
-          <div class="ctag-row"><input id="ntag" placeholder="พิมพ์ประเภทงาน แล้ว Enter" /><button
-              type="button" onclick="addCustomTag()">+ เพิ่ม</button></div>
-          <div class="tag-wrap" id="tag-picker"></div>
-        </div>
-        <div class="mfl"><label>รายละเอียด</label><textarea id="t-desc" placeholder="อธิบายรายละเอียด..."></textarea>
-          <div class="meeting-assist" aria-label="ตัวช่วยรายละเอียดงานประชุม">
-            <div class="meeting-assist-title">📝 สาระสำคัญงานประชุม</div>
-            <div class="meeting-assist-note">ถ้าเป็นงานประชุม ควรระบุข้อมูลหลักให้ครบ เพื่อให้ผู้รับงานรู้ว่าต้องเตรียมอะไร ไปที่ไหน และต้องส่งผลลัพธ์อะไรหลังประชุม</div>
-            <div class="meeting-chip-grid">
-              <span class="meeting-chip">หัวข้อ</span><span class="meeting-chip">วัตถุประสงค์</span><span class="meeting-chip">วันเวลา</span><span class="meeting-chip">สถานที่/ออนไลน์</span><span class="meeting-chip">ผู้เข้าร่วม</span><span class="meeting-chip">วาระ</span><span class="meeting-chip">เอกสารที่ต้องเตรียม</span><span class="meeting-chip">ผลที่ต้องส่ง</span>
-            </div>
-            <div class="meeting-assist-actions">
-              <button class="meeting-assist-btn primary" type="button" onclick="insertMeetingDetails()">+ ใส่แบบฟอร์มงานประชุม</button>
-              <button class="meeting-assist-btn" type="button" onclick="addMeetingSteps()">+ เพิ่ม checklist ประชุม</button>
-            </div>
+        <div class="task-form-section">
+          <div class="task-form-section-title">📋 ข้อมูลงานและกำหนดการ</div>
+          <div class="mfl-2">
+            <div class="mfl"><label>ประเภทงาน *</label><select id="t-kind" onchange="syncTaskKindTag()">
+              <option value="งานทั่วไป">งานทั่วไป</option><option value="ประชุม">ประชุม</option><option value="อบรม">อบรม</option><option value="ประชุม/อบรม">ประชุม / อบรม</option><option value="ลงพื้นที่">ลงพื้นที่</option><option value="ตรวจสอบ">ตรวจสอบ</option>
+            </select></div>
+            <div class="mfl"><label>เรื่องที่ประชุม / หัวข้ออบรม</label><input id="t-meeting-topic" placeholder="เช่น ประชุมติดตามผลไตรมาส 4" /></div>
           </div>
+          <div class="task-schedule-grid" style="margin-top:10px;">
+            <div class="mfl"><label>วันเริ่ม *</label><input type="date" id="t-date" /></div>
+            <div class="mfl"><label>วันเสร็จ</label><input type="date" id="t-end-date" /></div>
+            <div class="mfl"><label>เวลาเริ่ม</label><input type="time" id="t-start-time" /></div>
+            <div class="mfl"><label>เวลาสิ้นสุด</label><input type="time" id="t-end-time" /></div>
+          </div>
+          <div class="mfl-2" style="margin-top:10px;">
+            <div class="mfl"><label>สถานที่ / ช่องทาง</label><input id="t-location" list="task-location-options" placeholder="เลือกหรือพิมพ์เพิ่มได้" onchange="rememberTaskChoice('t-location','task-location-options','tf-task-locations')" /></div>
+            <div class="mfl"><label>การแต่งกาย</label><input id="t-dress-code" list="task-dress-options" placeholder="เลือกหรือพิมพ์เพิ่มได้" onchange="rememberTaskChoice('t-dress-code','task-dress-options','tf-task-dress-codes')" /></div>
+          </div>
+          <datalist id="task-location-options"><option value="สำนักงาน กปภ."></option><option value="ห้องประชุม"></option><option value="ออนไลน์ (Microsoft Teams)"></option><option value="ออนไลน์ (Google Meet)"></option></datalist>
+          <datalist id="task-dress-options"><option value="ชุดสุภาพ"></option><option value="ชุดกากี"></option><option value="เสื้อฟ้าขาว"></option><option value="เสื้อคน กปภ."></option><option value="ชุดปฏิบัติงาน"></option></datalist>
         </div>
-        <div class="mfl"><label>ขั้นตอนงาน (checklist) — ใส่แต่ละขั้นตอนแล้ว Enter</label>
-          <div class="ctag-row"><input id="nstep" placeholder="เช่น ศึกษาข้อมูล, ออกแบบ, พัฒนา..." /><button
-              type="button" onclick="addStep()">+ เพิ่ม</button></div>
-          <div id="step-list" style="display:flex;flex-direction:column;gap:5px;"></div>
-        </div>
+        <div class="mfl"><label>รายละเอียด / วาระ / สิ่งที่ต้องดำเนินการ</label><textarea id="t-desc" placeholder="ระบุวัตถุประสงค์ วาระ เอกสารที่ต้องเตรียม หรือผลลัพธ์ที่ต้องส่ง..."></textarea></div>
+        <details class="task-optional"><summary>เพิ่ม checklist งาน (ไม่บังคับ)</summary><div class="mfl" style="padding-bottom:12px;"><div class="ctag-row"><input id="nstep" placeholder="เช่น เตรียมเอกสาร แล้วกด Enter" /><button type="button" onclick="addStep()">+ เพิ่ม</button></div><div id="step-list" style="display:flex;flex-direction:column;gap:5px;margin-top:8px;"></div></div></details>
         <div class="mfl-2">
           <div class="mfl"><label>สาขา</label>
             <select id="t-branch">
@@ -3593,16 +3601,12 @@
             </select>
           </div>
         </div>
-        <div class="mfl-2">
-          <div class="mfl"><label>ลำดับความสำคัญ</label><select id="t-priority">
+        <div class="mfl"><label>ลำดับความสำคัญ</label><select id="t-priority">
               <option value="low">ต่ำ</option>
               <option value="normal" selected>ปกติ</option>
               <option value="high">สูง</option>
               <option value="urgent">ด่วนมาก</option>
             </select></div>
-          <div class="mfl"><label>วันเริ่มต้น</label><input type="date" id="t-date" /></div>
-          <div class="mfl"><label>วันสิ้นสุด <span style="color:var(--text3);font-weight:500;">(กรอกเมื่อประชุม/อบรมหลายวัน)</span></label><input type="date" id="t-end-date" /></div>
-        </div>
         <div class="mfl"><label>มอบหมายให้</label></div>
         <div class="asgn-picks" id="asgn-picker"></div>
         <div class="mfl"><label>📎 แนบไฟล์ / รูปภาพ (JPG, PNG, PDF, DOCX)</label></div>
@@ -5821,13 +5825,18 @@
     function detailTaskDateText(t) {
       t = t || {};
       const meeting = (t.meeting && typeof t.meeting === 'object') ? t.meeting : {};
-      const dateVal = t.date || t.due_date || t.dueDate || meeting.date || t.meeting_date || t.meetingDate || '';
-      const timeVal = t.due_time || t.dueTime || t.time || meeting.time || t.meeting_time || t.meetingTime || '';
+      const dateVal = t.start_date || t.date || t.due_date || t.dueDate || meeting.date || t.meeting_date || t.meetingDate || '';
+      const endDate = t.end_date || '';
+      const timeVal = t.due_time || t.dueTime || t.time || meeting.start_time || meeting.startTime || meeting.time || t.meeting_time || t.meetingTime || '';
+      const endTime = meeting.end_time || meeting.endTime || '';
       if (!dateVal && !timeVal) return { main: 'ไม่มีกำหนดส่ง', sub: 'ยังไม่ระบุวัน/เวลา' };
       const info = detailDateText(dateVal);
       const timeText = String(timeVal || '').trim().replace(/\s*น\.?$/,'');
+      const endTimeText = String(endTime || '').trim().replace(/\s*น\.?$/,'');
       let main = info.main || String(dateVal || 'ไม่ระบุวัน');
+      if (endDate && endDate !== dateVal) main += ` – ${detailDateText(endDate).main}`;
       if (timeText && !String(main).includes(timeText)) main += ` เวลา ${timeText} น.`;
+      if (endTimeText) main += `–${endTimeText} น.`;
       return { main, sub: timeText ? 'ระบุวันและเวลาแล้ว' : (info.sub || 'กำหนดส่ง') };
     }
 
@@ -5848,6 +5857,12 @@
       const latestProgress = [...(t.progressLog || [])].sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))[0];
       const branchText = t.branch_name || t.branch || currentUser?.branch_name || currentUser?.branch || '-';
       const deptText = t.dept || currentUser?.dept || '-';
+      const meeting = (t.meeting && typeof t.meeting === 'object') ? t.meeting : {};
+      const meetingInfo = [
+        meeting.topic ? `<div><b>เรื่อง:</b> ${safeAttr(meeting.topic)}</div>` : '',
+        meeting.location ? `<div><b>สถานที่:</b> ${safeAttr(meeting.location)}</div>` : '',
+        meeting.dress_code ? `<div><b>การแต่งกาย:</b> ${safeAttr(meeting.dress_code)}</div>` : ''
+      ].filter(Boolean).join('');
       return `
         <div class="dp-info-grid">
           <div class="dp-info-card"><div class="dp-info-lbl">สถานะงาน</div><div class="dp-info-val" style="color:${cfg.c};">${cfg.n}</div><div class="dp-info-sub">ความคืบหน้า ${t.prog || 0}%</div></div>
@@ -5863,6 +5878,7 @@
           <div class="dp-sec-t">ภาพรวมผู้รับผิดชอบ</div>
           <div class="dp-owner-strip">${asgns.length ? asgns.map(u => `<div class="dp-owner-chip" title="${safeAttr(u.name || '')} • ${safeAttr(u.role || 'ไม่ระบุตำแหน่ง')}">${avEl(u, 22, 7)}<span>${u.name}<small style="display:block;font-size:9px;color:var(--text3);font-weight:600;line-height:1.1;">${u.role || 'ไม่ระบุตำแหน่ง'}</small></span></div>`).join('') : '<span style="font-size:12px;color:var(--text3);">ยังไม่ได้มอบหมาย</span>'}</div>
         </div>
+        ${meetingInfo ? `<div class="dp-sec"><div class="dp-sec-t">ข้อมูลประชุม / อบรม</div><div style="font-size:12px;line-height:1.8;color:var(--text2);background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:10px 12px;">${meetingInfo}</div></div>` : ''}
         ${latestProgress ? `<div class="dp-sec"><div class="dp-sec-t">อัปเดตล่าสุด</div><div style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface);border:.5px solid var(--border);border-radius:12px;padding:10px 12px;">${findU(latestProgress.authorId)?.name || 'ผู้ใช้'} อัปเดตเป็น <b>${latestProgress.prog}%</b> <span style="color:var(--text3);">${latestProgress.at || ''}</span>${latestProgress.note ? `<br>${latestProgress.note}` : ''}</div></div>` : ''}
       `;
     }
@@ -6497,6 +6513,47 @@
       ].join('\n');
     }
 
+    function taskMeetingDataFromForm() {
+      return {
+        topic: gi('t-meeting-topic')?.value.trim() || '',
+        location: gi('t-location')?.value.trim() || '',
+        dress_code: gi('t-dress-code')?.value.trim() || '',
+        start_time: gi('t-start-time')?.value || '',
+        end_time: gi('t-end-time')?.value || ''
+      };
+    }
+    function setTaskMeetingForm(data = {}) {
+      const d = (data && typeof data === 'object') ? data : {};
+      if (gi('t-meeting-topic')) gi('t-meeting-topic').value = d.topic || d.subject || '';
+      if (gi('t-location')) gi('t-location').value = d.location || '';
+      if (gi('t-dress-code')) gi('t-dress-code').value = d.dress_code || d.dressCode || '';
+      if (gi('t-start-time')) gi('t-start-time').value = d.start_time || d.startTime || '';
+      if (gi('t-end-time')) gi('t-end-time').value = d.end_time || d.endTime || '';
+    }
+    function syncTaskKindTag() {
+      const kind = gi('t-kind')?.value || 'งานทั่วไป';
+      selTags = kind === 'งานทั่วไป' ? [] : [kind];
+    }
+    function rememberTaskChoice(inputId, listId, storageKey) {
+      const value = gi(inputId)?.value.trim(); if (!value) return;
+      let saved = [];
+      try { saved = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (_) {}
+      if (!saved.includes(value)) {
+        saved = [value, ...saved].slice(0, 12);
+        try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (_) {}
+      }
+      const list = gi(listId);
+      if (list && !Array.from(list.options).some(o => o.value === value)) list.insertAdjacentHTML('afterbegin', `<option value="${safeAttr(value)}"></option>`);
+    }
+    function loadTaskChoiceOptions(listId, storageKey) {
+      let saved = [];
+      try { saved = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (_) {}
+      const list = gi(listId); if (!list || !Array.isArray(saved)) return;
+      saved.slice().reverse().forEach(value => {
+        if (value && !Array.from(list.options).some(o => o.value === value)) list.insertAdjacentHTML('afterbegin', `<option value="${safeAttr(value)}"></option>`);
+      });
+    }
+
     function selectTaskTagSilently(tag) {
       const v = (typeof cleanTagName === 'function' ? cleanTagName(tag) : String(tag || '').trim());
       if (!v) return;
@@ -6513,18 +6570,12 @@
       const priority = gi('t-priority');
       if (gi('modal-task-t')) gi('modal-task-t').textContent = 'เพิ่มประชุม/อบรม';
       if (title && !title.value.trim()) title.value = 'ประชุม/อบรม';
-      if (desc) desc.value = buildMeetingTrainingDetailTemplate(date);
+      if (desc) desc.value = '';
       if (dateInput) dateInput.value = date;
       if (endDateInput) endDateInput.value = date;
       if (priority) priority.value = 'normal';
-      selectTaskTagSilently('ประชุม');
-      selectTaskTagSilently('อบรม');
-      MEETING_STEP_TEMPLATE.forEach(step => {
-        if (!pendingStepsList.some(x => String(x).trim() === step)) pendingStepsList.push(step);
-      });
-      editingStepIndex = -1;
-      if (typeof buildTagPicker === 'function') buildTagPicker();
-      if (typeof renderStepList === 'function') renderStepList();
+      if (gi('t-kind')) gi('t-kind').value = 'ประชุม/อบรม';
+      syncTaskKindTag();
     }
 
     function openMeetingTrainingFromCalendar(dateIso, ev) {
@@ -6542,6 +6593,10 @@
       gi('t-id').value = '';
       gi('modal-task-t').textContent = 'มอบหมายงานใหม่';
       gi('t-title').value = ''; gi('t-desc').value = ''; gi('t-date').value = ''; if (gi('t-end-date')) gi('t-end-date').value = ''; gi('t-priority').value = 'normal';
+      if (gi('t-kind')) gi('t-kind').value = 'งานทั่วไป';
+      setTaskMeetingForm({});
+      loadTaskChoiceOptions('task-location-options', 'tf-task-locations');
+      loadTaskChoiceOptions('task-dress-options', 'tf-task-dress-codes');
       // Pre-fill branch/dept from current user
       const tb = gi('t-branch'), td = gi('t-dept');
       if (tb && currentUser?.branch) tb.value = currentUser.branch;
@@ -6549,7 +6604,7 @@
       setTaskDeptControl();
       selTags = []; selAsgn = []; taskPendingFiles = []; pendingStepsList = []; editingStepIndex = -1;
       _defaultCol = col || 'todo';
-      buildTagPicker(); buildAsgnPicker(); renderTaskAttachList(); renderStepList();
+      syncTaskKindTag(); buildAsgnPicker(); renderTaskAttachList(); renderStepList();
       openModal('modal-task');
     }
     function openTaskModalEdit(id) {
@@ -6561,13 +6616,18 @@
       gi('t-id').value = t.id; gi('modal-task-t').textContent = 'แก้ไขงาน';
       gi('t-title').value = t.title; gi('t-desc').value = t.desc || '';
       gi('t-date').value = t.start_date || t.date || ''; if (gi('t-end-date')) gi('t-end-date').value = t.end_date || ''; gi('t-priority').value = t.priority;
+      const taskKind = (t.tags || [])[0] || 'งานทั่วไป';
+      if (gi('t-kind')) gi('t-kind').value = Array.from(gi('t-kind').options).some(o => o.value === taskKind) ? taskKind : 'งานทั่วไป';
+      setTaskMeetingForm(t.meeting || {});
+      loadTaskChoiceOptions('task-location-options', 'tf-task-locations');
+      loadTaskChoiceOptions('task-dress-options', 'tf-task-dress-codes');
       selTags = [...t.tags]; selAsgn = [...t.asgn]; taskPendingFiles = t.attachments.map(f => ({ ...f }));
       const tbE = gi('t-branch'), tdE = gi('t-dept');
       if (tbE) tbE.value = t.branch || '';
       if (tdE) tdE.value = t.dept_key || '';
       setTaskDeptControl();
       pendingStepsList = t.steps ? t.steps.map(s => s.label) : []; editingStepIndex = -1;
-      buildTagPicker(); buildAsgnPicker(); renderTaskAttachList(); renderStepList();
+      buildAsgnPicker(); renderTaskAttachList(); renderStepList();
       openModal('modal-task');
     }
     function submitTask() {
@@ -6579,19 +6639,21 @@
       if (enforceAssigneeScope()) { buildAsgnPicker(); toast('ผู้รับมอบหมายบางคนไม่อยู่ในสิทธิ์ของงานนี้'); return; }
       if (!selAsgn.length) { toast('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน'); return; }
       selTags = normalizeTagList(selTags);
+      syncTaskKindTag();
+      const meeting = taskMeetingDataFromForm();
       ensureTagsInGlobalList(selTags, { refresh: false });
       const id = gi('t-id').value;
       const newSteps = pendingStepsList.map((label, i) => ({ id: nid++, label }));
       if (id) {
         const t = tasks.find(t => t.id == id);
-        if (t) { Object.assign(t, { title, desc: gi('t-desc').value, date: gi('t-date').value, start_date: gi('t-date').value, end_date: gi('t-end-date')?.value || gi('t-date').value, priority: gi('t-priority').value, tags: [...selTags], asgn: [...selAsgn], attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), steps: newSteps, branch: branchKey || t.branch || '', dept_key: deptKey || t.dept_key || '' }); }
+        if (t) { Object.assign(t, { title, desc: gi('t-desc').value, date: gi('t-date').value, start_date: gi('t-date').value, end_date: gi('t-end-date')?.value || gi('t-date').value, meeting, priority: gi('t-priority').value, tags: [...selTags], asgn: [...selAsgn], attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), steps: newSteps, branch: branchKey || t.branch || '', dept_key: deptKey || t.dept_key || '' }); }
         toast('แก้ไขงานแล้ว');
       } else {
         tasks.push({
           id: nid++, title, desc: gi('t-desc').value, col: _defaultCol || 'todo',
           branch: branchKey,
           dept_key: deptKey,
-          ackBy: [], tags: [...selTags], asgn: [...selAsgn], date: gi('t-date').value, start_date: gi('t-date').value, end_date: gi('t-end-date')?.value || gi('t-date').value, prog: 0, priority: gi('t-priority').value, steps: newSteps, stepChecks: {}, attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), submittedFiles: [], submitNote: '', obstacles: [], comments: [], progressLog: [], createdBy: currentUser.id
+          ackBy: [], tags: [...selTags], asgn: [...selAsgn], date: gi('t-date').value, start_date: gi('t-date').value, end_date: gi('t-end-date')?.value || gi('t-date').value, meeting, prog: 0, priority: gi('t-priority').value, steps: newSteps, stepChecks: {}, attachments: taskPendingFiles.map(({ name, size, type, data, url, mime }) => ({ name, size, type, data, url, mime })), submittedFiles: [], submitNote: '', obstacles: [], comments: [], progressLog: [], createdBy: currentUser.id
         });
         // add notification + sound
         if (selAsgn.length) {
