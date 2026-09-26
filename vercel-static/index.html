@@ -3037,7 +3037,25 @@
 .mycal-list-meta { display:flex; gap:7px; flex-wrap:wrap; align-items:center; font-size:10px; color:var(--text3); font-weight:800; }
 .mycal-badge { border-radius:999px; padding:3px 8px; font-size:10px; font-weight:900; display:inline-flex; align-items:center; gap:4px; }
 .mycal-empty { text-align:center; color:var(--text3); font-size:12px; padding:20px 10px; background:var(--surface); border-radius:14px; }
+.mycal-overview { margin-top:18px; border-top:.5px solid var(--border); padding-top:18px; }
+.mycal-overview-title { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:15px; font-weight:900; color:var(--text); margin-bottom:12px; }
+.mycal-overview-grid { display:grid; grid-template-columns:repeat(var(--overview-columns),minmax(0,1fr)); gap:12px; }
+.mycal-mini { border:.5px solid var(--border); border-radius:16px; padding:10px; background:#fff; min-width:0; }
+.mycal-mini-title { font-size:13px; font-weight:900; color:var(--text); margin-bottom:8px; }
+.mycal-mini-week,.mycal-mini-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
+.mycal-mini-week span { color:var(--text3); text-align:center; font-size:8px; font-weight:900; padding:2px 0; }
+.mycal-mini-day { min-height:42px; padding:3px; border-radius:7px; background:#FAFBFF; border:.5px solid rgba(148,163,184,.15); overflow:hidden; }
+.mycal-mini-day.has-task { cursor:pointer; background:#F4FFFC; border-color:rgba(0,166,145,.24); }
+.mycal-mini-day.has-task:hover,.mycal-mini-day.has-task:focus-visible { outline:2px solid rgba(0,166,145,.3); background:#E8FBF5; }
+.mycal-mini-day b { display:block; font-size:9px; font-weight:900; color:var(--text); margin-bottom:2px; }
+.mycal-mini-day i { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:4px; background:#E7F8F5; color:#075D57; font-size:7px; font-style:normal; font-weight:800; padding:1px 2px; }
+.mycal-mini-day > span { display:block; color:#6366F1; font-size:7px; font-weight:900; margin-top:2px; }
+.mycal-mini-day.today { border-color:rgba(0,196,140,.6); background:#ECFFF9; }.mycal-mini-day.muted { opacity:.35; }
+.mycal-mini-num { display:block; font-size:9px; font-weight:900; color:var(--text); margin-bottom:2px; }
+.mycal-mini-item { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:4px; background:#E7F8F5; color:#075D57; font-size:7px; font-weight:800; padding:1px 2px; margin-top:1px; cursor:pointer; }
+.mycal-mini-more { color:#6366F1; font-size:7px; font-weight:900; margin-top:2px; }
 @media (max-width:1100px){ .mycal-layout{grid-template-columns:1fr;} .mycal-list{max-height:none;} }
+@media (max-width:900px){ .mycal-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;} }
 @media (max-width:760px){
   #page-mycalendar{padding-left:10px;padding-right:10px;}
   .mycal-shell{padding:10px;border-radius:20px;}
@@ -3050,6 +3068,7 @@
   .mycal-stat .num{font-size:24px;}
   .mycal-stat .lbl{font-size:10px;}
   .mycal-board,.mycal-side{padding:8px;border-radius:16px;}
+  .mycal-overview-grid{grid-template-columns:1fr !important;}
   .mycal-scroll{overflow-x:hidden;}
   .mycal-week,.mycal-grid{grid-template-columns:repeat(7,minmax(0,1fr));min-width:0;gap:5px;}
   .mycal-week div{font-size:10px;padding:5px 0;}
@@ -3832,6 +3851,11 @@
       <div class="mhd"><span class="mhd-t">⚙️ ตั้งค่าปฏิทินส่วนกลาง</span><button class="mx"
           onclick="closeModal('modal-calendar-settings')">✕</button></div>
       <div class="mbody">
+        <div class="calendar-recipient-box" style="margin-bottom:14px;">
+          <div class="mfl" style="margin-bottom:0;"><label>รูปแบบการแสดงปฏิทิน</label><select id="cal-view-months">
+            <option value="1">1 เดือน — รายละเอียด</option><option value="2">2 เดือน</option><option value="3">3 เดือน</option><option value="6">6 เดือน</option><option value="12">12 เดือน — ภาพรวมทั้งปี</option>
+          </select><div class="calendar-settings-modal-note" style="margin-top:7px;">แสดงงานที่บันทึกไว้ในทุกเดือน และระบบจะจำค่าที่เลือกไว้สำหรับบัญชีนี้</div></div>
+        </div>
         <div class="calendar-recipient-box">
           <div class="mfl" style="margin-bottom:10px;">
             <label>ผู้รับปฏิทิน / แจ้งเตือน</label>
@@ -4677,6 +4701,7 @@
       try { saved = JSON.parse(localStorage.getItem(calendarSettingsKey()) || '{}') || {}; } catch { saved = {}; }
       const emails = parseCalendarEmails((saved.emails || []).join ? saved.emails.join('\n') : (saved.emails || saved.email || currentUser?.email || ''));
       return {
+        viewMonths: [1, 2, 3, 6, 12].includes(Number(saved.viewMonths)) ? Number(saved.viewMonths) : 1,
         recipientMode: saved.recipientMode || 'assignees',
         emails,
         reminders: normaliseReminderList(saved.reminders || saved.reminder || 30),
@@ -4685,6 +4710,7 @@
         telegramChatId: String(saved.telegramChatId || '').trim()
       };
     }
+    function calendarViewMonths() { return getCalendarSettings().viewMonths || 1; }
     function taskRecipientUsers(t) {
       const ids = [...new Set((t?.asgn || []).map(Number).filter(Boolean))];
       let list = users.filter(u => ids.includes(Number(u.id)));
@@ -4734,6 +4760,7 @@
     }
     function openCalendarSettings() {
       const s = getCalendarSettings();
+      const viewMonths = gi('cal-view-months'); if (viewMonths) viewMonths.value = String(s.viewMonths || 1);
       const mode = gi('cal-recipient-mode'); if (mode) mode.value = s.recipientMode || 'assignees';
       const emails = gi('cal-global-emails');
       if (emails) emails.value = s.emails.join('\n');
@@ -4745,6 +4772,7 @@
     }
     function saveCalendarSettings() {
       const recipientMode = gi('cal-recipient-mode')?.value || 'assignees';
+      const viewMonths = [1, 2, 3, 6, 12].includes(Number(gi('cal-view-months')?.value)) ? Number(gi('cal-view-months').value) : 1;
       const emails = parseCalendarEmails(gi('cal-global-emails')?.value || '');
       const bad = emails.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
       if (bad) { toast('อีเมลไม่ถูกต้อง: ' + bad); gi('cal-global-emails')?.focus(); return; }
@@ -4753,7 +4781,7 @@
       const telegramEnabled = !!gi('cal-telegram-enabled')?.checked;
       const telegramBotToken = (gi('cal-telegram-token')?.value || '').trim();
       const telegramChatId = (gi('cal-telegram-chat')?.value || '').trim();
-      localStorage.setItem(calendarSettingsKey(), JSON.stringify({ recipientMode, emails, reminders, telegramEnabled, telegramBotToken, telegramChatId }));
+      localStorage.setItem(calendarSettingsKey(), JSON.stringify({ viewMonths, recipientMode, emails, reminders, telegramEnabled, telegramBotToken, telegramChatId }));
       closeModal('modal-calendar-settings');
       toast('บันทึกตั้งค่าปฏิทินส่วนกลางแล้ว');
       renderAll();
@@ -5521,10 +5549,41 @@
         ${continuation ? '<span class="mycal-range-arrow">↔</span>' : ''}<span class="mycal-chip-title">${displayTitle}</span>${multi && key === start ? `<span class="mycal-range-days">${days} วัน</span>` : ''}
       </div>`;
     }
+    function renderCalendarOverviewMonth(year, month, visible) {
+      const first = new Date(year, month, 1);
+      const days = new Date(year, month + 1, 0).getDate();
+      const blanks = first.getDay();
+      const monthKey = `${year}-${pad2(month + 1)}`;
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const cells = [];
+      for (let i = 0; i < blanks; i++) cells.push('<div class="mycal-mini-day muted" aria-hidden="true"></div>');
+      for (let d = 1; d <= days; d++) {
+        const key = `${monthKey}-${pad2(d)}`;
+        const dayTasks = sortTasksByDue(visible.filter(t => taskOccursOn(t, key)), true);
+        const firstTask = dayTasks[0];
+        const label = firstTask ? tfCalSafe(firstTask.title) : '';
+        const more = dayTasks.length > 1 ? `<span>+${dayTasks.length - 1}</span>` : '';
+        const action = firstTask ? ` role="button" tabindex="0" title="${label}" onclick="openTaskDetail(${Number(firstTask.id)}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${Number(firstTask.id)}, true, event)}"` : '';
+        cells.push(`<div class="mycal-mini-day ${key === todayKey ? 'today' : ''} ${dayTasks.length ? 'has-task' : ''}"${action}><b>${d}</b>${firstTask ? `<i>${label}</i>${more}` : ''}</div>`);
+      }
+      while (cells.length % 7) cells.push('<div class="mycal-mini-day muted" aria-hidden="true"></div>');
+      return `<section class="mycal-mini"><div class="mycal-mini-title">${TF_CAL_MONTHS[month]} ${year + 543}</div><div class="mycal-mini-week">${TF_CAL_DAYS.map(d => `<span>${d}</span>`).join('')}</div><div class="mycal-mini-days">${cells.join('')}</div></section>`;
+    }
+    function renderCalendarOverview(monthCount, visible) {
+      if (monthCount <= 1) return '';
+      const panels = [];
+      for (let offset = 1; offset < monthCount; offset++) {
+        const month = new Date(myCalendarMonth.getFullYear(), myCalendarMonth.getMonth() + offset, 1);
+        panels.push(renderCalendarOverviewMonth(month.getFullYear(), month.getMonth(), visible));
+      }
+      const columns = monthCount === 2 ? 1 : 3;
+      return `<div class="mycal-overview"><div class="mycal-overview-title"><span>ภาพรวมต่อเนื่อง ${monthCount} เดือน</span><span style="font-size:11px;color:var(--text3);font-weight:800;">เดือนปัจจุบันแบบละเอียด · งานที่บันทึกไว้จะแสดงทุกเดือน</span></div><div class="mycal-overview-grid" style="--overview-columns:${columns};">${panels.join('')}</div></div>`;
+    }
     function renderMyCalendar() {
       const body = gi('mycalendar-body');
       if (!body || !currentUser) return;
       const visible = visibleMyTasksAll();
+      const viewMonths = calendarViewMonths();
       const activeT = sortTasksByDue(visible.filter(isActiveTask));
       const noDue = visible.filter(t => !taskDateKey(t));
       const y = myCalendarMonth.getFullYear();
@@ -5611,9 +5670,9 @@
             <div style="font-size:12px;color:var(--text3);font-weight:800;margin-top:4px;">ปฏิทินงานที่ต้องส่ง / ส่งแล้ว ตามสิทธิการล็อกอิน</div>
           </div>
           <div class="mycal-actions">
-            <button class="btn-sec" onclick="changeMyCalendarMonth(-1)">← เดือนก่อน</button>
+            <button class="btn-sec" onclick="changeMyCalendarMonth(-${viewMonths})">← ${viewMonths > 1 ? `${viewMonths} เดือนก่อน` : 'เดือนก่อน'}</button>
             <button class="btn-sec" onclick="resetMyCalendarMonth()">วันนี้</button>
-            <button class="btn-sec" onclick="changeMyCalendarMonth(1)">เดือนถัดไป →</button>
+            <button class="btn-sec" onclick="changeMyCalendarMonth(${viewMonths})">${viewMonths > 1 ? `${viewMonths} เดือนถัดไป` : 'เดือนถัดไป'} →</button>
           </div>
         </div>
         ${canAssign() ? `<div style="margin:0 0 14px;padding:14px;border:1px dashed rgba(16,201,171,.55);border-radius:16px;background:#F7FFFC;">
@@ -5640,6 +5699,7 @@
             <div class="mycal-list">${monthList}</div>
           </div>
         </div>
+        ${renderCalendarOverview(viewMonths, visible)}
       </div>`;
     }
 
