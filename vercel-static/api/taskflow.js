@@ -5,6 +5,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SESSION_HOURS = Number(process.env.SESSION_HOURS || 720);
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN || process.env.LINE_BOT_TOKEN || '';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -804,6 +805,73 @@ async function fileUpload(req) {
   const rows = await sb('/rest/v1/tf_attachments', { method: 'POST', body: JSON.stringify({ task_id: taskId, is_submitted: isSubmitted, file_name: file.name || 'file', file_size: `${Math.round((file.size || 0) / 1024)}KB`, file_type: ext, file_path: path, file_url: publicUrl, uploaded_by: s.id }) });
   return ok({ file_id: Number(rows[0].id), file_name: file.name || 'file', file_url: publicUrl }, 201);
 }
+function bytesToBase64(bytes) {
+  let out = '';
+  const step = 0x8000;
+  for (let i = 0; i < bytes.length; i += step) out += String.fromCharCode(...bytes.subarray(i, i + step));
+  return btoa(out);
+}
+function responseText(data) {
+  if (data?.output_text) return data.output_text;
+  for (const item of data?.output || []) for (const part of item?.content || []) {
+    if (part?.type === 'output_text' && part?.text) return part.text;
+  }
+  return '';
+}
+function validateDocumentExtraction(input) {
+  const x = input && typeof input === 'object' ? input : {};
+  const taskTypes = new Set(['งานทั่วไป', 'ประชุม', 'อบรม', 'ประชุม/อบรม', 'เข้าร่วมพิธี', 'ลงพื้นที่', 'ตรวจสอบ']);
+  const date = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '';
+  const time = v => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || '')) ? String(v) : '';
+  const text = (v, n) => String(v || '').trim().slice(0, n);
+  const start = date(x.start_date), end = date(x.end_date);
+  const output = {
+    title: text(x.title, 200), task_type: taskTypes.has(x.task_type) ? x.task_type : 'งานทั่วไป',
+    topic: text(x.topic, 300), start_date: start, end_date: end && (!start || end >= start) ? end : start,
+    start_time: time(x.start_time), end_time: time(x.end_time), location: text(x.location, 300),
+    dress_code: text(x.dress_code, 200), details: text(x.details, 4000),
+    confidence: Math.max(0, Math.min(100, Number(x.confidence) || 0)),
+    warnings: Array.isArray(x.warnings) ? x.warnings.map(v => text(v, 300)).filter(Boolean).slice(0, 8) : []
+  };
+  if (!output.title) output.warnings.unshift('ไม่พบชื่องานที่ชัดเจน กรุณาระบุเอง');
+  if (!output.start_date) output.warnings.unshift('ไม่พบวันเริ่มต้น กรุณาตรวจสอบเอกสาร');
+  if (output.start_date && output.end_date && output.end_date < output.start_date) output.warnings.unshift('วันสิ้นสุดก่อนวันเริ่มต้น ระบบใช้วันเริ่มต้นแทน');
+  if (output.start_date === output.end_date && output.start_time && output.end_time && output.end_time < output.start_time) output.warnings.unshift('เวลาสิ้นสุดก่อนเวลาเริ่มต้น กรุณาตรวจสอบ');
+  return output;
+}
+async function analyzeDocument(req) {
+  await auth(req);
+  if (!OPENAI_API_KEY) return err('ยังไม่ได้ตั้งค่า OPENAI_API_KEY ใน Vercel Environment Variables', 503);
+  const fd = await req.formData();
+  const file = fd.get('file');
+  if (!file || typeof file.arrayBuffer !== 'function') return err('ไม่พบไฟล์สำหรับวิเคราะห์');
+  const type = String(file.type || '').toLowerCase();
+  const allowed = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
+  if (!allowed.has(type)) return err('รองรับเฉพาะ PDF, JPG, PNG และ WebP');
+  if (!file.size || file.size > 4 * 1024 * 1024) return err('ไฟล์สำหรับวิเคราะห์ต้องมีขนาดไม่เกิน 4 MB');
+  const dataUrl = `data:${type};base64,${bytesToBase64(new Uint8Array(await file.arrayBuffer()))}`;
+  const filePart = type === 'application/pdf'
+    ? { type: 'input_file', filename: file.name || 'document.pdf', file_data: dataUrl, detail: 'high' }
+    : { type: 'input_image', image_url: dataUrl, detail: 'high' };
+  const schema = {
+    type: 'object', additionalProperties: false,
+    properties: {
+      title: { type: 'string' }, task_type: { type: 'string', enum: ['งานทั่วไป', 'ประชุม', 'อบรม', 'ประชุม/อบรม', 'เข้าร่วมพิธี', 'ลงพื้นที่', 'ตรวจสอบ'] },
+      topic: { type: 'string' }, start_date: { type: 'string' }, end_date: { type: 'string' }, start_time: { type: 'string' }, end_time: { type: 'string' },
+      location: { type: 'string' }, dress_code: { type: 'string' }, details: { type: 'string' }, confidence: { type: 'number' }, warnings: { type: 'array', items: { type: 'string' } }
+    }, required: ['title', 'task_type', 'topic', 'start_date', 'end_date', 'start_time', 'end_time', 'location', 'dress_code', 'details', 'confidence', 'warnings']
+  };
+  const prompt = 'อ่านข้อความจากเอกสารภาษาไทยนี้เพื่อสร้างงานในระบบ. ดึงเฉพาะข้อมูลที่ปรากฏชัดเจน ห้ามเดาหรือสร้างวันเวลา/สถานที่/การแต่งกาย. หากไม่พบให้ส่งสตริงว่าง. จัดประเภทเป็น งานทั่วไป, ประชุม, อบรม, ประชุม/อบรม, เข้าร่วมพิธี, ลงพื้นที่, หรือ ตรวจสอบ. warnings ต้องระบุข้อมูลสำคัญที่ไม่ชัดเจนหรือควรตรวจทาน. ส่ง JSON ตาม schema เท่านั้น.';
+  const ai = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST', headers: { authorization: `Bearer ${OPENAI_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'gpt-4.1-mini', store: false, input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }, filePart] }], text: { format: { type: 'json_schema', name: 'task_document_extraction', strict: true, schema } } })
+  });
+  const result = await ai.json().catch(() => null);
+  if (!ai.ok) throw new Error(result?.error?.message || 'เรียก OpenAI API ไม่สำเร็จ');
+  let parsed;
+  try { parsed = JSON.parse(responseText(result)); } catch (_) { return err('AI ส่งผลลัพธ์ที่อ่านไม่ได้ กรุณาลองอีกครั้ง', 502); }
+  return ok({ extraction: validateDocumentExtraction(parsed) });
+}
 export default async function handler(req) {
   if (req.method === 'OPTIONS') return json({}, 204);
   const url = new URL(req.url);
@@ -828,6 +896,7 @@ export default async function handler(req) {
     if (action === 'task_verify' && req.method === 'POST') return taskVerify(req);
     if (action === 'step_toggle' && req.method === 'POST') return stepToggle(req);
     if (action === 'file_upload' && req.method === 'POST') return fileUpload(req);
+    if (action === 'analyze_document' && req.method === 'POST') return analyzeDocument(req);
     if (action === 'notifications' && req.method === 'GET') return notifications(req);
     if (action === 'notif_ack' && req.method === 'POST') return notificationAck(req);
     if (action === 'notif_read' && req.method === 'POST') return ok();

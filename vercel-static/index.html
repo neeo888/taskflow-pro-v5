@@ -1038,6 +1038,13 @@
     .task-optional { margin: 12px 0; border: .5px solid var(--border); border-radius: 12px; padding: 0 12px; }
     .task-optional summary { cursor:pointer; font-size:12px; font-weight:800; color:var(--text2); padding:11px 0; }
     @media (max-width: 640px) { .task-schedule-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    .ai-import-card { border:1px dashed rgba(99,102,241,.45); background:linear-gradient(135deg,#F6F7FF,#F4FFFC); border-radius:15px; padding:13px; margin:12px 0; }
+    .ai-import-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:5px; font-size:13px; font-weight:900; color:var(--text); }
+    .ai-import-note { font-size:11px; line-height:1.5; color:var(--text2); }
+    .ai-import-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .ai-import-actions button { min-height:36px; font-size:11px; }
+    .ai-review { margin-top:10px; padding:10px; border-radius:11px; background:#fff; border:.5px solid rgba(14,206,180,.32); font-size:11px; line-height:1.55; color:var(--text2); }
+    .ai-review strong { color:var(--text); }
 
     .meeting-assist {
       border: .5px solid rgba(14, 206, 180, .28);
@@ -3559,6 +3566,14 @@
       <div class="mbody">
         <input type="hidden" id="t-id" />
         <div class="mfl"><label>ชื่องาน *</label><input id="t-title" placeholder="ระบุชื่องาน..." /></div>
+        <div class="ai-import-card" aria-label="นำเข้าเอกสารให้ AI อ่าน">
+          <div class="ai-import-head"><span>✨ นำเข้าเอกสารเพื่อกรอกงานอัตโนมัติ</span><span style="font-size:10px;color:#6366F1;">PDF / JPG / PNG / WebP</span></div>
+          <div class="ai-import-note">ถ่ายภาพหนังสือเชิญหรือเลือกไฟล์ประชุม/อบรม แล้ว AI จะเสนอประเภทงาน วันเวลา สถานที่ การแต่งกาย และรายละเอียดให้ตรวจทานก่อนบันทึก</div>
+          <div class="ai-import-actions"><button type="button" class="btn-sec" onclick="document.getElementById('task-ai-camera-input').click()">📷 ถ่ายรูปเอกสาร</button><button type="button" class="btn-sec" onclick="document.getElementById('task-ai-input').click()">📄 เลือกไฟล์เพื่อวิเคราะห์</button></div>
+          <input type="file" id="task-ai-input" accept="application/pdf,image/jpeg,image/png,image/webp" style="display:none" onchange="analyzeTaskDocument(this.files[0]);this.value=''" />
+          <input type="file" id="task-ai-camera-input" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none" onchange="analyzeTaskDocument(this.files[0]);this.value=''" />
+          <div id="ai-import-review" class="ai-review" style="display:none"></div>
+        </div>
         <div class="task-form-section">
           <div class="task-form-section-title">📋 ข้อมูลงานและกำหนดการ</div>
           <div class="mfl-2">
@@ -4299,6 +4314,36 @@
           _readPendingFile(f, obj, renderTaskAttachList);
         }
       });
+    }
+    async function analyzeTaskDocument(file) {
+      if (!file) return;
+      const review = gi('ai-import-review');
+      const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+      if (!allowed.includes(String(file.type || '').toLowerCase())) { toast('รองรับเฉพาะ PDF, JPG, PNG และ WebP'); return; }
+      if (file.size > 4 * 1024 * 1024) { toast('ไฟล์สำหรับวิเคราะห์ต้องมีขนาดไม่เกิน 4 MB'); return; }
+      // เก็บไฟล์ต้นฉบับเป็นหลักฐานของงาน แม้ AI อ่านข้อมูลไม่สำเร็จ
+      processTaskFiles([file]);
+      if (review) { review.style.display = ''; review.innerHTML = '⏳ กำลังอ่านเอกสารและตรวจสอบข้อมูล…'; }
+      const fd = new FormData(); fd.append('file', file, file.name || 'document');
+      const result = typeof window._api === 'function' ? await window._api('analyze_document', fd) : { ok: false, error: 'ระบบวิเคราะห์ยังไม่พร้อม' };
+      if (!result?.ok || !result.extraction) {
+        if (review) review.innerHTML = `⚠️ วิเคราะห์ไม่ได้: ${safeAttr(result?.error || 'กรุณาลองอีกครั้ง')}<br><span style="color:var(--text3)">ไฟล์ถูกแนบไว้แล้ว คุณยังกรอกข้อมูลเองได้</span>`;
+        toast(result?.error || 'วิเคราะห์เอกสารไม่สำเร็จ'); return;
+      }
+      const x = result.extraction;
+      if (gi('t-title') && x.title) gi('t-title').value = x.title;
+      if (gi('t-kind') && Array.from(gi('t-kind').options).some(o => o.value === x.task_type)) { gi('t-kind').value = x.task_type; syncTaskKindTag(); }
+      if (gi('t-meeting-topic')) gi('t-meeting-topic').value = x.topic || '';
+      if (gi('t-date')) gi('t-date').value = x.start_date || '';
+      if (gi('t-end-date')) gi('t-end-date').value = x.end_date || x.start_date || '';
+      if (gi('t-start-time')) gi('t-start-time').value = x.start_time || '';
+      if (gi('t-end-time')) gi('t-end-time').value = x.end_time || '';
+      if (gi('t-location')) { gi('t-location').value = x.location || ''; rememberTaskChoice('t-location', 'task-location-options', 'tf-task-locations'); }
+      if (gi('t-dress-code')) { gi('t-dress-code').value = x.dress_code || ''; rememberTaskChoice('t-dress-code', 'task-dress-options', 'tf-task-dress-codes'); }
+      if (gi('t-desc')) gi('t-desc').value = x.details || '';
+      const warnings = (x.warnings || []).map(w => `<li>${safeAttr(w)}</li>`).join('');
+      if (review) review.innerHTML = `<strong>✓ AI กรอกข้อมูลให้แล้ว — โปรดตรวจทานก่อนบันทึก</strong><br>ความมั่นใจ: <b>${Math.round(x.confidence || 0)}%</b>${warnings ? `<ul style="margin:5px 0 0;padding-left:18px;color:#A16207;">${warnings}</ul>` : '<div style="margin-top:4px;color:#08796B;">ไม่พบจุดที่ต้องตรวจทานเป็นพิเศษ</div>'}`;
+      toast('AI อ่านเอกสารแล้ว กรุณาตรวจทานข้อมูลก่อนบันทึก');
     }
     function processSwFiles(files) {
       Array.from(files || []).forEach(f => {
