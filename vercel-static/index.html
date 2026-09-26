@@ -3053,8 +3053,10 @@
 .mycal-mini-week span { color:var(--text3); text-align:center; font-size:8px; font-weight:900; padding:2px 0; }
 .mycal-mini-weekrows { display:grid; gap:3px; }
 .mycal-mini-week-row { position:relative; min-width:0; }
-.mycal-mini-range-layer { position:absolute; z-index:2; pointer-events:none; top:33px; left:0; right:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); grid-auto-rows:14px; column-gap:3px; row-gap:2px; }
-.mycal-mini-day { min-height:calc(34px + var(--mini-range-space,0px)); padding:3px; border-radius:7px; background:#FAFBFF; border:.5px solid rgba(148,163,184,.15); overflow:hidden; }
+.mycal-mini-range-layer { position:absolute; z-index:2; pointer-events:none; top:23px; left:0; right:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); grid-auto-rows:14px; column-gap:3px; row-gap:2px; }
+.mycal-mini-week-row.has-special-day .mycal-mini-range-layer { top:33px; }
+.mycal-mini-day { min-height:calc(24px + var(--mini-range-space,0px)); padding:3px; border-radius:7px; background:#FAFBFF; border:.5px solid rgba(148,163,184,.15); overflow:hidden; }
+.mycal-mini-week-row.has-special-day .mycal-mini-day { min-height:calc(34px + var(--mini-range-space,0px)); }
 .mycal-mini-day b { display:block; font-size:9px; font-weight:900; color:var(--text); margin-bottom:2px; }
 .mycal-mini-day.special-holiday { background:#FFF9ED; border-color:rgba(245,158,11,.32); }.mycal-mini-day.special-important { background:#F7F5FF; border-color:rgba(139,92,246,.22); }
 .mycal-mini-day.special-weekend { background:#F3F8FF; border-color:rgba(59,130,246,.2); }
@@ -5644,6 +5646,10 @@
       const weekRows = [];
       for (let wi = 0; wi < gridKeys.length / 7; wi++) {
         const weekKeys = gridKeys.slice(wi * 7, wi * 7 + 7);
+        const weekHasSpecialDay = weekKeys.some(key => {
+          const info = thaiCalendarDayInfo(key);
+          return info && info.kind !== 'weekend';
+        });
         const ranges = visible.map(t => {
           const indexes = weekKeys.map((key, index) => key && taskOccursOn(t, key) ? index : -1).filter(index => index >= 0);
           return indexes.length ? { t, start:Math.min(...indexes), end:Math.max(...indexes) } : null;
@@ -5666,9 +5672,10 @@
         const cells = weekKeys.map(key => {
           if (!key) return `<div class="mycal-mini-day muted" style="--mini-range-space:${laneCount * 16}px;" aria-hidden="true"></div>`;
           const info = thaiCalendarDayInfo(key);
-          return `<div class="mycal-mini-day ${key === todayKey ? 'today' : ''} ${info ? `special-${info.kind}` : ''}" style="--mini-range-space:${laneCount * 16}px;" title="${info ? tfCalSafe(info.label) : ''}"><b>${Number(key.slice(-2))}</b>${info ? `<span class="mycal-mini-special ${info.kind}">${tfCalSafe(info.shortLabel || info.label)}</span>` : ''}</div>`;
+          const label = info && info.kind !== 'weekend' ? (info.shortLabel || info.label) : '';
+          return `<div class="mycal-mini-day ${key === todayKey ? 'today' : ''} ${info ? `special-${info.kind}` : ''}" style="--mini-range-space:${laneCount * 16}px;" title="${info ? tfCalSafe(info.label) : ''}"><b>${Number(key.slice(-2))}</b>${label ? `<span class="mycal-mini-special ${info.kind}">${tfCalSafe(label)}</span>` : ''}</div>`;
         }).join('');
-        weekRows.push(`<div class="mycal-mini-week-row"><div class="mycal-mini-grid">${cells}</div>${bars ? `<div class="mycal-mini-range-layer">${bars}</div>` : ''}</div>`);
+        weekRows.push(`<div class="mycal-mini-week-row ${weekHasSpecialDay ? 'has-special-day' : ''}"><div class="mycal-mini-grid">${cells}</div>${bars ? `<div class="mycal-mini-range-layer">${bars}</div>` : ''}</div>`);
       }
       return `<section class="mycal-mini"><div class="mycal-mini-title">${TF_CAL_MONTHS[month]} ${year + 543}</div><div class="mycal-mini-week">${TF_CAL_DAYS.map(d => `<span>${d}</span>`).join('')}</div><div class="mycal-mini-weekrows">${weekRows.join('')}</div></section>`;
     }
@@ -5713,7 +5720,10 @@
       const weekRows = [];
       for (let wi = 0; wi < gridKeys.length / 7; wi++) {
         const weekKeys = gridKeys.slice(wi * 7, wi * 7 + 7);
-        const weekHasSpecialDay = weekKeys.some(key => thaiCalendarDayInfo(key));
+        const weekHasSpecialDay = weekKeys.some(key => {
+          const info = thaiCalendarDayInfo(key);
+          return info && info.kind !== 'weekend';
+        });
         const weekRanges = visible.filter(t => taskDurationDays(t) > 1).map(t => {
           const indexes = weekKeys.map((key, index) => key && taskOccursOn(t, key) ? index : -1).filter(index => index >= 0);
           return indexes.length ? { t, start: Math.min(...indexes), end: Math.max(...indexes) } : null;
@@ -5742,8 +5752,9 @@
           const hasOverdue = dayTasks.some(isOverdueTask);
           const day = Number(key.slice(-2));
           const info = thaiCalendarDayInfo(key);
+          const label = info && info.kind !== 'weekend' ? (info.shortLabel || info.label) : '';
           return `<div class="mycal-day ${isToday ? 'today' : ''} ${hasOverdue ? 'has-overdue' : ''} ${info ? `special-${info.kind}` : ''}">
-            <div class="mycal-day-head"><div style="min-width:0;"><span class="mycal-day-num">${day}</span>${info ? `<span class="mycal-day-special ${info.kind}">${tfCalSafe(info.shortLabel || info.label)}</span>` : ''}</div><div class="mycal-day-meta">${dayTasks.length ? `<span class="mycal-day-count">${dayTasks.length} งาน</span>` : ''}</div></div>
+            <div class="mycal-day-head"><div style="min-width:0;" title="${info ? tfCalSafe(info.label) : ''}"><span class="mycal-day-num">${day}</span>${label ? `<span class="mycal-day-special ${info.kind}">${tfCalSafe(label)}</span>` : ''}</div><div class="mycal-day-meta">${dayTasks.length ? `<span class="mycal-day-count">${dayTasks.length} งาน</span>` : ''}</div></div>
             <div class="mycal-day-events" style="--range-space:${laneCount * 26 + (weekHasSpecialDay ? 15 : 0)}px;">${singleDayTasks.slice(0, 4).map(t => renderCalChip(t, key)).join('')}${singleDayTasks.length > 4 ? `<div class="mycal-more">+ อีก ${singleDayTasks.length - 4} งาน</div>` : ''}</div>
           </div>`;
         }).join('');
