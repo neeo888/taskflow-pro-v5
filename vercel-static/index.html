@@ -4325,7 +4325,12 @@
       processTaskFiles([file]);
       if (review) { review.style.display = ''; review.innerHTML = '⏳ กำลังอ่านเอกสารและตรวจสอบข้อมูล…'; }
       const fd = new FormData(); fd.append('file', file, file.name || 'document');
-      const result = typeof window._api === 'function' ? await window._api('analyze_document', fd) : { ok: false, error: 'ระบบวิเคราะห์ยังไม่พร้อม' };
+      const token = window._apiToken || (() => { try { return localStorage.getItem('tf_tok') || ''; } catch (_) { return ''; } })();
+      let result = { ok: false, error: 'ระบบวิเคราะห์ยังไม่พร้อม' };
+      try {
+        const response = await fetch('/api/analyze-document', { method: 'POST', headers: { 'X-Token': token }, body: fd });
+        result = await response.json().catch(() => ({ ok: false, error: 'ระบบตอบกลับไม่ถูกต้อง' }));
+      } catch (_) { result = { ok: false, error: 'เชื่อมต่อระบบวิเคราะห์ไม่ได้' }; }
       if (!result?.ok || !result.extraction) {
         if (review) review.innerHTML = `⚠️ วิเคราะห์ไม่ได้: ${safeAttr(result?.error || 'กรุณาลองอีกครั้ง')}<br><span style="color:var(--text3)">ไฟล์ถูกแนบไว้แล้ว คุณยังกรอกข้อมูลเองได้</span>`;
         toast(result?.error || 'วิเคราะห์เอกสารไม่สำเร็จ'); return;
