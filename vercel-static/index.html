@@ -5609,7 +5609,6 @@
       const weekRows = [];
       for (let wi = 0; wi < gridKeys.length / 7; wi++) {
         const weekKeys = gridKeys.slice(wi * 7, wi * 7 + 7);
-        const weekHasSpecialDay = weekKeys.some(key => thaiCalendarDayInfo(key));
         const ranges = visible.map(t => {
           const indexes = weekKeys.map((key, index) => key && taskOccursOn(t, key) ? index : -1).filter(index => index >= 0);
           return indexes.length ? { t, start:Math.min(...indexes), end:Math.max(...indexes) } : null;
@@ -5679,6 +5678,7 @@
       const weekRows = [];
       for (let wi = 0; wi < gridKeys.length / 7; wi++) {
         const weekKeys = gridKeys.slice(wi * 7, wi * 7 + 7);
+        const weekHasSpecialDay = weekKeys.some(key => thaiCalendarDayInfo(key));
         const weekRanges = visible.filter(t => taskDurationDays(t) > 1).map(t => {
           const indexes = weekKeys.map((key, index) => key && taskOccursOn(t, key) ? index : -1).filter(index => index >= 0);
           return indexes.length ? { t, start: Math.min(...indexes), end: Math.max(...indexes) } : null;
