@@ -3048,9 +3048,7 @@
 .mycal-mini-week-row { position:relative; min-width:0; }
 .mycal-mini-range-layer { position:absolute; z-index:2; pointer-events:none; top:23px; left:0; right:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); grid-auto-rows:14px; column-gap:3px; row-gap:2px; }
 .mycal-mini-day { min-height:calc(24px + var(--mini-range-space,0px)); padding:3px; border-radius:7px; background:#FAFBFF; border:.5px solid rgba(148,163,184,.15); overflow:hidden; }
-.mycal-mini-day.has-task { background:#F4FFFC; border-color:rgba(0,166,145,.24); }
 .mycal-mini-day b { display:block; font-size:9px; font-weight:900; color:var(--text); margin-bottom:2px; }
-.mycal-mini-day-count { display:block; color:#008C7B; font-size:7px; font-weight:900; line-height:1; }
 .mycal-mini-range { pointer-events:auto; min-width:0; display:flex; align-items:center; gap:2px; padding:0 3px; color:#075D57; background:linear-gradient(90deg,#9DECDD,#DDFBF3); border:1px solid rgba(0,166,145,.38); box-shadow:0 2px 5px rgba(0,166,145,.12); font-size:7px; font-weight:900; cursor:pointer; overflow:hidden; }
 .mycal-mini-range:hover,.mycal-mini-range:focus-visible { filter:brightness(.96); outline:2px solid rgba(0,166,145,.28); outline-offset:1px; }
 .mycal-mini-range.range-start { border-radius:6px 2px 2px 6px; }.mycal-mini-range.range-middle { border-radius:2px; }.mycal-mini-range.range-end { border-radius:2px 6px 6px 2px; }.mycal-mini-range.range-start.range-end { border-radius:6px; }
@@ -5583,8 +5581,7 @@
         }).join('');
         const cells = weekKeys.map(key => {
           if (!key) return `<div class="mycal-mini-day muted" style="--mini-range-space:${laneCount * 16}px;" aria-hidden="true"></div>`;
-          const count = visible.filter(t => taskOccursOn(t, key)).length;
-          return `<div class="mycal-mini-day ${key === todayKey ? 'today' : ''} ${count ? 'has-task' : ''}" style="--mini-range-space:${laneCount * 16}px;"><b>${Number(key.slice(-2))}</b>${count ? `<span class="mycal-mini-day-count">${count} งาน</span>` : ''}</div>`;
+          return `<div class="mycal-mini-day ${key === todayKey ? 'today' : ''}" style="--mini-range-space:${laneCount * 16}px;"><b>${Number(key.slice(-2))}</b></div>`;
         }).join('');
         weekRows.push(`<div class="mycal-mini-week-row"><div class="mycal-mini-grid">${cells}</div>${bars ? `<div class="mycal-mini-range-layer">${bars}</div>` : ''}</div>`);
       }
