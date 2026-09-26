@@ -1,4 +1,5 @@
-export const config = { runtime: 'edge' };
+// ใช้ Node runtime: การอ่านไฟล์ PDF/รูปเพื่อส่งวิเคราะห์ต้องรองรับ request body ขนาดมากกว่า Edge runtime
+export const config = { runtime: 'nodejs' };
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
