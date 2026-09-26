@@ -117,6 +117,20 @@ function apiSameDept(row, s) {
 function apiAssignedTo(task, s) {
   return (task.asgn || []).map(Number).includes(Number(s?.id));
 }
+async function loadTask(id) {
+  const task = (await sb(`/rest/v1/tf_tasks?id=eq.${Number(id)}&select=*`, { method: 'GET' }))?.[0];
+  if (!task) return null;
+  const assignees = await sb(`/rest/v1/tf_task_assignees?task_id=eq.${Number(id)}&select=user_id`, { method: 'GET' });
+  return { ...task, asgn: assignees.map(row => Number(row.user_id)) };
+}
+function apiCanManageTask(task, s) {
+  if (s?.urole === 'admin') return true;
+  if (['manager', 'assistant'].includes(s?.urole)) return apiSameBranch(task, s);
+  return apiIsDeptHead(s) && apiSameBranch(task, s) && apiSameDept(task, s);
+}
+function apiCanActOnTask(task, s) {
+  return apiCanManageTask(task, s) || apiAssignedTo(task, s);
+}
 
 async function localLogin(req) {
   const b = await bodyJson(req);
@@ -299,6 +313,10 @@ async function memberSave(req) {
   const telegramChatId = String(b.telegram_chat_id || b.telegramChatId || '').trim();
   const lineId = String(b.line_id || b.lineId || b.idline || b.idLine || '').trim();
   const wwcode = String(b.wwcode || makeWwcode(email, name)).trim();
+  const target = id ? (await sb(`/rest/v1/tf_users?id=eq.${id}&select=id,branch,urole`, { method: 'GET' }))?.[0] : null;
+  if (id && !target) return err('User not found', 404);
+  if (s.urole === 'manager' && (target && String(target.branch || '') !== String(s.branch || ''))) return err('Forbidden', 403);
+  if (s.urole === 'manager' && (urole !== 'user' || ['admin', 'manager', 'assistant'].includes(target?.urole))) return err('Managers may manage user accounts only', 403);
 
   // Preferred path: use SQL function so password is hashed by pgcrypto in Supabase.
   try {
@@ -426,7 +444,7 @@ async function taskSave(req) {
   if (id) {
     const prevTask = (await sb(`/rest/v1/tf_tasks?id=eq.${id}&select=id,branch,dept_key`, { method: 'GET' }))?.[0];
     if (!prevTask) return err('ไม่พบงาน', 404);
-    if (deptHead && (!apiSameBranch(prevTask, s) || !apiSameDept(prevTask, s))) return err('หัวหน้างานแก้ไขได้เฉพาะงานของตนเอง', 403);
+    if (!apiCanManageTask(prevTask, s)) return err('ไม่มีสิทธิ์แก้ไขงานนี้', 403);
     const prev = await sb(`/rest/v1/tf_task_assignees?task_id=eq.${id}&select=user_id`, { method: 'GET' });
     previousAssignedIds = prev.map(x => Number(x.user_id));
   }
@@ -452,6 +470,8 @@ async function taskSave(req) {
     col: b.col || 'todo',
     priority: b.priority || 'normal',
     due_date: b.date || null,
+    start_date: b.start_date || b.date || null,
+    end_date: b.end_date || b.start_date || b.date || null,
     branch: s.urole === 'admin' ? (b.branch || s.branch || '') : (s.branch || b.branch || ''),
     dept_key: deptHead ? (s.dept_key || desiredDept) : desiredDept,
     tags: b.tags || [],
@@ -501,11 +521,47 @@ async function simplePatch(req, table, idField, payloadFn) {
   await sb(`/rest/v1/${table}?${idField}=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payloadFn(b)) });
   return ok();
 }
+async function taskCol(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  const id = Number(b.id || b.task_id || 0);
+  const col = String(b.col || '');
+  if (!id || !['todo', 'doing', 'review', 'done', 'verified'].includes(col)) return err('Invalid task update');
+  const task = await loadTask(id);
+  if (!task) return err('Task not found', 404);
+  if (!apiCanActOnTask(task, s)) return err('Forbidden', 403);
+  if (col === 'verified' && !['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
+  await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ col, prog: (col === 'done' || col === 'verified') ? 100 : task.prog }) });
+  return ok();
+}
+async function notificationAck(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  const id = Number(b.id || 0);
+  if (!id) return err('Missing id');
+  await sb(`/rest/v1/tf_notifications?id=eq.${id}&for_user_id=eq.${s.id}`, { method: 'PATCH', body: JSON.stringify({ is_acked: true, is_read: true }) });
+  return ok();
+}
+async function obstacleResolve(req) {
+  const s = await auth(req);
+  const b = await bodyJson(req);
+  const id = Number(b.id || 0);
+  if (!id) return err('Missing id');
+  const obstacle = (await sb(`/rest/v1/tf_obstacles?id=eq.${id}&select=id,task_id`, { method: 'GET' }))?.[0];
+  if (!obstacle) return err('Obstacle not found', 404);
+  const task = await loadTask(obstacle.task_id);
+  if (!task || !apiCanActOnTask(task, s)) return err('Forbidden', 403);
+  await sb(`/rest/v1/tf_obstacles?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ resolved: true, resolved_at: new Date().toISOString() }) });
+  return ok();
+}
 async function taskDelete(req) {
-  await auth(req);
+  const s = await auth(req);
   const b = await bodyJson(req);
   const id = Number(b.id || b.task_id || 0);
   if (!id) return err('Missing id');
+  const task = await loadTask(id);
+  if (!task) return err('Task not found', 404);
+  if (!apiCanManageTask(task, s)) return err('Forbidden', 403);
   const related = [
     ['/rest/v1/tf_notifications?task_id=eq.' + id, 'notifications'],
     ['/rest/v1/tf_attachments?task_id=eq.' + id, 'attachments'],
@@ -531,8 +587,9 @@ async function taskProgress(req) {
   const id = Number(b.task_id || 0);
   if (!id) return err('Missing task_id');
   const prog = Math.max(0, Math.min(100, Number(b.prog || 0)));
-  const task = (await sb(`/rest/v1/tf_tasks?id=eq.${id}&select=id,title,col,branch`, { method: 'GET' }))[0];
+  const task = await loadTask(id);
   if (!task) return err('Task not found', 404);
+  if (!apiCanActOnTask(task, s)) return err('Forbidden', 403);
 
   const patch = { prog };
   if (prog >= 100 && ['todo', 'doing'].includes(task.col)) patch.col = 'review';
@@ -565,6 +622,9 @@ async function taskSubmit(req) {
   const s = await auth(req);
   const b = await bodyJson(req);
   const id = Number(b.task_id || 0);
+  const scopedTask = await loadTask(id);
+  if (!scopedTask) return err('Task not found', 404);
+  if (!apiCanActOnTask(scopedTask, s)) return err('Forbidden', 403);
   await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ col: 'review', prog: 100, submit_note: b.note || '' }) });
   const task = (await sb(`/rest/v1/tf_tasks?id=eq.${id}&select=title`, { method: 'GET' }))[0];
   const mgrs = await sb('/rest/v1/tf_users?urole=in.(admin,manager)&select=id', { method: 'GET' });
@@ -576,6 +636,9 @@ async function taskVerify(req) {
   if (!['admin', 'manager'].includes(s.urole)) return err('Forbidden', 403);
   const b = await bodyJson(req);
   const id = Number(b.task_id || 0);
+  const scopedTask = await loadTask(id);
+  if (!scopedTask) return err('Task not found', 404);
+  if (!apiCanManageTask(scopedTask, s)) return err('Forbidden', 403);
   const approve = (b.action || 'approve') === 'approve';
   await sb(`/rest/v1/tf_tasks?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ col: approve ? 'verified' : 'doing', verified_by: approve ? s.id : null }) });
   const task = (await sb(`/rest/v1/tf_tasks?id=eq.${id}&select=title`, { method: 'GET' }))[0];
@@ -711,6 +774,16 @@ async function fileUpload(req) {
   const taskId = Number(fd.get('task_id') || 0);
   const isSubmitted = String(fd.get('is_submitted') || '0') === '1';
   if (!file || !taskId) return err('No file or task_id');
+  const task = await loadTask(taskId);
+  if (!task) return err('Task not found', 404);
+  if (!apiCanActOnTask(task, s)) return err('Forbidden', 403);
+  const allowedTypes = new Set([
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ]);
+  if (!allowedTypes.has(String(file.type || '').toLowerCase())) return err('Unsupported file type');
+  if (Number(file.size || 0) > 15 * 1024 * 1024) return err('File is too large');
   const ext = (file.name || 'file').split('.').pop() || 'bin';
   const path = `tasks/t${taskId}_${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
   const upload = await fetch(`${SUPABASE_URL}/storage/v1/object/task-attachments/${path}`, {
@@ -741,18 +814,18 @@ export default async function handler(req) {
     if (action === 'tags' && req.method === 'GET') return getTags(req);
     if (action === 'task_save' && req.method === 'POST') return taskSave(req);
     if (action === 'task_delete' && req.method === 'POST') return taskDelete(req);
-    if (action === 'task_col' && req.method === 'POST') return simplePatch(req, 'tf_tasks', 'id', b => ({ col: b.col || 'todo', prog: (b.col === 'done' || b.col === 'verified') ? 100 : undefined }));
+    if (action === 'task_col' && req.method === 'POST') return taskCol(req);
     if (action === 'task_progress' && req.method === 'POST') return taskProgress(req);
     if (action === 'task_submit' && req.method === 'POST') return taskSubmit(req);
     if (action === 'task_verify' && req.method === 'POST') return taskVerify(req);
     if (action === 'step_toggle' && req.method === 'POST') return stepToggle(req);
     if (action === 'file_upload' && req.method === 'POST') return fileUpload(req);
     if (action === 'notifications' && req.method === 'GET') return notifications(req);
-    if (action === 'notif_ack' && req.method === 'POST') return simplePatch(req, 'tf_notifications', 'id', () => ({ is_acked: true, is_read: true }));
+    if (action === 'notif_ack' && req.method === 'POST') return notificationAck(req);
     if (action === 'notif_read' && req.method === 'POST') return ok();
     if (action === 'notif_clear' && req.method === 'POST') { const s = await auth(req); await sb(`/rest/v1/tf_notifications?for_user_id=eq.${s.id}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }); return ok(); }
     if (action === 'obstacle_add' && req.method === 'POST') return obstacleAdd(req);
-    if (action === 'obstacle_resolve' && req.method === 'POST') return simplePatch(req, 'tf_obstacles', 'id', () => ({ resolved: true, resolved_at: new Date().toISOString() }));
+    if (action === 'obstacle_resolve' && req.method === 'POST') return obstacleResolve(req);
     if (action === 'comment_add' && req.method === 'POST') return commentAdd(req);
     if (action === 'telegram_send' && req.method === 'POST') return telegramSend(req);
     if (action === 'line_send' && req.method === 'POST') return lineSend(req);

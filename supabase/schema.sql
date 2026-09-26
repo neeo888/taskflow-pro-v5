@@ -44,6 +44,8 @@ create table if not exists public.tf_tasks (
   priority varchar(10) default 'normal',
   prog smallint default 0,
   due_date date,
+  start_date date,
+  end_date date,
   branch varchar(20) default '',
   dept_key varchar(20) default '',
   tags jsonb default '[]'::jsonb,
@@ -54,6 +56,9 @@ create table if not exists public.tf_tasks (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table public.tf_tasks add column if not exists start_date date;
+alter table public.tf_tasks add column if not exists end_date date;
 
 create table if not exists public.tf_task_assignees (
   task_id bigint not null references public.tf_tasks(id) on delete cascade,
@@ -146,16 +151,8 @@ insert into public.tf_tags (name) values
   ('ออกแบบ'),('พัฒนา'),('ด่วน'),('การตลาด'),('ข้อมูล'),('วิจัย'),('QA'),('DevOps')
 on conflict (name) do nothing;
 
--- Local demo accounts. Password: Pwa@12345
-insert into public.tf_users (wwcode,name,role,dept,dept_key,branch,branch_name,email,urole,color,pass_hash)
-values
-  ('admin',  'ผู้ดูแลระบบ',      'System Admin',    'ฝ่ายเทคโนโลยี','บริการ',   '5512027','หน่วยงาน','admin@pwa.local',  'admin',     0, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
-  ('manager','ผู้จัดการสาขา',    'ผู้จัดการ',        'สำนักงาน',     'อำนวยการ', '5512027','หน่วยงาน','manager@pwa.local','manager',   1, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
-  ('assist', 'ผู้ช่วยผู้จัดการ',  'ผู้ช่วยผู้จัดการ', 'สำนักงาน',     'อำนวยการ', '5512027','หน่วยงาน','assist@pwa.local', 'assistant', 2, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
-  ('user1',  'ช่างเทคนิค 1',     'ช่างเทคนิค',       'งานบริการ',    'บริการ',   '5512027','หน่วยงาน','user1@pwa.local',  'user',      3, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
-  ('user2',  'ช่างเทคนิค 2',     'ช่างเทคนิค',       'งานบริการ',    'บริการ',   '5512027','หน่วยงาน','user2@pwa.local',  'user',      4, extensions.crypt('Pwa@12345', extensions.gen_salt('bf'))),
-  ('user3',  'นักบัญชี',          'นักบัญชี',         'งานการเงิน',   'จัดเก็บ',  '5512027','หน่วยงาน','user3@pwa.local',  'user',      5, extensions.crypt('Pwa@12345', extensions.gen_salt('bf')))
-on conflict (wwcode) do update set pass_hash = excluded.pass_hash;
+-- Do not seed production users or passwords in this schema. Create the first
+-- administrator through a controlled, one-time operational process instead.
 
 -- Storage buckets สำหรับไฟล์แนบ / รูปอัปเดต / รูปโปรไฟล์
 -- Vercel API ใช้ service_role upload เข้า bucket เหล่านี้ และใช้ public URL สำหรับ download/view
@@ -317,3 +314,10 @@ begin
   where u.id = v_id;
 end;
 $$;
+
+-- These SECURITY DEFINER functions are called only by the server-side Vercel
+-- API using the service-role key. They must never be callable by browser roles.
+revoke all on function public.tf_verify_login(text, text) from public, anon, authenticated;
+grant execute on function public.tf_verify_login(text, text) to service_role;
+revoke all on function public.tf_member_save(bigint, text, text, text, text, text, text, text, text, text, smallint, text, text, text) from public, anon, authenticated;
+grant execute on function public.tf_member_save(bigint, text, text, text, text, text, text, text, text, text, smallint, text, text, text) to service_role;
