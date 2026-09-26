@@ -3042,18 +3042,20 @@
 .mycal-overview-grid { display:grid; grid-template-columns:repeat(var(--overview-columns),minmax(0,1fr)); gap:12px; }
 .mycal-mini { border:.5px solid var(--border); border-radius:16px; padding:10px; background:#fff; min-width:0; }
 .mycal-mini-title { font-size:13px; font-weight:900; color:var(--text); margin-bottom:8px; }
-.mycal-mini-week,.mycal-mini-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
+.mycal-mini-week,.mycal-mini-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
 .mycal-mini-week span { color:var(--text3); text-align:center; font-size:8px; font-weight:900; padding:2px 0; }
-.mycal-mini-day { min-height:42px; padding:3px; border-radius:7px; background:#FAFBFF; border:.5px solid rgba(148,163,184,.15); overflow:hidden; }
-.mycal-mini-day.has-task { cursor:pointer; background:#F4FFFC; border-color:rgba(0,166,145,.24); }
-.mycal-mini-day.has-task:hover,.mycal-mini-day.has-task:focus-visible { outline:2px solid rgba(0,166,145,.3); background:#E8FBF5; }
+.mycal-mini-weekrows { display:grid; gap:3px; }
+.mycal-mini-week-row { position:relative; min-width:0; }
+.mycal-mini-range-layer { position:absolute; z-index:2; pointer-events:none; top:23px; left:0; right:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); grid-auto-rows:14px; column-gap:3px; row-gap:2px; }
+.mycal-mini-day { min-height:calc(24px + var(--mini-range-space,0px)); padding:3px; border-radius:7px; background:#FAFBFF; border:.5px solid rgba(148,163,184,.15); overflow:hidden; }
+.mycal-mini-day.has-task { background:#F4FFFC; border-color:rgba(0,166,145,.24); }
 .mycal-mini-day b { display:block; font-size:9px; font-weight:900; color:var(--text); margin-bottom:2px; }
-.mycal-mini-day i { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:4px; background:#E7F8F5; color:#075D57; font-size:7px; font-style:normal; font-weight:800; padding:1px 2px; }
-.mycal-mini-day > span { display:block; color:#6366F1; font-size:7px; font-weight:900; margin-top:2px; }
+.mycal-mini-day-count { display:block; color:#008C7B; font-size:7px; font-weight:900; line-height:1; }
+.mycal-mini-range { pointer-events:auto; min-width:0; display:flex; align-items:center; gap:2px; padding:0 3px; color:#075D57; background:linear-gradient(90deg,#9DECDD,#DDFBF3); border:1px solid rgba(0,166,145,.38); box-shadow:0 2px 5px rgba(0,166,145,.12); font-size:7px; font-weight:900; cursor:pointer; overflow:hidden; }
+.mycal-mini-range:hover,.mycal-mini-range:focus-visible { filter:brightness(.96); outline:2px solid rgba(0,166,145,.28); outline-offset:1px; }
+.mycal-mini-range.range-start { border-radius:6px 2px 2px 6px; }.mycal-mini-range.range-middle { border-radius:2px; }.mycal-mini-range.range-end { border-radius:2px 6px 6px 2px; }.mycal-mini-range.range-start.range-end { border-radius:6px; }
+.mycal-mini-range-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1; }.mycal-mini-range-continue { font-size:8px; flex:0 0 auto; }.mycal-mini-range-end { flex:0 0 auto; font-size:7px; }
 .mycal-mini-day.today { border-color:rgba(0,196,140,.6); background:#ECFFF9; }.mycal-mini-day.muted { opacity:.35; }
-.mycal-mini-num { display:block; font-size:9px; font-weight:900; color:var(--text); margin-bottom:2px; }
-.mycal-mini-item { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-radius:4px; background:#E7F8F5; color:#075D57; font-size:7px; font-weight:800; padding:1px 2px; margin-top:1px; cursor:pointer; }
-.mycal-mini-more { color:#6366F1; font-size:7px; font-weight:900; margin-top:2px; }
 @media (max-width:1100px){ .mycal-layout{grid-template-columns:1fr;} .mycal-list{max-height:none;} }
 @media (max-width:900px){ .mycal-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;} }
 @media (max-width:760px){
@@ -5555,19 +5557,38 @@
       const blanks = first.getDay();
       const monthKey = `${year}-${pad2(month + 1)}`;
       const todayKey = new Date().toISOString().slice(0, 10);
-      const cells = [];
-      for (let i = 0; i < blanks; i++) cells.push('<div class="mycal-mini-day muted" aria-hidden="true"></div>');
-      for (let d = 1; d <= days; d++) {
-        const key = `${monthKey}-${pad2(d)}`;
-        const dayTasks = sortTasksByDue(visible.filter(t => taskOccursOn(t, key)), true);
-        const firstTask = dayTasks[0];
-        const label = firstTask ? tfCalSafe(firstTask.title) : '';
-        const more = dayTasks.length > 1 ? `<span>+${dayTasks.length - 1}</span>` : '';
-        const action = firstTask ? ` role="button" tabindex="0" title="${label}" onclick="openTaskDetail(${Number(firstTask.id)}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${Number(firstTask.id)}, true, event)}"` : '';
-        cells.push(`<div class="mycal-mini-day ${key === todayKey ? 'today' : ''} ${dayTasks.length ? 'has-task' : ''}"${action}><b>${d}</b>${firstTask ? `<i>${label}</i>${more}` : ''}</div>`);
+      const gridKeys = Array(Math.ceil((blanks + days) / 7) * 7).fill(null);
+      for (let d = 1; d <= days; d++) gridKeys[blanks + d - 1] = `${monthKey}-${pad2(d)}`;
+      const weekRows = [];
+      for (let wi = 0; wi < gridKeys.length / 7; wi++) {
+        const weekKeys = gridKeys.slice(wi * 7, wi * 7 + 7);
+        const ranges = visible.map(t => {
+          const indexes = weekKeys.map((key, index) => key && taskOccursOn(t, key) ? index : -1).filter(index => index >= 0);
+          return indexes.length ? { t, start:Math.min(...indexes), end:Math.max(...indexes) } : null;
+        }).filter(Boolean).sort((a, b) => a.start - b.start || b.end - a.end || String(a.t.title).localeCompare(String(b.t.title)));
+        const laneEnds = [];
+        ranges.forEach(range => {
+          let lane = laneEnds.findIndex(end => end < range.start);
+          if (lane < 0) lane = laneEnds.length;
+          laneEnds[lane] = range.end;
+          range.lane = lane;
+        });
+        const laneCount = laneEnds.length;
+        const bars = ranges.map(({ t, start, end, lane }) => {
+          const startKey = taskDateKey(t), endKey = taskEndDateKey(t), id = Number(t.id), title = tfCalSafe(t.title);
+          const hasStart = weekKeys[start] === startKey, hasEnd = weekKeys[end] === endKey;
+          const cls = `${hasStart ? 'range-start' : 'range-middle'} ${hasEnd ? 'range-end' : ''}`;
+          const content = hasStart ? `<span class="mycal-mini-range-title">${title}</span>` : '<span class="mycal-mini-range-continue">↔</span>';
+          return `<div class="mycal-mini-range ${cls}" style="grid-column:${start + 1} / ${end + 2};grid-row:${lane + 1};" role="button" tabindex="0" title="${title} · ${startKey} ถึง ${endKey}" aria-label="เปิดงาน ${title}" onclick="openTaskDetail(${id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${id}, true, event)}">${content}${hasEnd && !hasStart ? '<span class="mycal-mini-range-end">จบ</span>' : ''}</div>`;
+        }).join('');
+        const cells = weekKeys.map(key => {
+          if (!key) return `<div class="mycal-mini-day muted" style="--mini-range-space:${laneCount * 16}px;" aria-hidden="true"></div>`;
+          const count = visible.filter(t => taskOccursOn(t, key)).length;
+          return `<div class="mycal-mini-day ${key === todayKey ? 'today' : ''} ${count ? 'has-task' : ''}" style="--mini-range-space:${laneCount * 16}px;"><b>${Number(key.slice(-2))}</b>${count ? `<span class="mycal-mini-day-count">${count} งาน</span>` : ''}</div>`;
+        }).join('');
+        weekRows.push(`<div class="mycal-mini-week-row"><div class="mycal-mini-grid">${cells}</div>${bars ? `<div class="mycal-mini-range-layer">${bars}</div>` : ''}</div>`);
       }
-      while (cells.length % 7) cells.push('<div class="mycal-mini-day muted" aria-hidden="true"></div>');
-      return `<section class="mycal-mini"><div class="mycal-mini-title">${TF_CAL_MONTHS[month]} ${year + 543}</div><div class="mycal-mini-week">${TF_CAL_DAYS.map(d => `<span>${d}</span>`).join('')}</div><div class="mycal-mini-days">${cells.join('')}</div></section>`;
+      return `<section class="mycal-mini"><div class="mycal-mini-title">${TF_CAL_MONTHS[month]} ${year + 543}</div><div class="mycal-mini-week">${TF_CAL_DAYS.map(d => `<span>${d}</span>`).join('')}</div><div class="mycal-mini-weekrows">${weekRows.join('')}</div></section>`;
     }
     function renderCalendarOverview(monthCount, visible) {
       if (monthCount <= 1) return '';
