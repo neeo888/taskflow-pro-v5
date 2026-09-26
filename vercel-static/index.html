@@ -4699,7 +4699,7 @@
     function getCalendarSettings() {
       let saved = {};
       try { saved = JSON.parse(localStorage.getItem(calendarSettingsKey()) || '{}') || {}; } catch { saved = {}; }
-      const emails = parseCalendarEmails((saved.emails || []).join ? saved.emails.join('\n') : (saved.emails || saved.email || currentUser?.email || ''));
+      const emails = parseCalendarEmails(Array.isArray(saved.emails) ? saved.emails.join('\n') : (saved.emails || saved.email || currentUser?.email || ''));
       return {
         viewMonths: [1, 2, 3, 6, 12].includes(Number(saved.viewMonths)) ? Number(saved.viewMonths) : 1,
         recipientMode: saved.recipientMode || 'assignees',
