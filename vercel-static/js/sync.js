@@ -331,9 +331,9 @@ window.submitTask = function () {
     meeting,
     priority: gi('t-priority') ? gi('t-priority').value : 'normal',
     tags: taskTags,
-    asgn: window.selAsgn ? [...window.selAsgn] : [],
+    asgn: gi('t-dept')?.value === '__self__' ? [window.currentUser?.id].filter(Boolean) : (window.selAsgn ? [...window.selAsgn] : []),
     branch: (gi('t-branch') ? gi('t-branch').value : '') || window.currentUser?.branch || '',
-    dept_key: gi('t-dept') ? gi('t-dept').value : '',
+    dept_key: gi('t-dept')?.value === '__self__' ? (window.currentUser?.dept_key || window.currentUser?.dept || '') : (gi('t-dept') ? gi('t-dept').value : ''),
     steps: (window.pendingStepsList || []).map((label, i) => ({ label, sort_order: i })),
   };
   if (!payload.title) return;

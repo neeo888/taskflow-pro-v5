@@ -482,6 +482,7 @@ async function taskSave(req) {
       dress_code: String(b.meeting.dress_code || b.meeting.dressCode || '').slice(0, 200),
       start_time: String(b.meeting.start_time || b.meeting.startTime || '').slice(0, 10),
       end_time: String(b.meeting.end_time || b.meeting.endTime || '').slice(0, 10),
+      self_task: !!b.meeting.self_task,
     } : {},
   };
   if (id) {

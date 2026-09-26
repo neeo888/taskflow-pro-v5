@@ -3617,6 +3617,7 @@
           <div class="mfl"><label>งาน (แผนก)</label>
             <select id="t-dept">
               <option value="">-- ทุกงาน --</option>
+              <option value="__self__">งานของฉัน (ไม่ต้องมอบหมาย)</option>
               <option value="บริการ">งานบริการ</option>
               <option value="อำนวยการ">งานอำนวยการ</option>
               <option value="จัดเก็บ">งานจัดเก็บ</option>
@@ -3630,8 +3631,7 @@
               <option value="high">สูง</option>
               <option value="urgent">ด่วนมาก</option>
             </select></div>
-        <div class="mfl"><label>มอบหมายให้</label></div>
-        <div class="asgn-picks" id="asgn-picker"></div>
+        <div id="task-assignee-section"><div class="mfl"><label>มอบหมายให้</label></div><div class="asgn-picks" id="asgn-picker"></div></div>
         <div class="mfl"><label>📎 แนบไฟล์ / รูปภาพ (JPG, PNG, PDF, DOCX)</label></div>
         <div class="upload-zone" id="task-upload-zone" role="button" tabindex="0" data-key-click="true" aria-label="เลือกไฟล์แนบงาน" onclick="document.getElementById('task-file-input').click()"
           ondragover="dragOver(event,'task-upload-zone')" ondragleave="dragLeave(event,'task-upload-zone')"
@@ -6428,6 +6428,7 @@
     gi('ntag')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag(); } });
     function assignableUsersForDept(deptKey = gi('t-dept')?.value) {
       if (!currentUser) return [];
+      if (deptKey === '__self__') return [currentUser];
       const dept = normDeptKey(deptKey || userDeptKey(currentUser));
       return (users || []).filter(u => {
         if (u.urole === 'admin' && !isAdmin()) return false;
@@ -6457,6 +6458,14 @@
         td.title = 'หัวหน้างานมอบหมายได้เฉพาะงานของตนเอง';
       }
     }
+    function isSelfTaskSelected() { return gi('t-dept')?.value === '__self__'; }
+    function updateSelfTaskAssignment() {
+      const own = isSelfTaskSelected();
+      const section = gi('task-assignee-section');
+      if (section) section.style.display = own ? 'none' : '';
+      if (own && currentUser) selAsgn = [currentUser.id];
+      if (!own) buildAsgnPicker();
+    }
     function buildAsgnPicker() {
       const box = gi('asgn-picker'); if (!box) return;
       enforceAssigneeScope();
@@ -6464,7 +6473,12 @@
       box.innerHTML = list.length ? list.map(u => { const c = AVC[(u.color || 0) % 8]; const on = selAsgn.includes(u.id); const nm = safeAttr((u.name || '').split(' ')[0] || u.name || ''); const pos = safeAttr(u.role || 'ไม่ระบุตำแหน่ง'); const av = u.avatar ? `<div class="apick-av" style="background:#e2e8f0;overflow:hidden;"><img src="${safeAttr(u.avatar)}" alt="${safeAttr(u.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" referrerpolicy="no-referrer"></div>` : `<div class="apick-av" style="background:${c.bg};color:${c.fg};">${getInits(u.name)}</div>`; return `<div class="apick${on ? ' on' : ''}" title="${safeAttr(u.name || '')} • ${pos}" onclick="togAsgn(this,${u.id})">${av}<span class="apick-nm">${nm}</span><span class="apick-role">${pos}</span></div>`; }).join('') : `<div style="font-size:12px;color:var(--text3);padding:10px 4px;">ไม่มีสมาชิกในงานนี้ให้มอบหมาย</div>`;
     }
     function togAsgn(el, id) { selAsgn.includes(id) ? (selAsgn = selAsgn.filter(x => x !== id), el.classList.remove('on')) : (selAsgn.push(id), el.classList.add('on')); }
-    gi('t-dept')?.addEventListener('change', () => { if (!canChooseDept()) setTaskDeptControl(); if (enforceAssigneeScope()) toast('ปรับผู้รับมอบหมายให้ตรงตามสิทธิ์ของงานนี้'); buildAsgnPicker(); });
+    gi('t-dept')?.addEventListener('change', () => {
+      if (!canChooseDept()) setTaskDeptControl();
+      if (isSelfTaskSelected()) { updateSelfTaskAssignment(); toast('บันทึกเป็นงานของฉัน — ไม่ต้องเลือกผู้รับมอบหมาย'); return; }
+      if (enforceAssigneeScope()) toast('ปรับผู้รับมอบหมายให้ตรงตามสิทธิ์ของงานนี้');
+      updateSelfTaskAssignment();
+    });
     function renderStepList() {
       const box = gi('step-list'); if (!box) return;
       box.innerHTML = pendingStepsList.map((s, i) => {
@@ -6575,7 +6589,8 @@
         location: gi('t-location')?.value.trim() || '',
         dress_code: gi('t-dress-code')?.value.trim() || '',
         start_time: gi('t-start-time')?.value || '',
-        end_time: gi('t-end-time')?.value || ''
+        end_time: gi('t-end-time')?.value || '',
+        self_task: isSelfTaskSelected()
       };
     }
     function setTaskMeetingForm(data = {}) {
@@ -6660,7 +6675,7 @@
       setTaskDeptControl();
       selTags = []; selAsgn = []; taskPendingFiles = []; pendingStepsList = []; editingStepIndex = -1;
       _defaultCol = col || 'todo';
-      syncTaskKindTag(); buildAsgnPicker(); renderTaskAttachList(); renderStepList();
+      syncTaskKindTag(); updateSelfTaskAssignment(); renderTaskAttachList(); renderStepList();
       openModal('modal-task');
     }
     function openTaskModalEdit(id) {
@@ -6680,18 +6695,20 @@
       selTags = [...t.tags]; selAsgn = [...t.asgn]; taskPendingFiles = t.attachments.map(f => ({ ...f }));
       const tbE = gi('t-branch'), tdE = gi('t-dept');
       if (tbE) tbE.value = t.branch || '';
-      if (tdE) tdE.value = t.dept_key || '';
+      if (tdE) tdE.value = t.meeting?.self_task ? '__self__' : (t.dept_key || '');
       setTaskDeptControl();
       pendingStepsList = t.steps ? t.steps.map(s => s.label) : []; editingStepIndex = -1;
-      buildAsgnPicker(); renderTaskAttachList(); renderStepList();
+      updateSelfTaskAssignment(); renderTaskAttachList(); renderStepList();
       openModal('modal-task');
     }
     function submitTask() {
       const title = gi('t-title').value.trim(); if (!title) { toast('กรุณาระบุชื่องาน'); return; }
       setTaskDeptControl();
+      const selfTask = isSelfTaskSelected();
       const branchKey = isAdmin() ? (gi('t-branch')?.value || currentUser?.branch || '') : (currentUser?.branch || gi('t-branch')?.value || '');
-      const deptKey = canChooseDept() ? normDeptKey(gi('t-dept')?.value || userDeptKey(currentUser)) : userDeptKey(currentUser);
+      const deptKey = selfTask ? userDeptKey(currentUser) : (canChooseDept() ? normDeptKey(gi('t-dept')?.value || userDeptKey(currentUser)) : userDeptKey(currentUser));
       if (!deptKey) { toast('กรุณาเลือกงาน/แผนก'); return; }
+      if (selfTask && currentUser) selAsgn = [currentUser.id];
       if (enforceAssigneeScope()) { buildAsgnPicker(); toast('ผู้รับมอบหมายบางคนไม่อยู่ในสิทธิ์ของงานนี้'); return; }
       if (!selAsgn.length) { toast('กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน'); return; }
       selTags = normalizeTagList(selTags);
