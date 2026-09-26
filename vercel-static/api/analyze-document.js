@@ -1,6 +1,4 @@
-import { Buffer } from 'node:buffer';
-
-export const config = { runtime: 'nodejs' };
+export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -18,6 +16,11 @@ function outputText(response) {
   if (response?.output_text) return response.output_text;
   for (const item of response?.output || []) for (const part of item?.content || []) if (part?.type === 'output_text' && part?.text) return part.text;
   return '';
+}
+function toBase64(bytes) {
+  let text = '';
+  for (let index = 0; index < bytes.length; index += 8192) text += String.fromCharCode(...bytes.subarray(index, index + 8192));
+  return btoa(text);
 }
 function validate(input) {
   const x = input && typeof input === 'object' ? input : {};
@@ -42,7 +45,7 @@ export default async function handler(req) {
     const type = String(file?.type || '').toLowerCase();
     if (!file || !['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(type)) return json({ ok: false, error: 'รองรับเฉพาะ PDF, JPG, PNG และ WebP' }, 400);
     if (!file.size || file.size > 4 * 1024 * 1024) return json({ ok: false, error: 'ไฟล์สำหรับวิเคราะห์ต้องมีขนาดไม่เกิน 4 MB' }, 400);
-    const dataUrl = `data:${type};base64,${Buffer.from(await file.arrayBuffer()).toString('base64')}`;
+    const dataUrl = `data:${type};base64,${toBase64(new Uint8Array(await file.arrayBuffer()))}`;
     const fileInput = type === 'application/pdf' ? { type: 'input_file', filename: file.name || 'document.pdf', file_data: dataUrl, detail: 'high' } : { type: 'input_image', image_url: dataUrl, detail: 'high' };
     const schema = { type: 'object', additionalProperties: false, properties: { title: { type: 'string' }, task_type: { type: 'string', enum: ['งานทั่วไป', 'ประชุม', 'อบรม', 'ประชุม/อบรม', 'เข้าร่วมพิธี', 'ลงพื้นที่', 'ตรวจสอบ'] }, topic: { type: 'string' }, start_date: { type: 'string' }, end_date: { type: 'string' }, start_time: { type: 'string' }, end_time: { type: 'string' }, location: { type: 'string' }, dress_code: { type: 'string' }, details: { type: 'string' }, confidence: { type: 'number' }, warnings: { type: 'array', items: { type: 'string' } } }, required: ['title', 'task_type', 'topic', 'start_date', 'end_date', 'start_time', 'end_time', 'location', 'dress_code', 'details', 'confidence', 'warnings'] };
     const prompt = 'อ่านข้อความจากเอกสารภาษาไทยนี้เพื่อสร้างงานในระบบ. ดึงเฉพาะข้อมูลที่ปรากฏชัดเจน ห้ามเดาหรือสร้างวันเวลา/สถานที่/การแต่งกาย. หากไม่พบให้ส่งสตริงว่าง. จัดประเภทเป็น งานทั่วไป, ประชุม, อบรม, ประชุม/อบรม, เข้าร่วมพิธี, ลงพื้นที่, หรือ ตรวจสอบ. warnings ระบุสิ่งที่ต้องตรวจทาน. ส่ง JSON ตาม schema เท่านั้น.';
