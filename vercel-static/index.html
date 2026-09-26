@@ -1586,8 +1586,42 @@
     .prog-file-preview {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      margin-top: 6px;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .prog-file-summary { font-size: 11px; color: var(--text3); }
+
+    .prog-image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+      gap: 9px;
+    }
+
+    .prog-image-card {
+      position: relative;
+      aspect-ratio: 1;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .prog-image-card img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      cursor: zoom-in;
+    }
+
+    .prog-image-card .prog-image-name {
+      position: absolute; right: 0; bottom: 0; left: 0;
+      padding: 18px 7px 6px; color: #fff; font-size: 10px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      background: linear-gradient(transparent, rgba(0,0,0,.7));
+    }
+
+    .prog-image-card .atch-del {
+      position: absolute; top: 5px; right: 5px; width: 24px; height: 24px;
+      border-radius: 50%; color: #fff; background: rgba(0,0,0,.58); line-height: 1;
     }
 
     .prog-file-chip {
@@ -3732,7 +3766,7 @@
           <label>📎 แนบรูปถ่าย / ไฟล์หลักฐาน</label>
           <div class="upload-zone" id="prog-upload-zone" role="button" tabindex="0" data-key-click="true" aria-label="เลือกไฟล์อัปเดตความคืบหน้า" onclick="document.getElementById('prog-files').click()"
             ondragover="dragOver(event,'prog-upload-zone')" ondragleave="dragLeave(event,'prog-upload-zone')"
-            ondrop="dropFile(event,'prog-files');setTimeout(()=>renderProgFilePreview(document.getElementById('prog-files').files),80)">
+            ondrop="dropFile(event,'prog-files')">
             <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">ลากรูป/ไฟล์มาวาง หรือเลือกหลายไฟล์พร้อมกัน</div>
             <div class="upload-btns" onclick="event.stopPropagation()">
               <button class="upload-btn-sm" type="button" onclick="document.getElementById('prog-camera-input').click()">📷 ถ่ายรูป</button>
@@ -6253,7 +6287,10 @@
     // MODALS / PICKERS
     // ══════════════════════════
     function openModal(id) { gi(id).classList.add('open'); }
-    function closeModal(id) { gi(id).classList.remove('open'); }
+    function closeModal(id) {
+      if (id === 'modal-prog' && typeof clearProgPreviewUrls === 'function') clearProgPreviewUrls();
+      gi(id).classList.remove('open');
+    }
     document.querySelectorAll('.modal-bg').forEach(bg => bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); }));
 
     var pendingStepsList = [];
@@ -6604,6 +6641,11 @@
       }
     }
     let progSelectedFiles = [];
+    let progPreviewUrls = [];
+    function clearProgPreviewUrls() {
+      progPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+      progPreviewUrls = [];
+    }
     function appendProgFiles(files) {
       const added = Array.from(files || []);
       if (!added.length) return;
@@ -6621,15 +6663,25 @@
     function renderProgFilePreview(files) {
       const box = gi('prog-file-preview'); if (!box) return;
       const arr = Array.from(files || []);
+      clearProgPreviewUrls();
       if (!arr.length) { box.innerHTML = ''; return; }
       const totalKb = arr.reduce((s, f) => s + (f.size || 0), 0) / 1024;
-      box.innerHTML = `<div class="prog-file-summary">เลือกแล้ว <b>${arr.length}</b> ไฟล์ (${Math.round(totalKb).toLocaleString()}KB) — แนบได้มากกว่า 3 ไฟล์ และจะบันทึกพร้อมความคืบหน้า</div>` + arr.map((f, i) => {
-        const isImg = (f.type || '').startsWith('image/');
-        const url = isImg ? URL.createObjectURL(f) : '';
+      const images = arr.map((f, i) => ({ f, i })).filter(({ f }) => (f.type || '').startsWith('image/'));
+      const documents = arr.map((f, i) => ({ f, i })).filter(({ f }) => !(f.type || '').startsWith('image/'));
+      const imageHtml = images.length ? `<div class="prog-image-grid">${images.map(({ f, i }) => {
+        const url = URL.createObjectURL(f); progPreviewUrls.push(url);
+        const nm = safeAttr(f.name || 'file');
+        const nmJs = safeJs(f.name || 'รูปภาพ');
+        const urlJs = safeJs(url);
+        const size = f.size ? `${Math.round(f.size / 1024).toLocaleString()}KB` : '';
+        return `<div class="prog-image-card"><img src="${safeAttr(url)}" alt="${nm}" title="คลิกเพื่อดูภาพเต็ม" onclick="showImagePreview('${urlJs}','${nmJs}',event,true)"><span class="prog-image-name">${nm}${size ? ` · ${size}` : ''}</span><button type="button" class="atch-del" title="เอารูปนี้ออก" onclick="removeProgFileAt(${i})">✕</button></div>`;
+      }).join('')}</div>` : '';
+      const documentHtml = documents.map(({ f, i }) => {
         const nm = safeAttr(f.name || 'file');
         const size = f.size ? `${Math.round(f.size / 1024).toLocaleString()}KB` : '';
-        return `<div class="prog-file-chip">${isImg ? `<img src="${url}" alt="${nm}">` : '<span class="prog-file-icon">📎</span>'}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nm}<small style="display:block;color:var(--text3);font-size:9px;">${size}</small></span><button type="button" class="atch-del" title="เอาไฟล์นี้ออก" onclick="removeProgFileAt(${i})">✕</button></div>`;
+        return `<div class="prog-file-chip"><span class="prog-file-icon">📎</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nm}<small style="display:block;color:var(--text3);font-size:9px;">${size}</small></span><button type="button" class="atch-del" title="เอาไฟล์นี้ออก" onclick="removeProgFileAt(${i})">✕</button></div>`;
       }).join('');
+      box.innerHTML = `<div class="prog-file-summary">เลือกแล้ว <b>${arr.length}</b> ไฟล์ (${Math.round(totalKb).toLocaleString()}KB) — รูปภาพกดเพื่อดูภาพเต็มได้ และจะปรากฏในรายละเอียดงานหลังบันทึก</div>${imageHtml}${documentHtml}`;
     }
     function setProgValue(v) {
       const val = Math.max(0, Math.min(100, parseInt(v || 0)));
@@ -6660,6 +6712,7 @@
       gi('prog-task-id').value = tid;
       gi('prog-note').value = '';
       progSelectedFiles = [];
+      clearProgPreviewUrls();
       if (gi('prog-files')) gi('prog-files').value = '';
       if (gi('prog-camera-input')) gi('prog-camera-input').value = '';
       if (gi('prog-file-preview')) gi('prog-file-preview').innerHTML = '';
@@ -6679,13 +6732,15 @@
         t.prog = prog;
         if (!Array.isArray(t.progressLog)) t.progressLog = [];
         if (uploaded.length) {
-          if (!Array.isArray(t.submittedFiles)) t.submittedFiles = [];
-          t.submittedFiles.push(...uploaded);
+          const target = prog >= 100 ? 'submittedFiles' : 'attachments';
+          if (!Array.isArray(t[target])) t[target] = [];
+          t[target].push(...uploaded);
         }
         t.progressLog.push({ prog, note: note || (prog >= 100 ? 'ส่งงานเสร็จพร้อมหลักฐาน' : 'อัปเดตความคืบหน้า'), authorId: currentUser.id, at: now2(), files: uploaded });
         if (prog === 100 && (t.col === 'doing' || t.col === 'todo')) { t.col = 'review'; toast(`✅ ส่งงาน 100% แล้ว${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''} — รอตรวจสอบ`, 3500); }
         else if (prog > 0 && t.col === 'todo') { t.col = 'doing'; toast(`▶ บันทึกความคืบหน้า ${prog}%${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''}`, 3000); }
         else toast(`บันทึกความคืบหน้า ${prog}%${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''}`);
+        clearProgPreviewUrls();
         closeModal('modal-prog'); renderAll(); setTimeout(() => showDP(tid), 120);
       } catch (e) {
         console.error(e); toast('บันทึกความคืบหน้าไม่สำเร็จ กรุณาลองใหม่');
