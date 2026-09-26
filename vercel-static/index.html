@@ -3002,6 +3002,13 @@
 .mycal-chip.done .mycal-chip-dot { background:#00A6E7; }
 .mycal-chip.overdue { background:#FFF1F2; border-color:rgba(255,77,109,.18); }
 .mycal-chip.overdue .mycal-chip-dot { background:#FF4D6D; }
+.mycal-chip.multi { border-radius:3px; margin-left:-4px; margin-right:-4px; padding-left:7px; padding-right:7px; background:#E7F8F5; border-color:rgba(0,166,145,.32); }
+.mycal-chip.multi.range-start { border-radius:11px 3px 3px 11px; margin-left:0; }
+.mycal-chip.multi.range-end { border-radius:3px 11px 11px 3px; margin-right:0; }
+.mycal-chip.multi.range-single { border-radius:11px; margin-left:0; margin-right:0; }
+.mycal-chip.multi .mycal-chip-dot { background:#00A691; }
+.mycal-range-days { flex:0 0 auto; padding:1px 5px; border-radius:999px; background:rgba(0,166,145,.14); color:#007F70; font-size:9px; font-weight:900; }
+.mycal-range-arrow { flex:0 0 auto; color:#008C7B; font-size:11px; font-weight:900; }
 .mycal-more { margin-top:6px; font-size:10px; color:var(--text3); font-weight:800; }
 .mycal-side-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; font-size:14px; font-weight:900; color:var(--text); }
 .mycal-list { display:grid; gap:8px; max-height:620px; overflow:auto; padding-right:2px; }
@@ -3033,6 +3040,9 @@
   .mycal-day-num{font-size:13px;}
   .mycal-day-count{font-size:8px;}
   .mycal-chip{gap:3px;margin-top:4px;padding:4px 3px;border-radius:8px;font-size:8px;}
+  .mycal-chip.multi{margin-left:-2px;margin-right:-2px;padding-left:4px;padding-right:4px;}
+  .mycal-chip.multi.range-start{margin-left:0;}.mycal-chip.multi.range-end{margin-right:0;}
+  .mycal-range-days{font-size:7px;padding:1px 3px;}
   .mycal-chip-dot{width:5px;height:5px;}
   .mycal-more{font-size:8px;margin-top:3px;}
 }
@@ -5367,6 +5377,12 @@
       const start = taskDateKey(t), end = taskEndDateKey(t);
       return !!start && start <= key && key <= (end || start);
     }
+    function taskDurationDays(t) {
+      const start = taskDateKey(t), end = taskEndDateKey(t);
+      if (!start || !end) return 1;
+      const a = Date.parse(`${start}T00:00:00Z`), b = Date.parse(`${end}T00:00:00Z`);
+      return Number.isFinite(a) && Number.isFinite(b) ? Math.max(1, Math.round((b - a) / 86400000) + 1) : 1;
+    }
     function fmtDateKeyTH(key) {
       if (!key) return 'ไม่มีกำหนดส่ง';
       const [y, m, d] = key.split('-').map(Number);
@@ -5428,13 +5444,18 @@
       if (isOverdueTask(t)) return { l: 'เกินกำหนด', c: '#FF4D6D', bg: '#FFF1F2', cls: 'overdue' };
       return { l: 'ต้องส่ง', c: '#6366F1', bg: '#F3F6FF', cls: '' };
     }
-    function renderCalChip(t) {
+    function renderCalChip(t, key) {
       const st = calendarTaskState(t);
       const id = Number(t.id);
       const title = tfCalSafe(t.title);
-      return `<div class="mycal-chip ${st.cls}" role="button" tabindex="0" title="${title}" aria-label="เปิดงาน ${title}" onclick="openTaskDetail(${id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${id}, true, event)}">
+      const start = taskDateKey(t), end = taskEndDateKey(t), days = taskDurationDays(t);
+      const multi = days > 1;
+      const phase = !multi ? 'range-single' : (key === start ? 'range-start' : (key === end ? 'range-end' : 'range-middle'));
+      const displayTitle = !multi || key === start ? title : 'กิจกรรมต่อเนื่อง';
+      const continuation = multi && key !== start;
+      return `<div class="mycal-chip ${st.cls} ${multi ? `multi ${phase}` : ''}" role="button" tabindex="0" title="${title}${multi ? ` (${days} วัน)` : ''}" aria-label="เปิดงาน ${title}" onclick="openTaskDetail(${id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${id}, true, event)}">
         <span class="mycal-chip-dot"></span>
-        <span class="mycal-chip-title">${title}</span>
+        ${continuation ? '<span class="mycal-range-arrow">↔</span>' : ''}<span class="mycal-chip-title">${displayTitle}</span>${multi && key === start ? `<span class="mycal-range-days">${days} วัน</span>` : ''}
       </div>`;
     }
     function renderMyCalendar() {
@@ -5476,7 +5497,7 @@
               ${dayTasks.length ? `<span class="mycal-day-count">${dayTasks.length} งาน</span>` : ''}
             </div>
           </div>
-          ${dayTasks.slice(0, 4).map(renderCalChip).join('')}
+          ${dayTasks.slice(0, 4).map(t => renderCalChip(t, key)).join('')}
           ${dayTasks.length > 4 ? `<div class="mycal-more">+ อีก ${dayTasks.length - 4} งาน</div>` : ''}
         </div>`;
       }
@@ -5487,7 +5508,8 @@
         const dueKey = taskDateKey(t);
         const time = t.dueTime || t.time || t.due_time || '';
         const endKey = taskEndDateKey(t);
-        const due = dueKey ? `${dueKey}${endKey && endKey !== dueKey ? ` ถึง ${endKey}` : ''}${time ? ' เวลา ' + time + ' น.' : ''}` : 'ไม่มีกำหนด';
+        const duration = taskDurationDays(t);
+        const due = dueKey ? `${dueKey}${endKey && endKey !== dueKey ? ` ถึง ${endKey} (${duration} วัน)` : ''}${time ? ' เวลา ' + time + ' น.' : ''}` : 'ไม่มีกำหนด';
         const tag = Array.isArray(t.tags) && t.tags.length ? t.tags[0] : (t.type || '');
         return `<div class="mycal-list-item" role="button" tabindex="0" data-task-open="detail" data-task-id="${id}" onclick="openTaskDetail(${id}, true, event)" onkeydown="if(event.key==='Enter'||event.key===' '){openTaskDetail(${id}, true, event)}">
           <div class="mycal-list-name">${title}</div>
