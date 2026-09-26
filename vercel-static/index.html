@@ -3768,7 +3768,7 @@
         <input type="file" id="sw-camera-input" multiple accept="image/*" capture="environment" style="display:none;"
           onchange="processSwFiles(this.files);this.value=''" />
         <div id="sw-attach-list"></div>
-        <div
+        <div id="sw-review-note"
           style="background:#EAF3DE;border-radius:8px;padding:8px 12px;font-size:11px;color:#27500A;margin-top:10px;">✅
           เมื่อส่งงาน สถานะจะเปลี่ยนเป็น <b>รอตรวจสอบ</b> และหัวหน้าจะได้รับการแจ้งเตือน</div>
       </div>
@@ -3805,7 +3805,7 @@
       <div class="mbody">
         <input type="hidden" id="prog-task-id" />
         <div id="prog-task-title" class="prog-task-card"></div>
-        <div class="prog-guide">เลือกเปอร์เซ็นต์ความคืบหน้าให้ชัดเจน หากเลือก <b>100%</b> ระบบจะส่งงานเข้าสถานะ <b>รอตรวจสอบ</b> พร้อมแนบหลักฐานได้หลายรูป/หลายไฟล์ (มากกว่า 3 ไฟล์ได้)</div>
+        <div class="prog-guide" id="prog-guide">เลือกเปอร์เซ็นต์ความคืบหน้าให้ชัดเจน หากเลือก <b>100%</b> ระบบจะส่งงานเข้าสถานะ <b>รอตรวจสอบ</b> พร้อมแนบหลักฐานได้หลายรูป/หลายไฟล์ (มากกว่า 3 ไฟล์ได้)</div>
         <div class="mfl"><label>ความคืบหน้า (%)</label>
           <input type="range" id="prog-slider" min="0" max="100" step="5"
             oninput="setProgValue(this.value)"
@@ -4439,6 +4439,10 @@
       const t = tasks.find(t => t.id === tid); if (!t) return;
       gi('sw-task-id').value = tid;
       gi('sw-task-info').textContent = 'งาน: ' + t.title + ' · ความคืบหน้า ' + t.prog + '%';
+      const reviewNote = gi('sw-review-note');
+      if (reviewNote) reviewNote.innerHTML = isSelfTask(t)
+        ? '✅ งานของฉัน: เมื่อส่งงาน สถานะจะเปลี่ยนเป็น <b>แล้วเสร็จ</b> ทันที โดยไม่ต้องรอตรวจสอบ'
+        : '✅ เมื่อส่งงาน สถานะจะเปลี่ยนเป็น <b>รอตรวจสอบ</b> และหัวหน้าจะได้รับการแจ้งเตือน';
       gi('sw-note').value = ''; swPendingFiles = []; renderSwAttachList();
       openModal('modal-submit');
     }
@@ -4450,14 +4454,16 @@
       if (!t.submittedFiles) t.submittedFiles = [];
       t.submittedFiles = [...swPendingFiles.map(f => ({ name: f.name, size: f.size, type: f.type, mime: f.mime || '', data: f.data || null, url: f.url || null }))];
       t.submitNote = note; t.prog = 100;
-      if (t.col !== 'done') t.col = 'review';
+      const selfTask = isSelfTask(t);
+      if (t.col !== 'done') t.col = selfTask ? 'done' : 'review';
       t.progressLog.push({ prog: 100, note: 'ส่งงาน: ' + note, authorId: currentUser.id, at: now2() });
-      // notify managers
-      const mgrs = users.filter(u => u.urole === 'admin' || u.urole === 'manager').map(u => u.id);
-      addNotif('work_submitted', '📤 มีการส่งงาน', `${currentUser.name} ส่ง "${t.title}" พร้อมรับตรวจสอบ`, t.id, mgrs);
+      if (!selfTask) {
+        const mgrs = users.filter(u => u.urole === 'admin' || u.urole === 'manager').map(u => u.id);
+        addNotif('work_submitted', '📤 มีการส่งงาน', `${currentUser.name} ส่ง "${t.title}" พร้อมรับตรวจสอบ`, t.id, mgrs);
+      }
       closeModal('modal-submit'); playSubmitSound(); renderAll(); renderBell();
       setTimeout(() => showDP(tid), 120);
-      toast('📤 ส่งงานแล้ว! หัวหน้าจะได้รับการแจ้งเตือน', 3000);
+      toast(selfTask ? '✅ งานของฉันเสร็จแล้ว' : '📤 ส่งงานแล้ว! หัวหน้าจะได้รับการแจ้งเตือน', 3000);
     }
 
 
@@ -4893,6 +4899,9 @@
 
     function isDoneTask(t) {
       return !!t && (t.col === 'done' || t.col === 'verified' || Number(t.prog || 0) >= 100);
+    }
+    function isSelfTask(t) {
+      return !!(t && (t.self_task === true || t.meeting?.self_task === true));
     }
     function isActiveTask(t) { return !!t && !isDoneTask(t); }
     function isOverdueTask(t) {
@@ -5730,7 +5739,7 @@
       for (const [start, rawEnd, rawTitle] of rows) {
         const end = rawEnd || start;
         if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || end < start) continue;
-        const task = { id: nid++, title: rawTitle, desc: 'นำเข้าจากปฏิทิน', col: 'todo', branch: currentUser.branch || '', dept_key: currentUser.dept_key || '', ackBy: [], tags: ['ประชุม', 'อบรม'], asgn: [currentUser.id], date: start, start_date: start, end_date: end, prog: 0, priority: 'normal', steps: [], stepChecks: {}, attachments: [], submittedFiles: [], submitNote: '', obstacles: [], comments: [], progressLog: [], createdBy: currentUser.id };
+        const task = { id: nid++, title: rawTitle, desc: 'นำเข้าจากปฏิทิน', col: 'todo', branch: currentUser.branch || '', dept_key: currentUser.dept_key || '', ackBy: [], tags: ['ประชุม', 'อบรม'], asgn: [currentUser.id], date: start, start_date: start, end_date: end, meeting: { self_task: true }, prog: 0, priority: 'normal', steps: [], stepChecks: {}, attachments: [], submittedFiles: [], submitNote: '', obstacles: [], comments: [], progressLog: [], createdBy: currentUser.id };
         tasks.push(task); added++;
         if (typeof window._api === 'function') {
           const result = await window._api('task_save', { title: task.title, desc: task.desc, col: task.col, date: start, start_date: start, end_date: end, priority: task.priority, tags: task.tags, asgn: task.asgn, branch: task.branch, dept_key: task.dept_key, steps: [] });
@@ -6319,8 +6328,9 @@
         const newProg = Math.round(doneC / t.steps.length * 100);
         t.prog = newProg;
         if (newProg === 100 && (t.col === 'doing' || t.col === 'todo')) {
-          t.col = 'review';
-          toast('☑️ ทุกขั้นตอนเสร็จ — เปลี่ยนสถานะเป็น รอตรวจสอบ อัตโนมัติ', 3000);
+          const selfTask = isSelfTask(t);
+          t.col = selfTask ? 'done' : 'review';
+          toast(selfTask ? '☑️ ทุกขั้นตอนเสร็จ — ปิดงานของฉันเป็นแล้วเสร็จอัตโนมัติ' : '☑️ ทุกขั้นตอนเสร็จ — เปลี่ยนสถานะเป็น รอตรวจสอบ อัตโนมัติ', 3000);
         } else {
           toast(`☑️ ${t.stepChecks[uid][stepId].done ? 'ติ๊กเสร็จ' : 'ยกเลิก'} · ความคืบหน้า ${newProg}%`);
         }
@@ -6981,6 +6991,15 @@
       if (gi('prog-file-preview')) gi('prog-file-preview').innerHTML = '';
       const title = gi('prog-task-title');
       if (title) title.innerHTML = `<div class="prog-task-name">${t.title || 'งาน'}</div><div class="prog-task-meta"><span>${(COL[t.col] || {}).n || t.col || '-'}</span><span>ความคืบหน้า ${t.prog || 0}%</span><span>${taskDueLabel(t) || 'ไม่มีกำหนด'}</span></div>`;
+      const selfTask = isSelfTask(t);
+      const guide = gi('prog-guide');
+      if (guide) guide.innerHTML = selfTask
+        ? 'งานนี้เป็น <b>งานของฉัน</b> — เมื่อเลือก <b>100%</b> ระบบจะปิดสถานะเป็น <b>แล้วเสร็จ</b> ทันที โดยไม่ต้องรอตรวจสอบ'
+        : 'เลือกเปอร์เซ็นต์ความคืบหน้าให้ชัดเจน หากเลือก <b>100%</b> ระบบจะส่งงานเข้าสถานะ <b>รอตรวจสอบ</b> พร้อมแนบหลักฐานได้หลายรูป/หลายไฟล์ (มากกว่า 3 ไฟล์ได้)';
+      const hint = gi('prog-hint');
+      if (hint) hint.innerHTML = selfTask
+        ? '✅ เมื่อบันทึก 100% งานของฉันจะถูกย้ายเป็น <b>แล้วเสร็จ</b> อัตโนมัติ'
+        : '✅ เมื่อบันทึก 100% งานจะถูกย้ายเป็น <b>รอตรวจสอบ</b> อัตโนมัติ';
       setProgValue(t.prog || 0);
       openModal('modal-prog');
     }
@@ -7000,7 +7019,13 @@
           t[target].push(...uploaded);
         }
         t.progressLog.push({ prog, note: note || (prog >= 100 ? 'ส่งงานเสร็จพร้อมหลักฐาน' : 'อัปเดตความคืบหน้า'), authorId: currentUser.id, at: now2(), files: uploaded });
-        if (prog === 100 && (t.col === 'doing' || t.col === 'todo')) { t.col = 'review'; toast(`✅ ส่งงาน 100% แล้ว${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''} — รอตรวจสอบ`, 3500); }
+        if (prog === 100 && isSelfTask(t)) {
+          t.col = 'done';
+          toast(`✅ งานของฉันเสร็จแล้ว${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''}`, 3500);
+        } else if (prog === 100 && (t.col === 'doing' || t.col === 'todo')) {
+          t.col = 'review';
+          toast(`✅ ส่งงาน 100% แล้ว${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''} — รอตรวจสอบ`, 3500);
+        }
         else if (prog > 0 && t.col === 'todo') { t.col = 'doing'; toast(`▶ บันทึกความคืบหน้า ${prog}%${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''}`, 3000); }
         else toast(`บันทึกความคืบหน้า ${prog}%${uploaded.length ? ' พร้อมไฟล์ ' + uploaded.length + ' ไฟล์' : ''}`);
         clearProgPreviewUrls();
