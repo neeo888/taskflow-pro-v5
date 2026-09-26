@@ -3015,8 +3015,10 @@
 .mycal-day-count { font-size:10px; color:var(--text3); font-weight:800; white-space:nowrap; }
 .mycal-day.special-holiday { background:#FFF9ED; border-color:rgba(245,158,11,.35); }
 .mycal-day.special-important { background:#F5F3FF; border-color:rgba(139,92,246,.24); }
+.mycal-day.special-weekend { background:#F3F8FF; border-color:rgba(59,130,246,.22); }
 .mycal-day-special { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; margin-top:2px; font-size:8px; font-weight:900; line-height:1.25; }
 .mycal-day-special.holiday { color:#B45309; }.mycal-day-special.important { color:#6D28D9; }
+.mycal-day-special.weekend { color:#2563EB; }
 .mycal-week-row.has-special-day .mycal-range-layer { top:52px; }
 .mycal-chip { display:flex; align-items:center; gap:6px; margin-top:6px; padding:7px 8px; border-radius:11px; background:#F3F6FF; border:.5px solid rgba(99,102,241,.14); font-size:10px; line-height:1.3; cursor:pointer; overflow:hidden; }
 .mycal-chip:hover,.mycal-chip:focus-visible { background:#EEF2FF; border-color:rgba(99,102,241,.38); }
@@ -3055,7 +3057,9 @@
 .mycal-mini-day { min-height:calc(34px + var(--mini-range-space,0px)); padding:3px; border-radius:7px; background:#FAFBFF; border:.5px solid rgba(148,163,184,.15); overflow:hidden; }
 .mycal-mini-day b { display:block; font-size:9px; font-weight:900; color:var(--text); margin-bottom:2px; }
 .mycal-mini-day.special-holiday { background:#FFF9ED; border-color:rgba(245,158,11,.32); }.mycal-mini-day.special-important { background:#F7F5FF; border-color:rgba(139,92,246,.22); }
+.mycal-mini-day.special-weekend { background:#F3F8FF; border-color:rgba(59,130,246,.2); }
 .mycal-mini-special { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:6px; line-height:1; font-weight:900; }.mycal-mini-special.holiday { color:#B45309; }.mycal-mini-special.important { color:#6D28D9; }
+.mycal-mini-special.weekend { color:#2563EB; }
 .mycal-mini-range { pointer-events:auto; min-width:0; display:flex; align-items:center; gap:2px; padding:0 3px; color:#075D57; background:linear-gradient(90deg,#9DECDD,#DDFBF3); border:1px solid rgba(0,166,145,.38); box-shadow:0 2px 5px rgba(0,166,145,.12); font-size:7px; font-weight:900; cursor:pointer; overflow:hidden; }
 .mycal-mini-range:hover,.mycal-mini-range:focus-visible { filter:brightness(.96); outline:2px solid rgba(0,166,145,.28); outline-offset:1px; }
 .mycal-mini-range.range-start { border-radius:6px 2px 2px 6px; }.mycal-mini-range.range-middle { border-radius:2px; }.mycal-mini-range.range-end { border-radius:2px 6px 6px 2px; }.mycal-mini-range.range-start.range-end { border-radius:6px; }
@@ -5499,9 +5503,40 @@
       '2026-07-29': { label:'วันอาสาฬหบูชา', kind:'holiday' },
       '2026-07-30': { label:'วันเข้าพรรษา', kind:'important' }
     };
+    function calendarKeyFromDate(date) {
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+    function actualThaiHoliday(key) {
+      const annual = TF_CAL_FIXED_DAYS[key.slice(5)];
+      const dated = TF_CAL_YEAR_DAYS[key];
+      return (dated?.kind === 'holiday' ? dated : (annual?.kind === 'holiday' ? annual : null));
+    }
+    function thaiObservedHoliday(key) {
+      const year = Number(String(key).slice(0, 4));
+      if (!Number.isFinite(year)) return null;
+      const datedHolidays = Object.entries(TF_CAL_YEAR_DAYS)
+        .filter(([dateKey, info]) => info.kind === 'holiday' && dateKey.slice(0, 4) === String(year))
+        .map(([dateKey, info]) => ({ dateKey, info }));
+      const annualHolidays = Object.entries(TF_CAL_FIXED_DAYS)
+        .filter(([, info]) => info.kind === 'holiday')
+        .map(([monthDay, info]) => ({ dateKey:`${year}-${monthDay}`, info }));
+      for (const source of [...annualHolidays, ...datedHolidays]) {
+        const sourceDate = new Date(`${source.dateKey}T00:00:00`);
+        if (sourceDate.getDay() !== 0 && sourceDate.getDay() !== 6) continue;
+        const observed = new Date(sourceDate);
+        observed.setDate(observed.getDate() + (sourceDate.getDay() === 6 ? 2 : 1));
+        while (observed.getDay() === 0 || observed.getDay() === 6 || actualThaiHoliday(calendarKeyFromDate(observed))) observed.setDate(observed.getDate() + 1);
+        if (calendarKeyFromDate(observed) === key) return { label:`ชดเชย${source.info.label}`, shortLabel:'ชดเชย', kind:'holiday', observed:true };
+      }
+      return null;
+    }
     function thaiCalendarDayInfo(key) {
       if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
-      return TF_CAL_YEAR_DAYS[key] || TF_CAL_FIXED_DAYS[key.slice(5)] || null;
+      const dated = TF_CAL_YEAR_DAYS[key] || TF_CAL_FIXED_DAYS[key.slice(5)] || thaiObservedHoliday(key);
+      if (dated) return dated;
+      const date = new Date(`${key}T00:00:00`);
+      if (date.getDay() === 0 || date.getDay() === 6) return { label:'วันหยุดสุดสัปดาห์', shortLabel:'วันหยุด', kind:'weekend' };
+      return null;
     }
 
     function taskDateKey(t) {
@@ -5631,7 +5666,7 @@
         const cells = weekKeys.map(key => {
           if (!key) return `<div class="mycal-mini-day muted" style="--mini-range-space:${laneCount * 16}px;" aria-hidden="true"></div>`;
           const info = thaiCalendarDayInfo(key);
-          return `<div class="mycal-mini-day ${key === todayKey ? 'today' : ''} ${info ? `special-${info.kind}` : ''}" style="--mini-range-space:${laneCount * 16}px;" title="${info ? tfCalSafe(info.label) : ''}"><b>${Number(key.slice(-2))}</b>${info ? `<span class="mycal-mini-special ${info.kind}">${tfCalSafe(info.label)}</span>` : ''}</div>`;
+          return `<div class="mycal-mini-day ${key === todayKey ? 'today' : ''} ${info ? `special-${info.kind}` : ''}" style="--mini-range-space:${laneCount * 16}px;" title="${info ? tfCalSafe(info.label) : ''}"><b>${Number(key.slice(-2))}</b>${info ? `<span class="mycal-mini-special ${info.kind}">${tfCalSafe(info.shortLabel || info.label)}</span>` : ''}</div>`;
         }).join('');
         weekRows.push(`<div class="mycal-mini-week-row"><div class="mycal-mini-grid">${cells}</div>${bars ? `<div class="mycal-mini-range-layer">${bars}</div>` : ''}</div>`);
       }
@@ -5708,7 +5743,7 @@
           const day = Number(key.slice(-2));
           const info = thaiCalendarDayInfo(key);
           return `<div class="mycal-day ${isToday ? 'today' : ''} ${hasOverdue ? 'has-overdue' : ''} ${info ? `special-${info.kind}` : ''}">
-            <div class="mycal-day-head"><div style="min-width:0;"><span class="mycal-day-num">${day}</span>${info ? `<span class="mycal-day-special ${info.kind}">${tfCalSafe(info.label)}</span>` : ''}</div><div class="mycal-day-meta">${dayTasks.length ? `<span class="mycal-day-count">${dayTasks.length} งาน</span>` : ''}</div></div>
+            <div class="mycal-day-head"><div style="min-width:0;"><span class="mycal-day-num">${day}</span>${info ? `<span class="mycal-day-special ${info.kind}">${tfCalSafe(info.shortLabel || info.label)}</span>` : ''}</div><div class="mycal-day-meta">${dayTasks.length ? `<span class="mycal-day-count">${dayTasks.length} งาน</span>` : ''}</div></div>
             <div class="mycal-day-events" style="--range-space:${laneCount * 26 + (weekHasSpecialDay ? 15 : 0)}px;">${singleDayTasks.slice(0, 4).map(t => renderCalChip(t, key)).join('')}${singleDayTasks.length > 4 ? `<div class="mycal-more">+ อีก ${singleDayTasks.length - 4} งาน</div>` : ''}</div>
           </div>`;
         }).join('');
